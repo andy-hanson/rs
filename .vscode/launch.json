@@ -1,0 +1,27 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Debug",
+			"type": "gdb",
+			"request": "launch",
+			"target": "${workspaceRoot}/target/debug/rs",
+			"cwd": "${workspaceRoot}",
+			"preLaunchTask": "build"
+		}
+		/*
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug",
+			"program": "${workspaceRoot}/target/debug/rs",
+			"args": [],
+			"cwd": "${workspaceRoot}",
+			"preLaunchTask": "build",
+			"sourceLanguages": [
+				"rust"
+			]
+		}
+		*/
+	]
+}

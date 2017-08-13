@@ -1,0 +1,7 @@
+[package]
+name = "rs"
+version = "0.1.0"
+authors = ["Andy Hanson <andy.pj.hanson@gmail.com>"]
+
+[dependencies]
+lazy_static = "0.2"

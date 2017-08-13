@@ -9,6 +9,10 @@ impl<T> Arr<T> {
 		Arr(v.into_boxed_slice())
 	}
 
+	pub fn any(&self) -> bool {
+		!self.0.is_empty()
+	}
+
 	pub fn range(&self) -> Range<usize> {
 		0..self.len()
 	}
@@ -24,6 +28,18 @@ impl<T> Arr<T> {
 	pub fn into_iter(&self) -> Iter<T> {
 		let x = self.0.into_iter();
 		x
+	}
+
+	pub fn build_until_null<E, F : FnMut() -> Result<Option<T>, E>>(mut make_option: F) -> Result<Arr<T>, E> {
+		let mut b = ArrBuilder::<T>::new();
+		loop {
+			match make_option()? {
+				Some(value) =>
+					b.add(value),
+				None =>
+					break Ok(b.finish())
+			}
+		}
 	}
 }
 impl<T : Clone> Arr<T> {
@@ -61,6 +77,20 @@ pub struct ArrBuilder<T>(Vec<T>);
 impl<T> ArrBuilder<T> {
 	pub fn new() -> ArrBuilder<T> {
 		ArrBuilder(Vec::new())
+	}
+
+	pub fn new_with_first(first: T) -> ArrBuilder<T> {
+		let mut b = ArrBuilder(Vec::new());
+		b.add(first);
+		b
+	}
+
+	pub fn new_with_optional_first(first: Option<T>) -> ArrBuilder<T> {
+		let mut b = ArrBuilder(Vec::new());
+		if let Some(x) = first {
+			b.add(x)
+		}
+		b
 	}
 
 	pub fn add(&mut self, t: T) {

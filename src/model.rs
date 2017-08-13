@@ -1,4 +1,4 @@
-
+use util::arr::Arr;
 
 pub enum Effect {
 	Pure,
@@ -13,5 +13,5 @@ pub enum LiteralValue {
 	Nat(u32),
 	Int(i32),
 	Real(f64),
-	String(String),
+	String(Arr<u8>),
 }

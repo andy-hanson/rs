@@ -74,7 +74,7 @@ pub struct Lexer<'a> {
 	diagnostic: Option<Diagnostic>,
 }
 impl<'a> Lexer<'a> {
-	fn new(source: &'a Arr<u8>) -> Lexer {
+	pub fn new(source: &'a Arr<u8>) -> Lexer {
 		Lexer {
 			reader: Reader::new(source),
 			indent: 0,
@@ -84,9 +84,28 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
+	fn move_token_value(&mut self) -> Arr<u8> {
+		replace(&mut self.token_value, Arr::empty())
+	}
+
+	pub fn token_nat(&mut self) -> u32 {
+		panic!()
+	}
+
+	pub fn token_int(&mut self) -> i32 {
+		panic!()
+	}
+
+	pub fn token_float(&mut self) -> f64 {
+		panic!()
+	}
+
+	pub fn token_string(&mut self) -> Arr<u8> {
+		self.move_token_value()
+	}
+
 	pub fn token_sym(&mut self) -> Sym {
-		let token_value = replace(&mut self.token_value, Arr::empty());
-		Sym::from_arr(token_value)
+		Sym::from_arr(self.move_token_value())
 	}
 
 	fn read_char(&mut self) -> Ascii {
@@ -335,7 +354,7 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
-	fn take_newline_or_dedent(&mut self) -> Result<NewlineOrDedent> {
+	pub fn take_newline_or_dedent(&mut self) -> Result<NewlineOrDedent> {
 		self.expect_newline_character()?;
 		self.skip_empty_lines();
 		for _ in 0..self.indent {
@@ -350,7 +369,7 @@ impl<'a> Lexer<'a> {
 		})
 	}
 
-	fn take_newline_or_indent(&mut self) -> Result<NewlineOrIndent> {
+	pub fn take_newline_or_indent(&mut self) -> Result<NewlineOrIndent> {
 		self.expect_newline_character()?;
 		self.skip_empty_lines();
 		for _ in 0..self.indent {
@@ -369,7 +388,7 @@ impl<'a> Lexer<'a> {
 		self.peek() == ascii::ZERO
 	}
 
-	fn try_take_dedent_from_dedenting(&mut self) -> bool {
+	pub fn try_take_dedent_from_dedenting(&mut self) -> bool {
 		if self.dedenting == 0 {
 			false
 		} else {
@@ -378,7 +397,7 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
-	fn try_take_dedent(&mut self) -> Result<bool> {
+	pub fn try_take_dedent(&mut self) -> Result<bool> {
 		if self.dedenting != 0 {
 			self.dedenting -= 1;
 			return Ok(true)
@@ -397,7 +416,7 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
-	fn take_dedent(&mut self) -> Result<()> {
+	pub fn take_dedent(&mut self) -> Result<()> {
 		if self.dedenting != 0 {
 			self.dedenting -= 1
 		} else {
@@ -411,7 +430,7 @@ impl<'a> Lexer<'a> {
 		Ok(())
 	}
 
-	fn take_newline(&mut self) -> Result<()> {
+	pub fn take_newline(&mut self) -> Result<()> {
 		self.expect_newline_character()?;
 		self.skip_empty_lines();
 		for _ in 0..self.indent {
@@ -420,7 +439,7 @@ impl<'a> Lexer<'a> {
 		Ok(())
 	}
 
-	fn try_take_newline(&mut self) -> Result<bool> {
+	pub fn try_take_newline(&mut self) -> Result<bool> {
 		if !self.try_take(ascii::NL) {
 			Ok(false)
 		} else {
@@ -431,7 +450,7 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
-	fn take_indent(&mut self) -> Result<()> {
+	pub fn take_indent(&mut self) -> Result<()> {
 		self.expect_newline_character()?;
 		self.indent += 1;
 		for _ in 0..self.indent {
@@ -444,15 +463,17 @@ impl<'a> Lexer<'a> {
 		self.try_take(ascii::SPACE)
 	}
 
+	pub fn take_equals(&mut self) -> Result<()> { self.expect_character(ascii::EQUAL, "'='") }
 	pub fn take_space(&mut self) -> Result<()> { self.expect_character(ascii::SPACE, "space") }
 	pub fn take_parenl(&mut self) -> Result<()> { self.expect_character(ascii::PARENL, "'('") }
 	pub fn take_parenr(&mut self) -> Result<()> { self.expect_character(ascii::PARENR, "')'") }
 	pub fn take_bracketl(&mut self) -> Result<()> { self.expect_character(ascii::BRACKETL, "'['") }
 	pub fn take_bracketr(&mut self) -> Result<()> { self.expect_character(ascii::BRACKETR, "']'") }
 	pub fn take_comma(&mut self) -> Result<()> { self.expect_character(ascii::COMMA, "','") }
+	pub fn take_dot(&mut self) -> Result<()> { self.expect_character(ascii::DOT, "'.'") }
 
 	pub fn try_take_equals(&mut self) -> bool { self.try_take(ascii::EQUAL) }
-	pub fn try_take_rparen(&mut self) -> bool { self.try_take(ascii::PARENR) }
+	pub fn try_take_parenr(&mut self) -> bool { self.try_take(ascii::PARENR) }
 	pub fn try_take_dot(&mut self) -> bool { self.try_take(ascii::DOT) }
 	pub fn try_take_colon(&mut self) -> bool { self.try_take(ascii::COLON) }
 	pub fn try_take_bracketl(&mut self) -> bool { self.try_take(ascii::BRACKETL) }
@@ -493,7 +514,7 @@ impl<'a> Lexer<'a> {
 		Diagnostic(self.loc_from(start_pos), DiagnosticData::UnexpectedToken(expected_desc, actual_desc))
 	}
 
-	fn take_catch_or_finally(&mut self) -> Result<CatchOrFinally> {
+	pub fn take_catch_or_finally(&mut self) -> Result<CatchOrFinally> {
 		match self.read_char() {
 			ascii::C => {
 				self.must_read("atch", "catch")?;
@@ -508,7 +529,7 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
-	fn take_slot_keyword(&mut self) -> Result<SlotKw> {
+	pub fn take_slot_keyword(&mut self) -> Result<SlotKw> {
 		self.must_read("va", "'val' or 'var'")?;
 		match self.read_char() {
 			ascii::L =>
@@ -520,7 +541,7 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
-	fn take_method_keyword_or_eof(&mut self) -> Result<MethodKw> {
+	pub fn take_method_keyword_or_eof(&mut self) -> Result<MethodKw> {
 		if self.at_eof() {
 			return Ok(MethodKw::Eof)
 		}
@@ -565,12 +586,13 @@ impl<'a> Lexer<'a> {
 
 }
 
-enum MethodKw { Def, Fun, Is, Eof }
-enum SlotKw { Val, Var }
-enum CatchOrFinally { Catch, Finally }
+#[derive(Eq, PartialEq)]
+pub enum MethodKw { Def, Fun, Is, Eof }
+pub enum SlotKw { Val, Var }
+pub enum CatchOrFinally { Catch, Finally }
 
-enum NewlineOrIndent { Newline, Indent }
-enum NewlineOrDedent { Newline, Dedent }
+pub enum NewlineOrIndent { Newline, Indent }
+pub enum NewlineOrDedent { Newline, Dedent }
 
 fn escape(escaped: Ascii) -> Ascii {
 	match escaped.0 {
@@ -582,4 +604,4 @@ fn escape(escaped: Ascii) -> Ascii {
 }
 
 #[derive(Eq, PartialEq)]
-enum QuoteEnd { QuoteEnd, QuoteInterpolation }
+pub enum QuoteEnd { QuoteEnd, QuoteInterpolation }

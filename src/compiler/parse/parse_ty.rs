@@ -1,12 +1,13 @@
-use model::Effect;
+use compiler::model::effect::Effect;
+
 use util::arr::{ Arr, ArrBuilder };
 use util::either::Either;
 use util::loc::{ Pos };
 use util::sym::Sym;
 
-use parse::ast;
-use parse::lexer::{ Lexer, Result };
-use parse::token::Token;
+use super::ast;
+use super::lexer::{ Lexer, Result };
+use super::token::Token;
 
 pub fn parse_self_effect_or_ty(l: &mut Lexer) -> Result<Either<Effect, ast::Ty>> {
 	let start = l.pos();

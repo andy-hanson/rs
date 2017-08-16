@@ -4,13 +4,13 @@ use util::loc::{ Pos };
 use util::path::{ Path, RelPath };
 use util::sym::Sym;
 
-use model::Effect;
+use compiler::model::effect::Effect;
 
-use parse::ast;
-use parse::lexer::{ Lexer, Result, MethodKw, NewlineOrDedent, NewlineOrIndent, SlotKw };
-use parse::parse_expr::{ parse_block };
-use parse::parse_ty::{ parse_ty, parse_self_effect_or_ty, try_take_type_parameters };
-use parse::token::Token;
+use super::ast;
+use super::lexer::{ Lexer, Result, MethodKw, NewlineOrDedent, NewlineOrIndent, SlotKw };
+use super::parse_expr::{ parse_block };
+use super::parse_ty::{ parse_ty, parse_self_effect_or_ty, try_take_type_parameters };
+use super::token::Token;
 
 pub fn parse_module(l: &mut Lexer) -> Result<ast::Module> {
 	let kw = l.next_token();
@@ -173,7 +173,7 @@ fn parse_method_head(l: &mut Lexer) -> Result<(ast::Ty, Sym, Effect, Arr<ast::Pa
 			Either::Right(first_ty) => {
 				l.take_space()?;
 				let first_name = l.take_name()?;
-				let first = ast::Parameter::of(l.loc_from(first_start), first_ty, first_name);
+				let first = ast::Parameter { loc: l.loc_from(first_start), ty: first_ty, name: first_name };
 				let parameters = parse_parameters(l, Some(first))?;
 				(Effect::Pure, parameters)
 			}
@@ -195,7 +195,7 @@ fn parse_parameters(l: &mut Lexer, first: Option<ast::Parameter>) -> Result<Arr<
 		let ty = parse_ty(l)?;
 		l.take_space()?;
 		let name = l.take_name()?;
-		parameters.add(ast::Parameter::of(l.loc_from(start), ty, name))
+		parameters.add(ast::Parameter { loc: l.loc_from(start), ty, name })
 	}
 }
 

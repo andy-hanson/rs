@@ -1,17 +1,18 @@
-use diag::{ Diagnostic, DiagnosticData };
-use model::LiteralValue;
+use compiler::diag::{ Diagnostic, DiagnosticData };
+use compiler::model::LiteralValue;
+
 use util::arr::{ Arr, ArrBuilder };
 use util::loc::{ Loc, Pos };
 
-use parse::ast;
-use parse::lexer::{ Lexer, Result, CatchOrFinally };
-use parse::parse_ty::{
+use super::ast;
+use super::lexer::{ Lexer, Result, CatchOrFinally };
+use super::parse_ty::{
 	parse_ty,
 	try_take_type_argument,
 	try_take_type_arguments,
 	take_type_arguments_after_passing_bracketl
 };
-use parse::token::Token;
+use super::token::Token;
 
 pub fn parse_block(l: &mut Lexer) -> Result<ast::Expr> {
 	let start = l.pos();

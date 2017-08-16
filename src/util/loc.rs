@@ -1,6 +1,6 @@
 use std::ops::{ Add, Sub };
 
-use parse::ascii::{ Ascii, NL };
+use util::ascii::{ Ascii, NL };
 use util::arr::{ Arr, ArrBuilder };
 
 #[derive(Copy, Clone)]
@@ -34,6 +34,7 @@ impl Sub<Pos> for Pos {
 	}
 }
 
+#[derive(Copy, Clone)]
 pub struct Loc {
 	pub start: Pos,
 	pub end: Pos,

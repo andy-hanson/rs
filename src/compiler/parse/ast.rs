@@ -1,4 +1,5 @@
-use model::{ Effect, LiteralValue };
+use compiler::model::effect::Effect;
+use compiler::model::LiteralValue;
 use util::arr::Arr;
 use util::loc::Loc;
 use util::path::{ Path, RelPath };
@@ -115,16 +116,7 @@ impl Method {
 	}
 }
 
-pub struct Parameter {
-	pub loc: Loc,
-	pub ty: Ty,
-	pub name: Sym,
-}
-impl Parameter {
-	pub fn of(loc: Loc, ty: Ty, name: Sym) -> Parameter {
-		Parameter { loc, ty, name }
-	}
-}
+pub struct Parameter { pub loc: Loc, pub ty: Ty, pub name: Sym }
 
 pub struct Ty {
 	pub loc: Loc,

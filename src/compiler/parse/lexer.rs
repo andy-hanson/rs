@@ -2,15 +2,14 @@ use std::cell::Cell;
 use std::mem::replace;
 use std::slice::Iter;
 
-use diag::{ Diagnostic, DiagnosticData };
+use compiler::diag::{ Diagnostic, DiagnosticData };
 use util::arr::{ Arr, ArrBuilder };
+use util::ascii;
+use util::ascii::Ascii;
 use util::loc::{ Pos, Loc };
 use util::sym::Sym;
 
-use parse::ascii;
-use parse::ascii::Ascii;
-
-use parse::token::Token;
+use super::token::Token;
 
 pub type Result<T> = ::std::result::Result<T, Diagnostic>;
 
@@ -30,7 +29,7 @@ impl<'a> Reader<'a> {
 		let snextlast = source[len - 2];
 		assert!(Ascii(snextlast) == ascii::NL);
 
-		let mut iter = source.into_iter();
+		let mut iter = source.iter();
 		let peek = Ascii(iter.next().unwrap().clone());
 		Reader { source, iter, peek, pos_cell: Cell::new(Pos::zero()) }
 	}

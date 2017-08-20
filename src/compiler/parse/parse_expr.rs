@@ -1,5 +1,5 @@
 use compiler::diag::{ Diagnostic, DiagnosticData };
-use compiler::model::LiteralValue;
+use compiler::model::expr::LiteralValue;
 
 use util::arr::{ Arr, ArrBuilder };
 use util::loc::{ Loc, Pos };
@@ -33,7 +33,7 @@ fn parse_block_with_start(l: &mut Lexer, start: Pos, first: Token) -> Result<ast
 	let (expr, next) = parse_expr_2(l, Ctx::Statement, start, first)?;
 	match next {
 		Token::Newline =>
-			match expr.data {
+			match expr.1 {
 				ast::ExprData::LetInProgress(pattern, value) => {
 					let then = parse_block(l)?;
 					Ok(ast::Expr::let_expr(l.loc_from(start), pattern, value, then))
@@ -103,12 +103,12 @@ fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Resu
 						panic!()
 					}
 					l.take_equals()?;
-					if let ast::ExprData::Access(property_name) = first.data {
+					if let ast::ExprData::Access(property_name) = first.1 {
 						l.take_space()?;
 						let (value, next_2) = parse_expr(l, Ctx::YesOperators)?;
 						Ok((ast::Expr::set_property(l.loc_from(start), property_name, value), next_2))
 					} else {
-						Err(Diagnostic(first.loc, DiagnosticData::PrecedingEquals))
+						Err(Diagnostic(first.0, DiagnosticData::PrecedingEquals))
 					}
 				}
 
@@ -116,8 +116,8 @@ fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Resu
 					if ctx != Ctx::Statement {
 						panic!()
 					}
-					if let ast::ExprData::Access(local_name) = first.data {
-						let pattern = ast::Pattern::single(first.loc, local_name);
+					if let ast::ExprData::Access(local_name) = first.1 {
+						let pattern = ast::Pattern::single(first.0, local_name);
 						l.take_space()?;
 						let (value, next_2) = parse_expr(l, Ctx::YesOperators)?;
 						let loc = l.loc_from(start);
@@ -128,7 +128,7 @@ fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Resu
 							Err(Diagnostic(loc, DiagnosticData::BlockCantEndInLet))
 						}
 					} else {
-						Err(Diagnostic(first.loc, DiagnosticData::PrecedingEquals))
+						Err(Diagnostic(first.0, DiagnosticData::PrecedingEquals))
 					}
 				}
 
@@ -326,7 +326,7 @@ fn single_token_expr(l: &mut Lexer, loc: Loc, token: Token) -> Result<ast::Expr>
 		Token::IntLiteral =>
 			Ok(ast::Expr::literal(loc, LiteralValue::Int(l.token_int()))),
 		Token::FloatLiteral =>
-			Ok(ast::Expr::literal(loc, LiteralValue::Real(l.token_float()))),
+			Ok(ast::Expr::literal(loc, LiteralValue::Float(l.token_float()))),
 		Token::StringLiteral =>
 			Ok(ast::Expr::literal(loc, LiteralValue::String(l.token_string()))),
 		Token::Pass =>
@@ -358,7 +358,7 @@ fn parse_when(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
 	loop {
 		let first_test = parse_expr_and_expect_next_2(l, Ctx::YesOperators, Token::Indent, case_start, case_start_token)?;
 		let first_result = parse_block(l)?;
-		cases.add(ast::Case::of(l.loc_from(case_start), first_test, first_result));
+		cases.add(ast::Case(l.loc_from(case_start), first_test, first_result));
 
 		case_start = l.pos();
 		case_start_token = l.next_token();
@@ -404,10 +404,12 @@ fn parse_try(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
 			l.take_space()?;
 			let name_start = l.pos();
 			let exception_name = l.take_name()?;
-			let name_loc = l.loc_from(name_start);
+			let exception_name_loc = l.loc_from(name_start);
 			l.take_indent()?;
-			let catch_block = parse_block(l)?;
-			catch = Some(ast::Catch::of(l.loc_from(catch_start), exception_type, name_loc, exception_name, catch_block));
+			let then = parse_block(l)?;
+			catch = Some(ast::Catch {
+				loc: l.loc_from(catch_start), exception_type, exception_name_loc, exception_name, then: Box::new(then)
+			});
 
 			if !l.try_take_dedent()? {
 				l.take_specific_keyword("finally")?;

@@ -1,14 +1,14 @@
-use super::method::{ MethodWithBody, AbstractMethod };
-use super::module::Module;
-use super::ty::{ InstCls, Ty, TypeParameter };
-
 use util::arr::Arr;
 use util::loc::Loc;
-use util::ptr::{ Own, LateOwn, LatePtr };
+use util::ptr::{ Own, Ptr, LateOwn };
 use util::sym::Sym;
 
+use super::method::{ MethodWithBody, AbstractMethod };
+//use super::module::Module;
+use super::ty::{ InstCls, Ty, TypeParameter };
+
 pub struct ClassDeclaration {
-	_module: LatePtr<Module>,
+	//_module: LatePtr<Module>,
 	pub name: Sym,
 	pub type_parameters: Arr<Own<TypeParameter>>,
 	_head: LateOwn<ClassHead>,
@@ -19,7 +19,7 @@ pub struct ClassDeclaration {
 impl ClassDeclaration {
 	pub fn new(name: Sym, type_parameters: Arr<Own<TypeParameter>>) -> ClassDeclaration {
 		ClassDeclaration {
-			_module: LatePtr::new(),
+			//_module: LatePtr::new(),
 			type_parameters,
 			name,
 			_head: LateOwn::new(),
@@ -28,9 +28,9 @@ impl ClassDeclaration {
 		}
 	}
 
-	fn module(&self) -> &Module {
-		&self._module
-	}
+	//fn module(&self) -> &Module {
+	//	&self._module
+	//}
 
 	pub fn head(&self) -> &ClassHead { &self._head }
 	pub fn set_head(&self, head: ClassHead) { self._head.init(head) }
@@ -38,12 +38,18 @@ impl ClassDeclaration {
 	pub fn set_supers(&self, supers: Arr<Super>) { self._supers.init(supers) }
 	pub fn methods(&self) -> &Arr<Own<MethodWithBody>> { &self._methods }
 	pub fn set_methods(&self, methods: Arr<Own<MethodWithBody>>) { self._methods.init(methods) }
+
+	pub fn find_static_method(&self, name: Sym) -> Option<&Own<MethodWithBody>> {
+		self.methods().find(|m| m.is_static && m.name() == name)
+	}
 }
 
 pub enum ClassHead {
 	Static,
 	Abstract(Loc, Arr<Own<AbstractMethod>>),
-	Slots(Loc, Arr<Own<SlotDeclaration>>)
+	Slots(Loc, Arr<Own<SlotDeclaration>>),
+	// Implementation details are completely hidden.
+	Builtin
 }
 
 pub struct SlotDeclaration {
@@ -66,4 +72,10 @@ impl Super {
 	pub fn of(loc: Loc, super_class: InstCls) -> Super {
 		Super { loc, super_class }
 	}
+}
+
+pub enum MemberDeclaration {
+	Slot(Ptr<SlotDeclaration>),
+	Method(Ptr<MethodWithBody>),
+	AbstractMethod(Ptr<AbstractMethod>),
 }

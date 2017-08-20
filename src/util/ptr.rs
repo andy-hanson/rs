@@ -42,6 +42,10 @@ impl<T> Ptr<T> {
 			(*self.0).ptr()
 		}
 	}
+
+	pub fn ptr_equals(&self, other: &Ptr<T>) -> bool {
+		self.0 == other.0
+	}
 }
 impl<T> Deref for Ptr<T> {
 	type Target = T;

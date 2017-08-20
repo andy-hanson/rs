@@ -7,13 +7,28 @@ use util::path::Path;
 use util::ptr::{ Own, Ptr, LateOwn };
 use util::sym::Sym;
 
-use super::class_declaration::ClassDeclaration;
+use super::class::ClassDeclaration;
 
 pub enum Imported {
 	// Not Weak because we want our dependencies to be kept alive.
 	// They can't have pointers back to us.
 	Module(Ptr<Module>),
 	Builtin(Ptr<ClassDeclaration>),
+}
+impl Imported {
+	pub fn name(&self) -> Sym {
+		match self {
+			&Imported::Module(ref m) => m.name(),
+			&Imported::Builtin(ref c) => c.name,
+		}
+	}
+
+	pub fn imported_class(&self) -> Ptr<ClassDeclaration> {
+		match self {
+			&Imported::Module(ref m) => m.class.ptr(),
+			&Imported::Builtin(ref p) => p.clone_ptr(),
+		}
+	}
 }
 
 pub struct Module {

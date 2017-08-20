@@ -5,7 +5,7 @@ use util::path::{ Path, RelPath };
 
 pub fn attempted_paths(importer_path: &Path, imported_path: &RelPath) -> Arr<Path> {
 	let logical_path = importer_path.resolve(imported_path);
-	Arr::pair(regular_path(&logical_path), index_path(&logical_path))
+	Arr::_2(regular_path(&logical_path), index_path(&logical_path))
 }
 
 pub fn full_path(logical_path: &Path, is_index: bool) -> Path {

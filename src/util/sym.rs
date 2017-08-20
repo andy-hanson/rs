@@ -13,6 +13,10 @@ lazy_static! {
 pub struct Sym(i32);
 
 impl Sym {
+	pub fn of(s: &'static str) -> Sym {
+		Sym::from_arr(Arr::copy_from_str(s))
+	}
+
 	pub fn from_arr(input_arr: Arr<u8>) -> Sym {
 		let mut string_to_symbol = STRING_TO_SYMBOL.lock().unwrap();
 		// Need to clone the contents to prevent lifetime errors.

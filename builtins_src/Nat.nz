@@ -1,0 +1,23 @@
+builtin
+
+def Bool ==(n: Nat)
+
+def Bool <(n: Nat)
+
+def Bool >(n: Nat)
+
+def Bool <=(n: Nat)
+
+def Bool >=(n: Nat)
+
+def Nat +(n: Nat)
+
+def Int -(n: Nat)
+
+def Nat *(n: Nat)
+
+def Nat /(n: Nat)
+
+def Nat decr()
+
+def Nat incr()

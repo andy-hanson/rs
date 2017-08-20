@@ -90,12 +90,16 @@ fn try_parse_class_generic(l: &mut Lexer, start: Pos, kw: Token) -> Result<(Arr<
 	Ok((type_parameters.finish(), next_pos, next_tok))
 }
 
-fn parse_head(l: &mut Lexer, start: Pos, kw: Token) -> Result<(Option<ast::Head>, Pos, MethodKw)> {
+fn parse_head(l: &mut Lexer, start: Pos, kw: Token) -> Result<(Option<ast::ClassHead>, Pos, MethodKw)> {
 	match kw {
 		Token::EOF =>
 			Ok((None, start, MethodKw::Eof)),
 		Token::Fun =>
 			Ok((None, start, MethodKw::Fun)),
+		Token::Builtin => {
+			let head = ast::ClassHead(l.loc_from(start), ast::ClassHeadData::Builtin);
+			Ok((Some(head), l.pos(), l.take_method_keyword_or_eof()?))
+		}
 		Token::Abstract => {
 			let head = parse_abstract_head(l, start)?;
 			Ok((Some(head), l.pos(), l.take_method_keyword_or_eof()?))
@@ -111,7 +115,7 @@ fn parse_head(l: &mut Lexer, start: Pos, kw: Token) -> Result<(Option<ast::Head>
 	}
 }
 
-fn parse_abstract_head(l: &mut Lexer, start: Pos) -> Result<ast::Head> {
+fn parse_abstract_head(l: &mut Lexer, start: Pos) -> Result<ast::ClassHead> {
 	l.take_indent()?;
 	let mut abstract_methods = ArrBuilder::<ast::AbstractMethod>::new();
 	loop {
@@ -128,7 +132,7 @@ fn parse_abstract_head(l: &mut Lexer, start: Pos) -> Result<ast::Head> {
 			NewlineOrDedent::Dedent => break
 		}
 	}
-	Ok(ast::Head::abstract_head(l.loc_from(start), abstract_methods.finish()))
+	Ok(ast::ClassHead(l.loc_from(start), ast::ClassHeadData::Abstract(abstract_methods.finish())))
 }
 
 fn parse_methods(l: &mut Lexer, mut start: Pos, mut next: MethodKw) -> Result<Arr<ast::Method>> {
@@ -258,7 +262,7 @@ fn parse_impls(l: &mut Lexer) -> Result<Arr<ast::Impl>> {
 	}
 }
 
-fn parse_slots(l: &mut Lexer, start: Pos) -> Result<ast::Head> {
+fn parse_slots(l: &mut Lexer, start: Pos) -> Result<ast::ClassHead> {
 	l.take_indent()?;
 	let mut slots = ArrBuilder::<ast::Slot>::new();
 	loop {
@@ -275,5 +279,5 @@ fn parse_slots(l: &mut Lexer, start: Pos) -> Result<ast::Head> {
 			NewlineOrDedent::Dedent => break
 		}
 	};
-	Ok(ast::Head::slots(l.loc_from(start), slots.finish()))
+	Ok(ast::ClassHead(l.loc_from(start), ast::ClassHeadData::Slots(slots.finish())))
 }

@@ -23,6 +23,7 @@ pub enum Token {
 	Abstract,
 	Array,
 	Assert,
+	Builtin,
 	Catch,
 	Def,
 	Do,
@@ -122,6 +123,7 @@ lazy_static! {
 		assoc(&mut h, "abstract", Token::Abstract);
 		assoc(&mut h, "array", Token::Array);
 		assoc(&mut h, "assert", Token::Assert);
+		assoc(&mut h, "builtin", Token::Builtin);
 		assoc(&mut h, "catch", Token::Catch);
 		assoc(&mut h, "def", Token::Def);
 		assoc(&mut h, "do", Token::Do);

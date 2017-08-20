@@ -6,11 +6,11 @@ pub enum Effect {
 	Io
 }
 impl Effect {
-	fn contains(self, other: Effect) -> bool {
+	pub fn contains(self, other: Effect) -> bool {
 		self as usize > other as usize
 	}
 
-	fn min_common_effect(self, other: Effect) -> Effect {
+	pub fn min_common_effect(self, other: Effect) -> Effect {
 		if self.contains(other) { self } else { other }
 	}
 

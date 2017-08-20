@@ -5,8 +5,25 @@ use std::slice::Iter;
 pub struct Arr<T>(Box<[T]>);
 
 impl<T> Arr<T> {
-	pub fn pair(a: T, b: T) -> Arr<T> {
+	pub fn only(&self) -> Option<&T> {
+		if self.len() == 1 {
+			Some(&self[0])
+		} else {
+			None
+		}
+	}
+
+	pub fn _1(a: T) -> Arr<T> {
+		Arr(Box::new([a]))
+	}
+	pub fn _2(a: T, b: T) -> Arr<T> {
 		Arr(Box::new([a, b]))
+	}
+	pub fn _3(a: T, b: T, c: T) -> Arr<T> {
+		Arr(Box::new([a, b, c]))
+	}
+	pub fn _4(a: T, b: T, c: T, d: T) -> Arr<T> {
+		Arr(Box::new([a, b, c, d]))
 	}
 
 	fn from_vec(v: Vec<T>) -> Arr<T> {
@@ -64,6 +81,15 @@ impl<T> Arr<T> {
 		b.finish()
 	}
 
+	pub fn find<F : Fn(&T) -> bool>(&self, f: F) -> Option<&T> {
+		for x in self.iter() {
+			if f(x) {
+				return Some(x)
+			}
+		}
+		return None
+	}
+
 	pub fn build_until_null<E, F : FnMut() -> Result<Option<T>, E>>(mut make_option: F) -> Result<Arr<T>, E> {
 		let mut b = ArrBuilder::<T>::new();
 		loop {
@@ -98,6 +124,18 @@ impl<T> Arr<T> {
 		for i in self.range() {
 			f(&self[i], &other[i])
 		}
+	}
+
+	pub fn each_equals<F: Fn(&T, &T) -> bool>(&self, other: &Arr<T>, f: F) -> bool {
+		if self.len() != other.len() {
+			return false
+		}
+		for i in self.range() {
+			if !f(&self[i], &other[i]) {
+				return false
+			}
+		}
+		true
 	}
 }
 impl<T : Clone> Arr<T> {

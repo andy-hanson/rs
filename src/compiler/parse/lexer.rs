@@ -6,7 +6,7 @@ use compiler::diag::{ Diagnostic, DiagnosticData };
 use util::arr::{ Arr, ArrBuilder };
 use util::ascii;
 use util::ascii::Ascii;
-use util::loc::{ Pos, Loc };
+use util::loc::{ Pos, Loc, POS_ZERO };
 use util::sym::Sym;
 
 use super::token::Token;
@@ -31,7 +31,7 @@ impl<'a> Reader<'a> {
 
 		let mut iter = source.iter();
 		let peek = Ascii(iter.next().unwrap().clone());
-		Reader { source, iter, peek, pos_cell: Cell::new(Pos::zero()) }
+		Reader { source, iter, peek, pos_cell: Cell::new(POS_ZERO) }
 	}
 
 	fn pos(&self) -> Pos {

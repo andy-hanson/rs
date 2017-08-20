@@ -2,7 +2,7 @@ use util::arr::Arr;
 use util::ptr::{ Own, Ptr, LateOwn };
 use util::sym::Sym;
 
-use super::class_declaration::ClassDeclaration;
+use super::class::ClassDeclaration;
 use super::method::MethodWithBody;
 use super::effect::Effect;
 
@@ -19,6 +19,26 @@ impl Ty {
 	pub fn io(cls: InstCls) -> Ty {
 		Ty::Plain(Effect::Io, cls)
 	}
+
+	pub fn fast_equals(&self, other: &Ty) -> bool {
+		match self {
+			&Ty::Bogus =>
+				match other { &Ty::Bogus => true, _ => false },
+			&Ty::Plain(effect, ref inst_cls) => {
+				if let &Ty::Plain(effect_b, ref inst_cls_b) = other {
+					effect == effect_b && inst_cls.fast_equals(&inst_cls_b)
+				} else {
+					false
+				}
+			}
+			&Ty::Param(ref p) =>
+				if let &Ty::Param(ref p_b) = other {
+					p.ptr_equals(&p_b)
+				} else {
+					false
+				}
+		}
+	}
 }
 impl Clone for Ty {
 	fn clone(&self) -> Ty {
@@ -30,13 +50,24 @@ impl Clone for Ty {
 	}
 }
 
-pub struct InstCls {
-	pub class: Ptr<ClassDeclaration>,
-	pub type_arguments: Arr<Ty>,
+pub struct InstCls(pub Ptr<ClassDeclaration>, pub Arr<Ty>);
+impl InstCls {
+	pub fn generic_self_reference(cls: Ptr<ClassDeclaration>) -> InstCls {
+		let type_arguments = cls.type_parameters.map(|tp| Ty::Param(tp.ptr()));
+		InstCls(cls, type_arguments)
+	}
+
+	pub fn class(&self) -> &Ptr<ClassDeclaration> {
+		&self.0
+	}
+
+	pub fn fast_equals(&self, other: &InstCls) -> bool {
+		self.0.ptr_equals(&other.0) && self.1.each_equals(&other.1, Ty::fast_equals)
+	}
 }
 impl Clone for InstCls {
 	fn clone(&self) -> InstCls {
-		InstCls { class: self.class.clone_ptr(), type_arguments: self.type_arguments.clone() }
+		InstCls(self.0.clone_ptr(), self.1.clone())
 	}
 }
 

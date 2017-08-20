@@ -8,10 +8,6 @@ pub struct Pos {
 	pub index: u32,
 }
 impl Pos {
-	pub fn zero() -> Pos {
-		Pos { index: 0 }
-	}
-
 	pub fn decr(self) -> Pos {
 		Pos { index: self.index - 1 }
 	}
@@ -33,6 +29,7 @@ impl Sub<Pos> for Pos {
 		self.index - rhs.index
 	}
 }
+pub const POS_ZERO: Pos = Pos { index: 0 };
 
 #[derive(Copy, Clone)]
 pub struct Loc {
@@ -40,11 +37,6 @@ pub struct Loc {
 	pub end: Pos,
 }
 impl Loc {
-	//TODO: eventually get rid of this
-	pub fn zero() -> Loc {
-		Loc { start: Pos::zero(), end: Pos::zero() }
-	}
-
 	pub fn single_char(start: Pos) -> Loc {
 		Loc { start, end: start.incr() }
 	}
@@ -54,6 +46,7 @@ impl Loc {
 		Loc { start: start, end: start + length }
 	}
 }
+pub const LOC_ZERO: Loc = Loc { start: POS_ZERO, end: POS_ZERO };
 
 struct LineAndColumn {
 	line: u32,

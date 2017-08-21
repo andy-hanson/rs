@@ -98,14 +98,7 @@ pub struct Method {
 	pub name: Sym,
 	pub self_effect: Effect,
 	pub parameters: Arr<Parameter>,
-	pub body: Expr,
-}
-impl Method {
-	pub fn of(
-		loc: Loc, is_static: bool, type_parameters: Arr<Sym>, return_ty: Ty,
-		name: Sym, self_effect: Effect, parameters: Arr<Parameter>, body: Expr) -> Method {
-		Method { loc, is_static, type_parameters, return_ty, name, self_effect, parameters, body }
-	}
+	pub body: Option<Expr>,
 }
 
 pub struct Parameter { pub loc: Loc, pub ty: Ty, pub name: Sym }

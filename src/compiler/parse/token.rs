@@ -155,7 +155,7 @@ lazy_static! {
 		h
 	};
 	static ref TOKEN_TO_NAME: HashMap<Token, String> = {
-		let i = NAME_TO_TOKEN.iter().map(|(k, v)| (v.clone(), k.clone_to_utf8_string()));
+		let i = NAME_TO_TOKEN.iter().map(|(k, v)| (*v, k.clone_to_utf8_string()));
 		HashMap::<Token, String>::from_iter(i)
 	};
 }
@@ -167,7 +167,6 @@ fn assoc(h: &mut HashMap<Arr<u8>, Token>, s: &str, t: Token) {
 
 impl Token {
 	pub fn keyword_from_name(name: &Arr<u8>) -> Option<Token> {
-		let x = NAME_TO_TOKEN.get(name);
-		x.map(|x| x.clone()) // TODO: Shouldn't this be unnecessary because Token is Copy?
+		NAME_TO_TOKEN.get(name).cloned()
 	}
 }

@@ -21,7 +21,7 @@ use super::ty_utils::{
 };
 
 pub fn check_method_body(
-	ctx: &mut Ctx,
+	ctx: &Ctx,
 	method_or_impl: &MethodOrImpl,
 	method_replacer: &TyReplacer,
 	is_static: bool,

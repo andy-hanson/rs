@@ -30,7 +30,7 @@ impl<'a> Reader<'a> {
 		assert!(Ascii(snextlast) == ascii::NL);
 
 		let mut iter = source.iter();
-		let peek = Ascii(iter.next().unwrap().clone());
+		let peek = Ascii(*iter.next().unwrap());
 		Reader { source, iter, peek, pos_cell: Cell::new(POS_ZERO) }
 	}
 
@@ -44,7 +44,7 @@ impl<'a> Reader<'a> {
 
 	fn skip(&mut self) {
 		let x = self.iter.next();
-		self.peek = if let Some(ch) = x { Ascii(ch.clone()) } else { ascii::ZERO }
+		self.peek = if let Some(ch) = x { Ascii(*ch) } else { ascii::ZERO }
 	}
 
 	fn skip2(&mut self) {
@@ -449,6 +449,14 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
+	pub fn try_take_indent(&mut self) -> Result<bool> {
+		self.expect_newline_character()?;
+		for _ in 0..self.indent {
+			self.expect_tab_character()?
+		}
+		Ok(self.try_take(ascii::TAB))
+	}
+
 	pub fn take_indent(&mut self) -> Result<()> {
 		self.expect_newline_character()?;
 		self.indent += 1;
@@ -565,7 +573,7 @@ impl<'a> Lexer<'a> {
 
 	fn must_read(&mut self, must_read_me: &'static str, expected_desc: &'static str) -> Result<()> {
 		for byte in must_read_me.as_bytes() {
-			self.must_read_char(Ascii(byte.clone()), expected_desc)?
+			self.must_read_char(Ascii(*byte), expected_desc)?
 		}
 		Ok(())
 	}

@@ -17,16 +17,16 @@ pub enum Imported {
 }
 impl Imported {
 	pub fn name(&self) -> Sym {
-		match self {
-			&Imported::Module(ref m) => m.name(),
-			&Imported::Builtin(ref c) => c.name,
+		match *self {
+			Imported::Module(ref m) => m.name(),
+			Imported::Builtin(ref c) => c.name,
 		}
 	}
 
 	pub fn imported_class(&self) -> Ptr<ClassDeclaration> {
-		match self {
-			&Imported::Module(ref m) => m.class.ptr(),
-			&Imported::Builtin(ref p) => p.clone_ptr(),
+		match *self {
+			Imported::Module(ref m) => m.class.ptr(),
+			Imported::Builtin(ref p) => p.clone_ptr(),
 		}
 	}
 }

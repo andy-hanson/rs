@@ -45,15 +45,11 @@ impl AbstractMethod {
 	}
 }
 
-pub enum MethodBody {
-	Builtin,
-	Body(Expr),
-}
-
 pub struct MethodWithBody {
 	pub is_static: bool,
 	signature: MethodSignature,
-	body: LateOwn<MethodBody>,
+	// Optional because this might be a builtin method
+	body: LateOwn<Option<Expr>>,
 }
 impl MethodWithBody {
 	pub fn new(
@@ -99,12 +95,12 @@ impl MethodWithBody {
 		&self.signature.parameters
 	}
 
-	pub fn body(&self) -> &MethodBody {
+	pub fn body(&self) -> &Option<Expr> {
 		&self.body
 	}
 
-	pub fn set_body(&self, expr: Expr) {
-		self.body.init(MethodBody::Body(expr))
+	pub fn set_body(&self, expr: Option<Expr>) {
+		self.body.init(expr)
 	}
 }
 

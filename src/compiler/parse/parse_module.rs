@@ -144,10 +144,10 @@ fn parse_methods(l: &mut Lexer, mut start: Pos, mut next: MethodKw) -> Result<Ar
 				let type_parameters = try_take_type_parameters(l)?;
 				l.take_space()?;
 				let (return_ty, name, self_effect, parameters) = parse_method_head(l)?;
-				l.take_indent()?;
-				let body = parse_block(l)?;
-				methods.add(ast::Method::of(
-					l.loc_from(start), is_static, type_parameters, return_ty, name, self_effect, parameters, body));
+				let body = if l.try_take_indent()? { Some(parse_block(l)?) } else { None };
+				methods.add(ast::Method {
+					loc: l.loc_from(start), is_static, type_parameters, return_ty, name, self_effect, parameters, body
+				});
 				start = l.pos();
 				next = l.take_method_keyword_or_eof()?
 			}

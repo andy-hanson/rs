@@ -4,6 +4,7 @@ use util::sym::Sym;
 
 use super::super::diag::{ Diagnostic };
 use super::super::model::class::{ ClassDeclaration, ClassHead, SlotDeclaration, Super };
+use super::super::model::expr::Expr;
 use super::super::model::method::{ MethodWithBody, MethodOrImpl, Parameter };
 use super::super::model::module::{ Imported };
 use super::super::model::ty::{ TypeParameter, TypeParameterOrigin };
@@ -50,7 +51,11 @@ fn do_check(ctx: &mut Ctx, ast: &ast::ClassDeclaration) {
 	for i in method_asts.range() {
 		let method_ast = &method_asts[i];
 		let method = ctx.current_class.methods()[i].ptr();
-		set_method_body(ctx, method, &TyReplacer::do_nothing(), &method_ast.body);
+		let body: Option<Expr> = match &method_ast.body {
+			&Some(ref body) => Some(check_method_body(&ctx, &MethodOrImpl::Method(method.clone_ptr()), &TyReplacer::do_nothing(), method.is_static, body)),
+			&None => None,
+		};
+		method.set_body(body)
 	}
 }
 
@@ -111,9 +116,4 @@ fn check_slot(ctx: &mut Ctx, slot_ast: &ast::Slot) -> SlotDeclaration {
 fn check_super(ctx: &mut Ctx, super_ast: &ast::Super) -> Option<Super> {
 	unused!(ctx, super_ast);
 	todo!()
-}
-
-fn set_method_body(mut ctx: &mut Ctx, method: Ptr<MethodWithBody>, replacer: &TyReplacer, body: &ast::Expr) {
-	let body = check_method_body(&mut ctx, &MethodOrImpl::Method(method.clone_ptr()), replacer, method.is_static, body);
-	method.set_body(body)
 }

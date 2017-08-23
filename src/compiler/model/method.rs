@@ -9,7 +9,7 @@ use super::expr::Expr;
 use super::ty::{ Ty, TypeParameter };
 
 pub struct MethodSignature {
-	class: Ptr<ClassDeclaration>,
+	pub class: Ptr<ClassDeclaration>,
 	pub loc: Loc,
 	pub name: Sym,
 	pub type_parameters: Arr<Own<TypeParameter>>,
@@ -47,30 +47,11 @@ impl AbstractMethod {
 
 pub struct MethodWithBody {
 	pub is_static: bool,
-	signature: MethodSignature,
+	pub signature: MethodSignature,
 	// Optional because this might be a builtin method
-	body: LateOwn<Option<Expr>>,
+	pub body: LateOwn<Option<Expr>>,
 }
 impl MethodWithBody {
-	pub fn new(
-		class: &Own<ClassDeclaration>, loc: Loc, is_static: bool, name: Sym,
-		type_parameters: Arr<Own<TypeParameter>>, return_ty: Ty, self_effect: Effect,
-		parameters: Arr<Own<Parameter>>) -> MethodWithBody {
-		MethodWithBody {
-			is_static,
-			signature: MethodSignature {
-				class: class.ptr(),
-				loc,
-				name,
-				type_parameters,
-				return_ty,
-				self_effect,
-				parameters,
-			},
-			body: LateOwn::new(),
-		}
-	}
-
 	pub fn loc(&self) -> Loc {
 		self.signature.loc
 	}
@@ -118,17 +99,17 @@ pub enum MethodOrImpl {
 	Impl(Ptr<Impl>),
 }
 impl MethodOrImpl {
-	pub fn clone(&self) -> MethodOrImpl {
-		match self {
-			&MethodOrImpl::Method(ref m) => MethodOrImpl::Method(m.clone_ptr()),
-			&MethodOrImpl::Impl(ref i) => MethodOrImpl::Impl(i.clone_ptr()),
+	pub fn copy(&self) -> MethodOrImpl {
+		match *self {
+			MethodOrImpl::Method(ref m) => MethodOrImpl::Method(m.clone_ptr()),
+			MethodOrImpl::Impl(ref i) => MethodOrImpl::Impl(i.clone_ptr()),
 		}
 	}
 
 	pub fn method_or_abstract(&self) -> MethodOrAbstract {
-		match self {
-			&MethodOrImpl::Method(ref m) => MethodOrAbstract::Method(m.clone_ptr()),
-			&MethodOrImpl::Impl(ref i) => MethodOrAbstract::Abstract(i.implemented.clone_ptr()),
+		match *self {
+			MethodOrImpl::Method(ref m) => MethodOrAbstract::Method(m.clone_ptr()),
+			MethodOrImpl::Impl(ref i) => MethodOrAbstract::Abstract(i.implemented.clone_ptr()),
 		}
 	}
 
@@ -137,10 +118,10 @@ impl MethodOrImpl {
 	}
 
 	pub fn signature(&self) -> &MethodSignature {
-		match self {
-			&MethodOrImpl::Method(ref method) =>
+		match *self {
+			MethodOrImpl::Method(ref method) =>
 				&method.signature,
-			&MethodOrImpl::Impl(ref imp) =>
+			MethodOrImpl::Impl(ref imp) =>
 				&imp.implemented.0,
 		}
 	}
@@ -151,47 +132,47 @@ pub enum MethodOrAbstract {
 	Abstract(Ptr<AbstractMethod>),
 }
 impl MethodOrAbstract {
-	pub fn clone(&self) -> MethodOrAbstract {
-		match self {
-			&MethodOrAbstract::Method(ref m) =>
+	pub fn copy(&self) -> MethodOrAbstract {
+		match *self {
+			MethodOrAbstract::Method(ref m) =>
 				MethodOrAbstract::Method(m.clone_ptr()),
-			&MethodOrAbstract::Abstract(ref a) =>
+			MethodOrAbstract::Abstract(ref a) =>
 				MethodOrAbstract::Abstract(a.clone_ptr()),
 		}
 	}
 
 	pub fn is_static(&self) -> bool {
-		match self {
-			&MethodOrAbstract::Method(ref m) => m.is_static,
-			&MethodOrAbstract::Abstract(_) => false,
+		match *self {
+			MethodOrAbstract::Method(ref m) => m.is_static,
+			MethodOrAbstract::Abstract(_) => false,
 		}
 	}
 
 	pub fn type_parameters(&self) -> &Arr<Own<TypeParameter>> {
-		match self {
-			&MethodOrAbstract::Method(ref m) => m.type_parameters(),
-			&MethodOrAbstract::Abstract(ref a) => a.type_parameters(),
+		match *self {
+			MethodOrAbstract::Method(ref m) => m.type_parameters(),
+			MethodOrAbstract::Abstract(ref a) => a.type_parameters(),
 		}
 	}
 
 	pub fn return_ty(&self) -> &Ty {
-		match self {
-			&MethodOrAbstract::Method(ref m) => m.return_ty(),
-			&MethodOrAbstract::Abstract(ref a) => a.return_ty(),
+		match *self {
+			MethodOrAbstract::Method(ref m) => m.return_ty(),
+			MethodOrAbstract::Abstract(ref a) => a.return_ty(),
 		}
 	}
 
 	pub fn self_effect(&self) -> Effect {
-		match self {
-			&MethodOrAbstract::Method(ref m) => m.self_effect(),
-			&MethodOrAbstract::Abstract(ref a) => a.self_effect(),
+		match *self {
+			MethodOrAbstract::Method(ref m) => m.self_effect(),
+			MethodOrAbstract::Abstract(ref a) => a.self_effect(),
 		}
 	}
 
 	pub fn parameters(&self) -> &Arr<Own<Parameter>> {
-		match self {
-			&MethodOrAbstract::Method(ref m) => m.parameters(),
-			&MethodOrAbstract::Abstract(ref a) => a.parameters(),
+		match *self {
+			MethodOrAbstract::Method(ref m) => m.parameters(),
+			MethodOrAbstract::Abstract(ref a) => a.parameters(),
 		}
 	}
 }

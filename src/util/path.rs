@@ -2,6 +2,7 @@ use std::cmp::min;
 
 use util::arr::{ Arr, ArrBuilder };
 use util::ascii;
+use util::string_maker::{ Show, Shower, StringMaker };
 
 pub struct Path(pub Arr<Arr<u8>>);
 impl Path {
@@ -9,7 +10,11 @@ impl Path {
 		Path(Arr::empty())
 	}
 
-	pub fn resolve_with_root(root: Path, path: Path) -> Path {
+	pub fn to_string(&self) -> String {
+		StringMaker::stringify(self)
+	}
+
+	pub fn resolve_with_root(root: &Path, path: &Path) -> Path {
 		Path(root.0.concat(&path.0))
 	}
 
@@ -54,8 +59,7 @@ impl Path {
 	}
 
 	pub fn last(&self) -> Option<&Arr<u8>> {
-		let x = self.0.last();
-		x
+		self.0.last()
 	}
 
 	pub fn without_extension(&self, extension: &Arr<u8>) -> Path {
@@ -88,19 +92,17 @@ impl Path {
 		Path(self.0.copy_rtail())
 	}
 }
+impl Show for Path {
+	fn show<S : Shower>(&self, s: &mut S) {
+		s.join_arrs(&self.0);
+	}
+}
 
 fn is_path_part(s: &Arr<u8>) -> bool {
-	if !s.any() {
-		return false
-	}
-	for ch in s.iter() {
-		match *ch {
-			ascii::U8_SLASH | ascii::U8_BACKSLASH =>
-				return false,
-			_ => {}
-		}
-	}
-	true
+	s.iter().all(|ch| match *ch {
+		ascii::U8_SLASH | ascii::U8_BACKSLASH => false,
+		_ => true
+	})
 }
 
 pub struct RelPath {

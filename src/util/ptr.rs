@@ -58,7 +58,7 @@ impl<T> Deref for Ptr<T> {
 impl<T> Drop for Ptr<T> {
 	fn drop(&mut self) {
 		unsafe {
-			assert!(*(*self.0).ref_count.get() != 0);
+			assert_eq!(*(*self.0).ref_count.get(), 0);
 			*(*self.0).ref_count.get() -= 1
 		}
 	}

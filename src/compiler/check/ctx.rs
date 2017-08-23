@@ -73,7 +73,7 @@ impl Ctx {
 		res
 	}
 
-	pub fn borrow_diags<'a>(&'a self) -> RefMut<ArrBuilder<Diagnostic>> {
+	pub fn borrow_diags(&self) -> RefMut<ArrBuilder<Diagnostic>> {
 		self.diags.borrow_mut()
 	}
 }

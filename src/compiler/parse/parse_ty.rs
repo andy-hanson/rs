@@ -20,7 +20,7 @@ pub fn parse_self_effect_or_ty(l: &mut Lexer) -> Result<Either<Effect, ast::Ty>>
 				Token::SelfKw =>
 					Ok(Either::Left(effect)),
 				Token::TyName => {
-					let name = l.token_sym();
+					let name = l.token_sym(start);
 					let ty = finish_parse_ty(l, start, effect, name)?;
 					Ok(Either::Right(ty))
 				}
@@ -29,7 +29,7 @@ pub fn parse_self_effect_or_ty(l: &mut Lexer) -> Result<Either<Effect, ast::Ty>>
 			}
 		}
 		Token::TyName => {
-			let name = l.token_sym();
+			let name = l.token_sym(start);
 			let ty = finish_parse_ty(l, start, Effect::Pure, name)?;
 			Ok(Either::Right(ty))
 		}
@@ -49,7 +49,7 @@ pub fn parse_ty(l: &mut Lexer) -> Result<ast::Ty> {
 			finish_parse_ty(l, start, effect, name)
 		}
 		Token::TyName => {
-			let name = l.token_sym();
+			let name = l.token_sym(start);
 			finish_parse_ty(l, start, Effect::Pure, name)
 		}
 		other =>

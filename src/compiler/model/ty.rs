@@ -21,19 +21,20 @@ impl Ty {
 	}
 
 	pub fn fast_equals(&self, other: &Ty) -> bool {
-		match self {
-			&Ty::Bogus =>
-				match other { &Ty::Bogus => true, _ => false },
-			&Ty::Plain(effect, ref inst_cls) => {
-				if let &Ty::Plain(effect_b, ref inst_cls_b) = other {
-					effect == effect_b && inst_cls.fast_equals(&inst_cls_b)
+		match *self {
+			Ty::Bogus =>
+				// TODO: this should probably always be true, but then don't call this fn "equals"
+				match *other { Ty::Bogus => true, _ => false },
+			Ty::Plain(effect, ref inst_cls) => {
+				if let Ty::Plain(effect_b, ref inst_cls_b) = *other {
+					effect == effect_b && inst_cls.fast_equals(inst_cls_b)
 				} else {
 					false
 				}
 			}
-			&Ty::Param(ref p) =>
-				if let &Ty::Param(ref p_b) = other {
-					p.ptr_equals(&p_b)
+			Ty::Param(ref p) =>
+				if let Ty::Param(ref p_b) = *other {
+					p.ptr_equals(p_b)
 				} else {
 					false
 				}
@@ -42,10 +43,10 @@ impl Ty {
 }
 impl Clone for Ty {
 	fn clone(&self) -> Ty {
-		match self {
-			&Ty::Bogus => Ty::Bogus,
-			&Ty::Plain(ref effect, ref inst_cls) => Ty::Plain(effect.clone(), inst_cls.clone()),
-			&Ty::Param(ref tp) => Ty::Param(tp.clone_ptr()),
+		match *self {
+			Ty::Bogus => Ty::Bogus,
+			Ty::Plain(effect, ref inst_cls) => Ty::Plain(effect, inst_cls.clone()),
+			Ty::Param(ref tp) => Ty::Param(tp.clone_ptr()),
 		}
 	}
 }
@@ -76,15 +77,12 @@ pub enum TypeParameterOrigin {
 	Method(Ptr<MethodWithBody>)
 }
 impl<'a> TypeParameterOrigin {
-	fn clone(&self) -> TypeParameterOrigin {
-		match self {
-			&TypeParameterOrigin::Class(ref cls) => {
-				let cln = cls.clone();
-				TypeParameterOrigin::Class(cln.clone_ptr())
-			}
-			&TypeParameterOrigin::Method(ref m) => {
-				TypeParameterOrigin::Method(m.clone_ptr())
-			}
+	fn copy(&self) -> TypeParameterOrigin {
+		match *self {
+			TypeParameterOrigin::Class(ref cls) =>
+				TypeParameterOrigin::Class(cls.clone_ptr()),
+			TypeParameterOrigin::Method(ref m) =>
+				TypeParameterOrigin::Method(m.clone_ptr()),
 		}
 	}
 }
@@ -100,7 +98,7 @@ impl TypeParameter {
 
 	pub fn set_origins(type_parameters: &Arr<Own<TypeParameter>>, origin: TypeParameterOrigin) {
 		for tp in type_parameters.iter() {
-			tp.origin.init(origin.clone())
+			tp.origin.init(origin.copy())
 		}
 	}
 

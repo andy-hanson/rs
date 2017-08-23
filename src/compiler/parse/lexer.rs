@@ -58,18 +58,23 @@ impl<'a> Reader<'a> {
 		res
 	}
 
-	fn slice_from(&self, start_pos: Pos) -> Arr<u8> {
+	fn slice_from(&self, start_pos: Pos) -> &[u8] {
 		let a = start_pos.index as usize;
 		let b = self.pos_cell.get().index as usize;
-		self.source.copy_slice(a, b)
+		self.source.slice(a, b)
 	}
+}
+
+pub struct Next {
+	pub pos: Pos,
+	pub token: Token,
 }
 
 pub struct Lexer<'a> {
 	reader: Reader<'a>,
 	indent: u32,
 	dedenting: u32,
-	token_value: Arr<u8>,
+	quote_part_value: Arr<u8>,
 	diagnostic: Option<Diagnostic>,
 }
 impl<'a> Lexer<'a> {
@@ -78,13 +83,20 @@ impl<'a> Lexer<'a> {
 			reader: Reader::new(source),
 			indent: 0,
 			dedenting: 0,
-			token_value: Arr::empty(),
+			quote_part_value: Arr::empty(),
 			diagnostic: None,
 		}
 	}
 
-	fn move_token_value(&mut self) -> Arr<u8> {
-		replace(&mut self.token_value, Arr::empty())
+	pub fn quote_part_value(&mut self) -> Arr<u8> {
+		replace(&mut self.quote_part_value, Arr::empty())
+	}
+
+	//mv
+	pub fn next_pos_token(&mut self) -> Next {
+		let pos = self.pos();
+		let token = self.next_token();
+		Next { pos, token }
 	}
 
 	pub fn token_nat(&mut self) -> u32 {
@@ -99,12 +111,12 @@ impl<'a> Lexer<'a> {
 		panic!()
 	}
 
-	pub fn token_string(&mut self) -> Arr<u8> {
-		self.move_token_value()
+	pub fn token_slice(&self, token_start: Pos) -> &[u8] {
+		self.reader.slice_from(token_start)
 	}
 
-	pub fn token_sym(&mut self) -> Sym {
-		Sym::from_arr(self.move_token_value())
+	pub fn token_sym(&mut self, token_start: Pos) -> Sym {
+		Sym::from_slice(self.token_slice(token_start))
 	}
 
 	fn read_char(&mut self) -> Ascii {
@@ -123,7 +135,7 @@ impl<'a> Lexer<'a> {
 		self.reader.pos()
 	}
 
-	fn slice_from(&self, pos: Pos) -> Arr<u8> {
+	fn slice_from(&self, pos: Pos) -> &[u8] {
 		self.reader.slice_from(pos)
 	}
 
@@ -171,7 +183,7 @@ impl<'a> Lexer<'a> {
 				}
 			}
 		}
-		self.token_value = b.finish();
+		self.quote_part_value = b.finish();
 		if is_end { QuoteEnd::QuoteEnd } else { QuoteEnd::QuoteInterpolation }
 	}
 
@@ -185,25 +197,14 @@ impl<'a> Lexer<'a> {
 			}
 			self.skip_while(Ascii::is_digit);
 		}
-		self.token_value = self.slice_from(start_pos);
+		// TODO:PERF less copying
+		self.quote_part_value = Arr::from_slice(self.slice_from(start_pos));
 		if is_float { Token::FloatLiteral } else if is_signed { Token::IntLiteral } else { Token::NatLiteral }
 	}
 
 	fn take_name_or_keyword(&mut self, start_pos: Pos) -> Token {
 		self.skip_while(Ascii::is_name_char);
-		let s = self.slice_from(start_pos);
-
-		if let Some(kw) = Token::keyword_from_name(&s) {
-			return kw
-		}
-
-		self.token_value = s;
-		return Token::Name;
-	}
-
-	fn take_string_like<F : Fn(Ascii) -> bool>(&mut self, start_pos: Pos, pred: F) {
-		self.skip_while(pred);
-		self.token_value = self.slice_from(start_pos);
+		Token::keyword_from_name(self.slice_from(start_pos)).unwrap_or(Token::Name)
 	}
 
 	pub fn next_token(&mut self) -> Token {
@@ -265,7 +266,7 @@ impl<'a> Lexer<'a> {
 				self.take_name_or_keyword(start),
 
 			ascii::U8_UPPER_A ... ascii::U8_UPPER_Z_PLUS_ONE => {
-				self.take_string_like(start, Ascii::is_name_char);
+				self.skip_while(Ascii::is_name_char);
 				Token::Operator
 			}
 
@@ -273,12 +274,12 @@ impl<'a> Lexer<'a> {
 				if self.peek().is_digit() {
 					self.take_number(start, /*isSigned*/ true)
 				} else {
-					self.take_string_like(start, Ascii::is_operator_char);
+					self.skip_while(Ascii::is_operator_char);
 					Token::Operator
 				},
 
 			ascii::U8_TIMES | ascii::U8_SLASH | ascii::U8_CARET | ascii::U8_QUESTION | ascii::U8_LESS | ascii::U8_GREATER => {
-				self.take_string_like(start, Ascii::is_operator_char);
+				self.skip_while(Ascii::is_operator_char);
 				Token::Operator
 			}
 
@@ -491,13 +492,17 @@ impl<'a> Lexer<'a> {
 	}
 
 	pub fn take_ty_name_string(&mut self) -> Result<Arr<u8>> {
+		self.take_ty_name_slice().map(Arr::from_slice)
+	}
+
+	pub fn take_ty_name_slice(&mut self) -> Result<&[u8]> {
 		let start_pos = self.pos();
 		self.expect_character_by_predicate(Ascii::is_upper_case_letter, "type name")?;
 		self.skip_while(Ascii::is_name_char);
 		Ok(self.slice_from(start_pos))
 	}
 
-	pub fn take_name_string(&mut self) -> Result<Arr<u8>> {
+	fn take_name_slice(&mut self) -> Result<&[u8]> {
 		let start_pos = self.pos();
 		self.expect_character_by_predicate(Ascii::is_lower_case_letter, "(non-type) name")?;
 		self.skip_while(Ascii::is_name_char);
@@ -505,12 +510,12 @@ impl<'a> Lexer<'a> {
 	}
 
 	pub fn take_name(&mut self) -> Result<Sym> {
-		let v = self.take_ty_name_string()?;
-		Ok(Sym::from_arr(v))
+		let v = self.take_name_slice()?;
+		Ok(Sym::from_slice(v))
 	}
 	pub fn take_ty_name(&mut self) -> Result<Sym> {
-		let v = self.take_name_string()?;
-		Ok(Sym::from_arr(v))
+		let v = self.take_ty_name_slice()?;
+		Ok(Sym::from_slice(v))
 	}
 
 	pub fn unexpected_token(&self, start_pos: Pos, actual: Token, expected_desc: &'static str) -> Diagnostic {

@@ -13,6 +13,18 @@ impl<T> Arr<T> {
 		}
 	}
 
+	pub fn as_slice(&self) -> &[T] {
+		&*self.0
+	}
+
+	pub fn slice(&self, lo: usize, hi: usize) -> &[T] {
+		&self.as_slice()[lo..hi]
+	}
+
+	pub fn into_box(self) -> Box<[T]> {
+		self.0
+	}
+
 	pub fn _1(a: T) -> Arr<T> {
 		Arr(Box::new([a]))
 	}
@@ -26,7 +38,7 @@ impl<T> Arr<T> {
 		Arr(Box::new([a, b, c, d]))
 	}
 
-	fn from_vec(v: Vec<T>) -> Arr<T> {
+	pub fn from_vec(v: Vec<T>) -> Arr<T> {
 		Arr(v.into_boxed_slice())
 	}
 
@@ -87,19 +99,7 @@ impl<T> Arr<T> {
 				return Some(x)
 			}
 		}
-		return None
-	}
-
-	pub fn build_until_null<E, F : FnMut() -> Result<Option<T>, E>>(mut make_option: F) -> Result<Arr<T>, E> {
-		let mut b = ArrBuilder::<T>::new();
-		loop {
-			match make_option()? {
-				Some(value) =>
-					b.add(value),
-				None =>
-					break Ok(b.finish())
-			}
-		}
+		None
 	}
 
 	pub fn last(&self) -> Option<&T> {
@@ -111,7 +111,7 @@ impl<T> Arr<T> {
 	}
 
 	pub fn zip<U, V, F : Fn(&T, &U) -> V>(&self, other: &Arr<U>, f: F) -> Arr<V> {
-		assert!(self.len() == other.len());
+		assert_eq!(self.len(), other.len());
 		let mut b = ArrBuilder::<V>::new();
 		for i in self.range() {
 			b.add(f(&self[i], &other[i]))
@@ -120,7 +120,7 @@ impl<T> Arr<T> {
 	}
 
 	pub fn do_zip<U, F : Fn(&T, &U) -> ()>(&self, other: &Arr<U>, f: F) {
-		assert!(self.len() == other.len());
+		assert_eq!(self.len(), other.len());
 		for i in self.range() {
 			f(&self[i], &other[i])
 		}
@@ -171,23 +171,34 @@ impl<T : Clone> Arr<T> {
 		b.finish()
 	}
 
+	fn rtail_range(&self) -> Range<usize> {
+		0..self.len() - 1
+	}
+
 	pub fn slice_rtail(&self) -> &[T] {
-		&self.0[0..self.len() - 1]
+		&self.0[self.rtail_range()]
 	}
 
 	pub fn copy_rtail(&self) -> Arr<T> {
 		let mut b = ArrBuilder::<T>::new();
-		for i in 0..self.len() - 1 {
+		for i in self.rtail_range() {
 			b.add(self[i].clone())
 		}
 		b.finish()
 	}
 }
 impl<T : Copy> Arr<T> {
+	pub fn from_slice(slice: &[T]) -> Arr<T> {
+		// TODO: better way?
+		let mut v = Vec::new();
+		v.copy_from_slice(slice);
+		Arr(v.into_boxed_slice())
+	}
+
 	pub fn map_on_copies<U, F : Fn(T) -> U>(&self, f: F) -> Arr<U> {
 		let mut b = ArrBuilder::new();
 		for x in self.iter() {
-			b.add(f(x.clone()))
+			b.add(f(*x))
 		}
 		b.finish()
 	}
@@ -209,7 +220,7 @@ impl<T : Eq> Arr<T> {
 	}
 }
 
-
+//TODO: kill?
 impl Arr<u8> {
 	pub fn copy_from_str(s: &str) -> Arr<u8> {
 		Arr(s.as_bytes().to_owned().into_boxed_slice())

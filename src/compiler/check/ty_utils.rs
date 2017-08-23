@@ -8,48 +8,46 @@ use super::super::model::ty::{ Ty, InstCls };
 use super::ty_replacer::TyReplacer;
 
 pub fn get_common_compatible_type(a: &Ty, b: &Ty) -> Option<Ty> {
-	match a {
-		&Ty::Bogus =>
+	match *a {
+		Ty::Bogus =>
 			Some(b.clone()),
-		&Ty::Plain(effect_a, ref inst_cls_a) =>
-			match b {
-				&Ty::Bogus =>
+		Ty::Plain(effect_a, ref inst_cls_a) =>
+			match *b {
+				Ty::Bogus =>
 					Some(a.clone()),
-				&Ty::Plain(effect_b, ref inst_cls_b) => {
+				Ty::Plain(effect_b, ref inst_cls_b) => {
 					if inst_cls_a.fast_equals(inst_cls_b) {
 						Some(Ty::Plain(effect_a.min_common_effect(effect_b), inst_cls_a.clone()))
 					} else {
 						None
 					}
 				}
-				&Ty::Param(_) =>
+				Ty::Param(_) =>
 					todo!()
 			},
-		&Ty::Param(_) =>
+		Ty::Param(_) =>
 			todo!()
 	}
 }
 
 pub fn is_assignable(expected: &Ty, actual: &Ty) -> bool {
-	match expected {
-		&Ty::Bogus =>
+	match *expected {
+		Ty::Bogus =>
 			true,
-		&Ty::Param(ref tpe) => {
-			match actual {
-				&Ty::Param(ref tpa) =>
-					tpe.fast_equals(tpa),
-				_ =>
-					false,
+		Ty::Param(ref tpe) => {
+			match *actual {
+				Ty::Param(ref tpa) => tpe.fast_equals(tpa),
+				_ => false,
 			}
 		}
-		&Ty::Plain(effect_expected, ref inst_cls_expected) =>
-			match actual {
-				&Ty::Bogus =>
+		Ty::Plain(effect_expected, ref inst_cls_expected) =>
+			match *actual {
+				Ty::Bogus =>
 					true,
-				&Ty::Plain(effect_actual, ref inst_cls_actual) =>
+				Ty::Plain(effect_actual, ref inst_cls_actual) =>
 					effect_actual.contains(effect_expected) &&
 						is_subclass(inst_cls_expected, inst_cls_actual),
-				&Ty::Param(_) =>
+				Ty::Param(_) =>
 					todo!(),
 			},
 	}
@@ -59,7 +57,7 @@ fn is_subclass(expected: &InstCls, actual: &InstCls) -> bool {
 	// TODO: generics variance. Until then, only a subtype if every generic parameter is *exactly* equal.
 	let &InstCls(ref expected_cls, ref expected_ty_arguments) = expected;
 	let &InstCls(ref actual_cls, ref actual_ty_arguments) = actual;
-	if expected_cls.ptr_equals(&actual_cls) && expected_ty_arguments.each_equals(&actual_ty_arguments, Ty::fast_equals) {
+	if expected_cls.ptr_equals(actual_cls) && expected_ty_arguments.each_equals(actual_ty_arguments, Ty::fast_equals) {
 		return true
 	}
 
@@ -97,14 +95,14 @@ pub fn instantiate_ty_and_narrow_effects(
 	replacer: &TyReplacer,
 	loc: Loc,
 	mut diags: &mut ArrBuilder<Diagnostic>) -> Ty {
-	match ty {
-		&Ty::Bogus =>
+	match *ty {
+		Ty::Bogus =>
 			Ty::Bogus,
-		&Ty::Plain(original_effect, ref inst_cls) =>
+		Ty::Plain(original_effect, ref inst_cls) =>
 			Ty::Plain(
 				original_effect.min_common_effect(narrowed_effect),
-				instantiate_inst_cls_and_forbid_effects(narrowed_effect, &inst_cls, &replacer, loc, &mut diags)),
-		&Ty::Param(ref p) =>
+				instantiate_inst_cls_and_forbid_effects(narrowed_effect, inst_cls, replacer, loc, &mut diags)),
+		Ty::Param(ref p) =>
 			replacer.replace_or_same(p),
 	}
 }
@@ -119,17 +117,17 @@ fn instantiate_ty_and_forbid_effects(
 	replacer: &TyReplacer,
 	loc: Loc,
 	mut diags: &mut ArrBuilder<Diagnostic>) -> Ty {
-	match ty {
-		&Ty::Bogus =>
+	match *ty {
+		Ty::Bogus =>
 			Ty::Bogus,
-		&Ty::Plain(effect, ref inst_cls) =>
+		Ty::Plain(effect, ref inst_cls) =>
 			if narrowed_effect.contains(effect) {
 				Ty::Plain(effect, instantiate_inst_cls_and_forbid_effects(
-					narrowed_effect, &inst_cls, &replacer, loc, &mut diags))
+					narrowed_effect, inst_cls, replacer, loc, &mut diags))
 			} else {
 				todo!()//diags.add(Diagnostic(loc, DiagnosticData::))
 			},
-		&Ty::Param(ref p) =>
+		Ty::Param(ref p) =>
 			replacer.replace_or_same(p),
 	}
 }
@@ -145,7 +143,7 @@ fn instantiate_inst_cls_and_forbid_effects(
 }
 
 fn instantiate_inst_cls(inst_cls: &InstCls, replacer: &TyReplacer) -> InstCls {
-	map_inst_cls(inst_cls, |arg| instantiate_ty(arg, &replacer))
+	map_inst_cls(inst_cls, |arg| instantiate_ty(arg, replacer))
 }
 
 fn map_inst_cls<F : FnMut(&Ty) -> Ty>(&InstCls(ref class_declaration, ref ty_arguments): &InstCls, replace_arg: F) -> InstCls {
@@ -154,12 +152,12 @@ fn map_inst_cls<F : FnMut(&Ty) -> Ty>(&InstCls(ref class_declaration, ref ty_arg
 }
 
 pub fn instantiate_ty(ty: &Ty, replacer: &TyReplacer) -> Ty {
-	match ty {
-		&Ty::Bogus =>
+	match *ty {
+		Ty::Bogus =>
 			Ty::Bogus,
-		&Ty::Param(ref p) =>
-			replacer.replace_or_same(&p),
-		&Ty::Plain(effect, ref inst_cls) =>
+		Ty::Param(ref p) =>
+			replacer.replace_or_same(p),
+		Ty::Plain(effect, ref inst_cls) =>
 			Ty::Plain(effect, instantiate_inst_cls(inst_cls, replacer)),
 	}
 }

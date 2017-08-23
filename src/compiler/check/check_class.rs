@@ -1,11 +1,11 @@
 use util::arr::{ Arr };
-use util::ptr::{ Own, Ptr };
+use util::ptr::{ Own, LateOwn };
 use util::sym::Sym;
 
 use super::super::diag::{ Diagnostic };
 use super::super::model::class::{ ClassDeclaration, ClassHead, SlotDeclaration, Super };
 use super::super::model::expr::Expr;
-use super::super::model::method::{ MethodWithBody, MethodOrImpl, Parameter };
+use super::super::model::method::{ MethodSignature, MethodWithBody, MethodOrImpl, Parameter };
 use super::super::model::module::{ Imported };
 use super::super::model::ty::{ TypeParameter, TypeParameterOrigin };
 use super::super::parse::ast;
@@ -16,7 +16,7 @@ use super::ty_replacer::TyReplacer;
 
 pub fn check_class(
 	imports: Arr<Imported>,
-	ast: ast::ClassDeclaration,
+	ast: &ast::ClassDeclaration,
 	name: Sym
 	) -> (Own<ClassDeclaration>, Arr<Diagnostic>) {
 
@@ -27,15 +27,13 @@ pub fn check_class(
 	let origin = TypeParameterOrigin::Class(current_class.ptr());
 	TypeParameter::set_origins(&current_class.type_parameters, origin);
 	let mut ctx = Ctx::new(current_class, imports);
-	do_check(&mut ctx, &ast);
+	do_check(&mut ctx, ast);
 	ctx.finish()
 }
 
 fn do_check(ctx: &mut Ctx, ast: &ast::ClassDeclaration) {
-	let &ast::ClassDeclaration {
-		// type parameters handled before calling this.
-		loc: _, type_parameters: _, head: ref head_ast, supers: ref super_asts, methods: ref method_asts
-	} = ast; // Already used type parameters
+	// type parameters already handled before calling this.
+	let &ast::ClassDeclaration { head: ref head_ast, supers: ref super_asts, methods: ref method_asts, .. } = ast;
 
 	let methods = method_asts.map(|m| check_method_initial(ctx, m));
 	ctx.current_class.set_methods(methods);
@@ -51,9 +49,9 @@ fn do_check(ctx: &mut Ctx, ast: &ast::ClassDeclaration) {
 	for i in method_asts.range() {
 		let method_ast = &method_asts[i];
 		let method = ctx.current_class.methods()[i].ptr();
-		let body: Option<Expr> = match &method_ast.body {
-			&Some(ref body) => Some(check_method_body(&ctx, &MethodOrImpl::Method(method.clone_ptr()), &TyReplacer::do_nothing(), method.is_static, body)),
-			&None => None,
+		let body: Option<Expr> = match method_ast.body {
+			Some(ref body) => Some(check_method_body(ctx, &MethodOrImpl::Method(method.clone_ptr()), &TyReplacer::do_nothing(), method.is_static, body)),
+			None => None,
 		};
 		method.set_body(body)
 	}
@@ -62,21 +60,32 @@ fn do_check(ctx: &mut Ctx, ast: &ast::ClassDeclaration) {
 fn check_method_initial(ctx: &mut Ctx, ast: &ast::Method) -> Own<MethodWithBody> {
 	// Don't check method bodies yet, just fill their heads.
 	let &ast::Method { loc, is_static, type_parameters: ref type_parameter_asts, return_ty: ref return_ty_ast, name, self_effect,
-		parameters: ref parameter_asts, body: _ } = ast;
+		parameters: ref parameter_asts, .. } = ast;
 	let type_parameters = type_parameter_asts.map_on_copies(TypeParameter::create);
-	let return_ty = ctx.get_ty_or_type_parameter(&return_ty_ast, &type_parameters);
+	let return_ty = ctx.get_ty_or_type_parameter(return_ty_ast, &type_parameters);
 	let parameters = check_parameters(ctx, parameter_asts, &type_parameters);
-	let method = Own::new(MethodWithBody::new(
-		&ctx.current_class, loc, is_static, name, type_parameters, return_ty, self_effect, parameters));
-	TypeParameter::set_origins(&method.type_parameters(), TypeParameterOrigin::Method(method.ptr()));
+	let method = Own::new(MethodWithBody {
+		signature: MethodSignature {
+			class: ctx.current_class.ptr(),
+			loc,
+			name,
+			type_parameters,
+			return_ty,
+			self_effect,
+			parameters,
+		},
+		is_static,
+		body: LateOwn::new(),
+	});
+	TypeParameter::set_origins(method.type_parameters(), TypeParameterOrigin::Method(method.ptr()));
 	method
 }
 
 fn check_parameters(ctx: &mut Ctx, param_asts: &Arr<ast::Parameter>, type_parameters: &Arr<Own<TypeParameter>>) -> Arr<Own<Parameter>> {
 	param_asts.map_with_index(|&ast::Parameter { loc, ty: ref ty_ast, name }, index| {
-		for j in 0..index {
-			if param_asts[j].name == name {
-				panic!()
+		for prior_param in param_asts.iter().take(index) {
+			if prior_param.name == name {
+				todo!()
 				//ctx.add_diagnostic(loc, )
 			}
 		}
@@ -94,15 +103,15 @@ fn check_head(ctx: &mut Ctx, ast: Option<&ast::ClassHead>) -> ClassHead {
 			return ClassHead::Static
 		}
 	};
-	match head_data {
-		&ast::ClassHeadData::Abstract(_) => {
+	match *head_data {
+		ast::ClassHeadData::Abstract(_) => {
 			unused!(loc);
 			todo!()
 		}
-		&ast::ClassHeadData::Slots(_) => {
+		ast::ClassHeadData::Slots(_) => {
 			todo!()
 		}
-		&ast::ClassHeadData::Builtin => {
+		ast::ClassHeadData::Builtin => {
 			ClassHead::Builtin
 		}
 	}

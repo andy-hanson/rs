@@ -118,8 +118,8 @@ fn must_add<K : Hash + Eq, V>(h: &mut HashMap<K, V>, k: K, v: V) {
 }
 
 lazy_static! {
-    static ref NAME_TO_TOKEN: HashMap<Arr<u8>, Token> = {
-		let mut h = HashMap::<Arr<u8>, Token>::new();
+    static ref NAME_TO_TOKEN: HashMap<Box<[u8]>, Token> = {
+		let mut h = HashMap::<Box<[u8]>, Token>::new();
 		assoc(&mut h, "abstract", Token::Abstract);
 		assoc(&mut h, "array", Token::Array);
 		assoc(&mut h, "assert", Token::Assert);
@@ -155,18 +155,18 @@ lazy_static! {
 		h
 	};
 	static ref TOKEN_TO_NAME: HashMap<Token, String> = {
-		let i = NAME_TO_TOKEN.iter().map(|(k, v)| (*v, k.clone_to_utf8_string()));
+		let i = NAME_TO_TOKEN.iter().map(|(k, v)|
+			(*v, String::from_utf8(k.clone().into_vec()).unwrap()));
 		HashMap::<Token, String>::from_iter(i)
 	};
 }
 
-fn assoc(h: &mut HashMap<Arr<u8>, Token>, s: &str, t: Token) {
-	let x = Arr::copy_from_str(s);
-	must_add(h, x, t)
+fn assoc(h: &mut HashMap<Box<[u8]>, Token>, s: &str, t: Token) {
+	must_add(h, Arr::copy_from_str(s).into_box(), t)
 }
 
 impl Token {
-	pub fn keyword_from_name(name: &Arr<u8>) -> Option<Token> {
+	pub fn keyword_from_name(name: &[u8]) -> Option<Token> {
 		NAME_TO_TOKEN.get(name).cloned()
 	}
 }

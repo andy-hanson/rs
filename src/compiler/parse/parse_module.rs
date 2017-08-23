@@ -29,9 +29,10 @@ pub fn parse_module(l: &mut Lexer) -> Result<ast::Module> {
 }
 
 fn parse_imports(l: &mut Lexer) -> Result<Arr<ast::Import>> {
-	Arr::build_until_null(|| {
+	let mut b = ArrBuilder::<ast::Import>::new();
+	loop {
 		if l.try_take_newline()? {
-			return Ok(None)
+			break Ok(b.finish())
 		}
 
 		l.take_space()?;
@@ -51,12 +52,12 @@ fn parse_imports(l: &mut Lexer) -> Result<Arr<ast::Import>> {
 
 		let path = Path(path_parts.finish());
 		let loc = l.loc_from(start_pos);
-		Ok(Some(if leading_dots == 0 {
+		b.add(if leading_dots == 0 {
 			ast::Import::Global(loc, path)
 		} else {
 			ast::Import::Local(loc, RelPath::of(leading_dots, path))
-		}))
-	})
+		})
+	}
 }
 
 fn parse_class(l: &mut Lexer, start: Pos, kw: Token) -> Result<ast::ClassDeclaration> {

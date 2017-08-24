@@ -1,11 +1,12 @@
 use util::arr::Arr;
 use util::loc::Loc;
-use util::ptr::{ Own, Ptr, LateOwn };
+use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
-use super::method::{ MethodWithBody, AbstractMethod };
+use super::method::{AbstractMethod, MethodWithBody};
 //use super::module::Module;
-use super::ty::{ InstCls, Ty, TypeParameter };
+
+use super::ty::{InstCls, Ty, TypeParameter};
 
 pub struct ClassDeclaration {
 	//_module: LatePtr<Module>,
@@ -24,7 +25,7 @@ impl ClassDeclaration {
 			name,
 			_head: LateOwn::new(),
 			_supers: LateOwn::new(),
-			_methods: LateOwn::new()
+			_methods: LateOwn::new(),
 		}
 	}
 
@@ -32,12 +33,24 @@ impl ClassDeclaration {
 	//	&self._module
 	//}
 
-	pub fn head(&self) -> &ClassHead { &self._head }
-	pub fn set_head(&self, head: ClassHead) { self._head.init(head) }
-	pub fn supers(&self) -> &Arr<Super> { &self._supers }
-	pub fn set_supers(&self, supers: Arr<Super>) { self._supers.init(supers) }
-	pub fn methods(&self) -> &Arr<Own<MethodWithBody>> { &self._methods }
-	pub fn set_methods(&self, methods: Arr<Own<MethodWithBody>>) { self._methods.init(methods) }
+	pub fn head(&self) -> &ClassHead {
+		&self._head
+	}
+	pub fn set_head(&self, head: ClassHead) {
+		self._head.init(head)
+	}
+	pub fn supers(&self) -> &Arr<Super> {
+		&self._supers
+	}
+	pub fn set_supers(&self, supers: Arr<Super>) {
+		self._supers.init(supers)
+	}
+	pub fn methods(&self) -> &Arr<Own<MethodWithBody>> {
+		&self._methods
+	}
+	pub fn set_methods(&self, methods: Arr<Own<MethodWithBody>>) {
+		self._methods.init(methods)
+	}
 
 	pub fn find_static_method(&self, name: Sym) -> Option<&Own<MethodWithBody>> {
 		self.methods().find(|m| m.is_static && m.name() == name)
@@ -49,7 +62,7 @@ pub enum ClassHead {
 	Abstract(Loc, Arr<Own<AbstractMethod>>),
 	Slots(Loc, Arr<Own<SlotDeclaration>>),
 	// Implementation details are completely hidden.
-	Builtin
+	Builtin,
 }
 
 pub struct SlotDeclaration {

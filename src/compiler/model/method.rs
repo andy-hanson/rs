@@ -1,12 +1,12 @@
 use util::arr::Arr;
 use util::loc::Loc;
-use util::ptr::{ Own, Ptr, LateOwn };
+use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
 use super::class::ClassDeclaration;
 use super::effect::Effect;
 use super::expr::Expr;
-use super::ty::{ Ty, TypeParameter };
+use super::ty::{Ty, TypeParameter};
 
 pub struct MethodSignature {
 	pub class: Ptr<ClassDeclaration>,
@@ -85,7 +85,12 @@ impl MethodWithBody {
 	}
 }
 
-pub struct Parameter { pub loc: Loc, pub ty: Ty, pub name: Sym, pub index: u32 }
+pub struct Parameter {
+	pub loc: Loc,
+	pub ty: Ty,
+	pub name: Sym,
+	pub index: u32,
+}
 
 pub struct MethodInst(pub MethodOrAbstract, pub Arr<Ty>);
 
@@ -119,10 +124,8 @@ impl MethodOrImpl {
 
 	pub fn signature(&self) -> &MethodSignature {
 		match *self {
-			MethodOrImpl::Method(ref method) =>
-				&method.signature,
-			MethodOrImpl::Impl(ref imp) =>
-				&imp.implemented.0,
+			MethodOrImpl::Method(ref method) => &method.signature,
+			MethodOrImpl::Impl(ref imp) => &imp.implemented.0,
 		}
 	}
 }
@@ -134,10 +137,8 @@ pub enum MethodOrAbstract {
 impl MethodOrAbstract {
 	pub fn copy(&self) -> MethodOrAbstract {
 		match *self {
-			MethodOrAbstract::Method(ref m) =>
-				MethodOrAbstract::Method(m.clone_ptr()),
-			MethodOrAbstract::Abstract(ref a) =>
-				MethodOrAbstract::Abstract(a.clone_ptr()),
+			MethodOrAbstract::Method(ref m) => MethodOrAbstract::Method(m.clone_ptr()),
+			MethodOrAbstract::Abstract(ref a) => MethodOrAbstract::Abstract(a.clone_ptr()),
 		}
 	}
 

@@ -2,7 +2,7 @@ use compiler::model::effect::Effect;
 use compiler::model::expr::LiteralValue;
 use util::arr::Arr;
 use util::loc::Loc;
-use util::path::{ Path, RelPath };
+use util::path::{Path, RelPath};
 use util::sym::Sym;
 
 pub struct Module {
@@ -28,7 +28,13 @@ pub struct ClassDeclaration {
 	pub methods: Arr<Method>,
 }
 impl ClassDeclaration {
-	pub fn of(loc: Loc, type_parameters: Arr<Sym>, head: Option<ClassHead>, supers: Arr<Super>, methods: Arr<Method>) -> ClassDeclaration {
+	pub fn of(
+		loc: Loc,
+		type_parameters: Arr<Sym>,
+		head: Option<ClassHead>,
+		supers: Arr<Super>,
+		methods: Arr<Method>,
+	) -> ClassDeclaration {
 		ClassDeclaration { loc, type_parameters, head, supers, methods }
 	}
 }
@@ -49,7 +55,14 @@ pub struct AbstractMethod {
 	pub parameters: Arr<Parameter>,
 }
 impl AbstractMethod {
-	pub fn of(loc: Loc, type_parameters: Arr<Sym>, return_ty: Ty, name: Sym, self_effect: Effect, parameters: Arr<Parameter>) -> AbstractMethod {
+	pub fn of(
+		loc: Loc,
+		type_parameters: Arr<Sym>,
+		return_ty: Ty,
+		name: Sym,
+		self_effect: Effect,
+		parameters: Arr<Parameter>,
+	) -> AbstractMethod {
 		AbstractMethod { loc, type_parameters, return_ty, name, self_effect, parameters }
 	}
 }
@@ -101,7 +114,11 @@ pub struct Method {
 	pub body: Option<Expr>,
 }
 
-pub struct Parameter { pub loc: Loc, pub ty: Ty, pub name: Sym }
+pub struct Parameter {
+	pub loc: Loc,
+	pub ty: Ty,
+	pub name: Sym,
+}
 
 pub struct Ty {
 	pub loc: Loc,
@@ -127,7 +144,9 @@ pub enum PatternData {
 	Destruct(Arr<Pattern>),
 }
 
-fn bx<T>(t: T) -> Box<T> { Box::new(t) }
+fn bx<T>(t: T) -> Box<T> {
+	Box::new(t)
+}
 
 pub struct Expr(pub Loc, pub ExprData);
 impl Expr {
@@ -214,7 +233,12 @@ impl Expr {
 
 pub enum ExprData {
 	Access(Sym),
-	StaticAccess(/*class_name*/ Sym, /*static_method_name*/Sym),
+	StaticAccess(
+		/*class_name*/
+		Sym,
+		/*static_method_name*/
+		Sym
+	),
 	OperatorCall(Box<Expr>, Sym, Box<Expr>),
 	TypeArguments(Box<Expr>, Arr<Ty>),
 	Call(Box<Expr>, Arr<Expr>),
@@ -233,10 +257,22 @@ pub enum ExprData {
 	WhenTest(Arr<Case>, Box<Expr>),
 	Assert(Box<Expr>),
 	Try(Box<Expr>, Option<Catch>, Option<Box<Expr>>),
-	For(Sym, /*looper*/ Box<Expr>, /*body*/ Box<Expr>),
+	For(
+		Sym,
+		/*looper*/
+		Box<Expr>,
+		/*body*/
+		Box<Expr>
+	),
 }
 
-pub struct Case(pub Loc, /*test*/ pub Expr, /*result*/ pub Expr);
+pub struct Case(
+	pub Loc,
+	/*test*/
+	pub Expr,
+	/*result*/
+	pub Expr
+);
 
 pub struct Catch {
 	pub loc: Loc,

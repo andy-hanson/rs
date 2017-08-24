@@ -5,10 +5,13 @@ use std::marker::Sized;
 use util::arr::Arr;
 
 pub trait Show {
-	fn show<S : Shower>(&self, s: &mut S);
+	fn show<S: Shower>(&self, s: &mut S);
 }
 
-pub trait Shower where Self: Sized {
+pub trait Shower
+where
+	Self: Sized,
+{
 	fn nl(&mut self) -> &mut Self;
 	fn add_char(&mut self, char: char) -> &mut Self;
 	fn add_bytes(&mut self, bytes: &Arr<u8>) -> &mut Self;
@@ -17,7 +20,7 @@ pub trait Shower where Self: Sized {
 	fn add_int(&mut self, i: i32) -> &mut Self;
 	fn add_float(&mut self, f: f64) -> &mut Self;
 
-	fn join<T : Show>(&mut self, arr: Arr<T>) -> &mut Self {
+	fn join<T: Show>(&mut self, arr: Arr<T>) -> &mut Self {
 		if arr.any() {
 			arr[0].show(self);
 			for x in arr.iter().skip(1) {
@@ -85,7 +88,7 @@ impl StringMaker {
 		StringMaker(String::new())
 	}
 
-	pub fn stringify<T : Show>(t: &T) -> String {
+	pub fn stringify<T: Show>(t: &T) -> String {
 		let mut s = StringMaker::new();
 		t.show(&mut s);
 		s.0

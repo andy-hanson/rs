@@ -1,6 +1,6 @@
-use std::fs::{ File };
+use std::fs::File;
+use std::io::{ErrorKind, Read};
 pub use std::io::Result;
-use std::io::{ ErrorKind, Read };
 
 use util::arr::Arr;
 use util::path::Path;
@@ -36,11 +36,10 @@ impl FileInput for NativeFileInput {
 				f.read_to_end(&mut v)?;
 				Ok(Some(Arr::from_vec(v)))
 			}
-			Err(e) =>
-				match e.kind() {
-					ErrorKind::NotFound => Ok(None),
-					_ => Err(e),
-				},
+			Err(e) => match e.kind() {
+				ErrorKind::NotFound => Ok(None),
+				_ => Err(e),
+			},
 		}
 	}
 }

@@ -17,4 +17,3 @@ pub struct ClassDeclaration {
 	_methods: LateOwn<Arr<Own<MethodWithBody>>>,
 }
 */
-

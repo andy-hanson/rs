@@ -1,10 +1,10 @@
-use super::class::{ SlotDeclaration };
-use super::method::{ Parameter, MethodInst, MethodOrImpl };
-use super::ty::{ Ty };
+use super::class::SlotDeclaration;
+use super::method::{MethodInst, MethodOrImpl, Parameter};
+use super::ty::Ty;
 
-use util::arr::{ Arr, ArrBuilder };
-use util::ptr::{ Own, Ptr };
+use util::arr::{Arr, ArrBuilder};
 use util::loc::Loc;
+use util::ptr::{Own, Ptr};
 use util::sym::Sym;
 
 pub enum LiteralValue {
@@ -37,12 +37,24 @@ pub enum Pattern {
 pub struct Local {
 	pub loc: Loc,
 	pub ty: Ty,
-	pub name: Sym
+	pub name: Sym,
 }
 
-pub struct Case(pub Loc, /*test*/ pub Box<Expr>, /*result*/ pub Box<Expr>);
+pub struct Case(
+	pub Loc,
+	/*test*/
+	pub Box<Expr>,
+	/*result*/
+	pub Box<Expr>
+);
 
-pub struct Catch(pub Loc, /*caught*/ pub Own<Local>, /*result*/ pub Box<Expr>);
+pub struct Catch(
+	pub Loc,
+	/*caught*/
+	pub Own<Local>,
+	/*result*/
+	pub Box<Expr>
+);
 
 pub struct For {
 	local: Own<Local>,
@@ -71,26 +83,85 @@ impl Expr {
 pub enum ExprData {
 	BogusCast(Ty, Box<Expr>),
 	Bogus(Ty),
-	AccessParameter(Ptr<Parameter>, /*not_data*/ Ty),
+	AccessParameter(
+		Ptr<Parameter>,
+		/*not_data*/
+		Ty
+	),
 	AccessLocal(Ptr<Local>),
 	Let(Pattern, Box<Expr>, Box<Expr>),
 	Seq(Box<Expr>, Box<Expr>),
 	Literal(LiteralValue),
-	IfElse(/*test*/ Box<Expr>, /*then*/ Box<Expr>, /*else*/ Box<Expr>, /*not_data*/ Ty),
-	WhenTest(Arr<Case>, /*else*/ Box<Expr>, /*not_data*/ Ty),
-	Try(/*do*/ Box<Expr>, Option<Catch>, /*finally*/ Option<Box<Expr>>, /*not_data*/ Ty),
+	IfElse(
+		/*test*/
+		Box<Expr>,
+		/*then*/
+		Box<Expr>,
+		/*else*/
+		Box<Expr>,
+		/*not_data*/
+		Ty
+	),
+	WhenTest(
+		Arr<Case>,
+		/*else*/
+		Box<Expr>,
+		/*not_data*/
+		Ty
+	),
+	Try(
+		/*do*/
+		Box<Expr>,
+		Option<Catch>,
+		/*finally*/
+		Option<Box<Expr>>,
+		/*not_data*/
+		Ty
+	),
 	For(For),
-	StaticMethodCall(MethodInst, Arr<Expr>, /*not_data*/ Ty),
-	InstanceMethodCall(Box<Expr>, MethodInst, Arr<Expr>, /*not_data*/ Ty),
-	MyInstanceMethodCall(MethodInst, Arr<Expr>, /*not_data*/ Ty),
+	StaticMethodCall(
+		MethodInst,
+		Arr<Expr>,
+		/*not_data*/
+		Ty
+	),
+	InstanceMethodCall(
+		Box<Expr>,
+		MethodInst,
+		Arr<Expr>,
+		/*not_data*/
+		Ty
+	),
+	MyInstanceMethodCall(
+		MethodInst,
+		Arr<Expr>,
+		/*not_data*/
+		Ty
+	),
 	// We store the Ty here instead of an InstCls so we can easily get a reference to it;
 	// It should always by Ty::Plain(EFFECT_MAX, some_InstCls).
 	New(Ty, Arr<Expr>),
-	ArrayLiteral(/*element_type*/ Ty, Arr<Expr>),
-	GetMySlot(Ptr<SlotDeclaration>, /*not_data*/ Ty),
-	GetSlot(Box<Expr>, Ptr<SlotDeclaration>, /*not_data*/ Ty),
+	ArrayLiteral(
+		/*element_type*/
+		Ty,
+		Arr<Expr>
+	),
+	GetMySlot(
+		Ptr<SlotDeclaration>,
+		/*not_data*/
+		Ty
+	),
+	GetSlot(
+		Box<Expr>,
+		Ptr<SlotDeclaration>,
+		/*not_data*/
+		Ty
+	),
 	SetSlot(Ptr<SlotDeclaration>, Box<Expr>),
-	SelfExpr(/*not_data*/ Ty),
+	SelfExpr(
+		/*not_data*/
+		Ty
+	),
 	Assert(Box<Expr>),
 	//RecurMethod(Ptr<MethodWithBody>, Arr<Expr>),
 	//RecurImpl(Ptr<Impl>, Arr<Expr>),
@@ -99,24 +170,22 @@ pub enum ExprData {
 impl ExprData {
 	pub fn ty(&self) -> &Ty {
 		match *self {
-			ExprData::BogusCast(ref ty, _)
-				| ExprData::Bogus(ref ty)
-				| ExprData::AccessParameter(_, ref ty)
-				| ExprData::IfElse(_, _, _, ref ty)
-				| ExprData::WhenTest(_, _, ref ty)
-				| ExprData::Try(_, _, _, ref ty)
-				| ExprData::StaticMethodCall(_, _, ref ty)
-				| ExprData::InstanceMethodCall(_, _, _, ref ty)
-				| ExprData::MyInstanceMethodCall(_, _, ref ty)
-				| ExprData::New(ref ty, _)
-				| ExprData::GetMySlot(_, ref ty)
-				| ExprData::GetSlot(_, _, ref ty)
-				| ExprData::SelfExpr(ref ty)
-				=> ty,
+			ExprData::BogusCast(ref ty, _) |
+			ExprData::Bogus(ref ty) |
+			ExprData::AccessParameter(_, ref ty) |
+			ExprData::IfElse(_, _, _, ref ty) |
+			ExprData::WhenTest(_, _, ref ty) |
+			ExprData::Try(_, _, _, ref ty) |
+			ExprData::StaticMethodCall(_, _, ref ty) |
+			ExprData::InstanceMethodCall(_, _, _, ref ty) |
+			ExprData::MyInstanceMethodCall(_, _, ref ty) |
+			ExprData::New(ref ty, _) |
+			ExprData::GetMySlot(_, ref ty) |
+			ExprData::GetSlot(_, _, ref ty) |
+			ExprData::SelfExpr(ref ty) => ty,
 			ExprData::AccessLocal(ref local) => &local.ty,
-			ExprData::Let(_, _, ref then)
-				| ExprData::Seq(_, ref then)
-				=> then.ty(),
+			ExprData::Let(_, _, ref then) |
+			ExprData::Seq(_, ref then) => then.ty(),
 			ExprData::Literal(ref v) => v.ty(),
 			ExprData::For(ref f) => &f.result_ty,
 			ExprData::ArrayLiteral(_, _) => todo!(), //array[array type]

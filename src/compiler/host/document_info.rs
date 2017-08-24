@@ -1,7 +1,7 @@
 use util::arr::Arr;
 
+use compiler::parse::{Result, parse};
 use compiler::parse::ast::Module;
-use compiler::parse::{ parse, Result };
 
 pub struct DocumentInfo {
 	source: Arr<u8>,

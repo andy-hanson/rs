@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use util::arr::Arr;
-use util::string_maker::{ Show, Shower };
+use util::string_maker::{Show, Shower};
 
 lazy_static! {
     static ref STRING_TO_SYMBOL: Mutex<HashMap<Box<[u8]>, Sym>> = Mutex::new(HashMap::new());
@@ -26,7 +26,10 @@ impl Sym {
 			let sym = Sym(*next_id);
 			*next_id += 1;
 			string_to_symbol.insert(Arr::from_slice(input).into_box(), sym);
-			SYMBOL_TO_STRING.lock().unwrap().insert(sym, Arr::from_slice(input));
+			SYMBOL_TO_STRING.lock().unwrap().insert(
+				sym,
+				Arr::from_slice(input),
+			);
 			sym
 		})
 	}
@@ -38,7 +41,7 @@ impl Sym {
 	}*/
 }
 impl Show for Sym {
-	fn show<S : Shower>(&self, s: &mut S) {
+	fn show<S: Shower>(&self, s: &mut S) {
 		let map = SYMBOL_TO_STRING.lock().unwrap();
 		let st = map.get(self).unwrap();
 		s.add_bytes(st);

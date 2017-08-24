@@ -1,6 +1,26 @@
-array_width = 120
-comment_width = 120
-max_width = 120
-struct_lit_width = 120
-struct_variant_width = 120
-fn_call_width = 120
+hard_tabs = true
+
+array_width = 100
+comment_width = 100
+max_width = 100
+struct_lit_width = 100
+struct_variant_width = 100
+fn_call_width = 100
+
+attributes_on_same_line_as_field = false
+attributes_on_same_line_as_variant = false
+
+# Always use block indent
+closure_block_indent_threshold = 0
+combine_control_expr = false
+
+imports_indent = "Visual"
+
+match_pattern_separator_break_point = "Front"
+
+reorder_imported_names = true
+reorder_imports = true
+reorder_imports_in_group = true
+
+trailing_semicolon = false
+wrap_match_arms = false

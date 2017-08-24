@@ -1,7 +1,7 @@
 use std::cmp::min;
 
-use util::arr::{ Arr, ArrBuilder };
-use util::string_maker::{ Show, Shower, StringMaker };
+use util::arr::{Arr, ArrBuilder};
+use util::string_maker::{Show, Shower, StringMaker};
 
 pub struct Path(pub Arr<Arr<u8>>);
 impl Path {
@@ -42,11 +42,11 @@ impl Path {
 		let mut first_different_part = 0;
 		loop {
 			if first_different_part == min_length {
-				break
+				break;
 			}
 
 			if self.0[first_different_part] != other.0[first_different_part] {
-				break
+				break;
 			}
 
 			first_different_part += 1
@@ -92,7 +92,7 @@ impl Path {
 	}
 }
 impl Show for Path {
-	fn show<S : Shower>(&self, s: &mut S) {
+	fn show<S: Shower>(&self, s: &mut S) {
 		s.join_arrs(&self.0);
 	}
 }
@@ -100,7 +100,7 @@ impl Show for Path {
 fn is_path_part(s: &Arr<u8>) -> bool {
 	s.iter().all(|ch| match *ch {
 		b'/' | b'\\' => false,
-		_ => true
+		_ => true,
 	})
 }
 
@@ -113,5 +113,3 @@ impl RelPath {
 		RelPath { n_parents, rel_to_parent }
 	}
 }
-
-

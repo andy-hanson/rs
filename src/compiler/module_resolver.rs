@@ -1,5 +1,5 @@
 use util::arr::Arr;
-use util::path::{ Path, RelPath };
+use util::path::{Path, RelPath};
 
 //pub fn get_document_from_logical_path() {...}
 

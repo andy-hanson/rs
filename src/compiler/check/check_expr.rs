@@ -2,30 +2,30 @@ use std::cell::RefCell;
 
 use util::arr::Arr;
 use util::loc::Loc;
-use util::ptr::{ Own, Ptr };
+use util::ptr::{Own, Ptr};
 use util::sym::Sym;
 
-use super::super::diag::{ DiagnosticData };
-use super::super::model::class::{ ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration };
-use super::super::model::effect::{ Effect, EFFECT_MAX };
-use super::super::model::expr::{ Case, Catch, Expr, ExprData, Local, Pattern };
-use super::super::model::method::{ MethodOrAbstract, MethodInst, MethodOrImpl, Parameter };
-use super::super::model::ty::{ InstCls, Ty };
+use super::super::diag::Diag;
+use super::super::model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration};
+use super::super::model::effect::{EFFECT_MAX, Effect};
+use super::super::model::expr::{Case, Catch, Expr, ExprData, Local, Pattern};
+use super::super::model::method::{MethodInst, MethodOrAbstract, MethodOrImpl, Parameter};
+use super::super::model::ty::{InstCls, Ty};
 use super::super::parse::ast;
 
+use super::class_utils::{InstMember, try_get_member_of_inst_cls};
 use super::ctx::Ctx;
-use super::class_utils::{ try_get_member_of_inst_cls, InstMember };
 use super::ty_replacer::TyReplacer;
-use super::ty_utils::{
-	get_common_compatible_type, instantiate_ty, instantiate_ty_and_narrow_effects, is_assignable
-};
+use super::ty_utils::{get_common_compatible_type, instantiate_ty,
+                      instantiate_ty_and_narrow_effects, is_assignable};
 
 pub fn check_method_body(
 	ctx: &Ctx,
 	method_or_impl: &MethodOrImpl,
 	method_replacer: &TyReplacer,
 	is_static: bool,
-	body: &ast::Expr) -> Expr {
+	body: &ast::Expr,
+) -> Expr {
 	unused!(ctx, method_replacer, is_static, body);
 	let signature = method_or_impl.signature();
 	let return_ty = instantiate_ty(&signature.return_ty, method_replacer);
@@ -36,7 +36,7 @@ pub fn check_method_body(
 		is_static,
 		self_effect: signature.self_effect,
 		current_parameters: &signature.parameters,
-		locals: RefCell::new(Vec::new())
+		locals: RefCell::new(Vec::new()),
 	};
 	ectx.check_return(return_ty, body)
 }
@@ -51,7 +51,7 @@ struct Ectx<'a> {
 	locals: RefCell<Vec<Ptr<Local>>>,
 }
 impl<'a> Ectx<'a> {
-	fn add_diagnostic(&self, loc: Loc, data: DiagnosticData) {
+	fn add_diagnostic(&self, loc: Loc, data: Diag) {
 		self.ctx.add_diagnostic(loc, data)
 	}
 
@@ -82,7 +82,11 @@ impl<'a> Ectx<'a> {
 		self.check_expr_worker(&mut e, a).0
 	}
 
-	fn check_expr_worker(&self, mut e: &mut Expected, &ast::Expr(loc, ref ast_data): &ast::Expr) -> Handled {
+	fn check_expr_worker(
+		&self,
+		mut e: &mut Expected,
+		&ast::Expr(loc, ref ast_data): &ast::Expr,
+	) -> Handled {
 		match *ast_data {
 			ast::ExprData::Access(name) => {
 				if let Some(local) = self.locals.borrow().iter().find(|l| l.name == name) {
@@ -94,19 +98,20 @@ impl<'a> Ectx<'a> {
 					return self.handle(&mut e, loc, ExprData::AccessParameter(param.ptr(), ty))
 				}
 
-				if let Some(InstMember(member_decl, member_ty_replacer)) = self.ctx.get_own_member_or_add_diagnostic(loc, name) {
-					match member_decl {
-						MemberDeclaration::Slot(slot) =>
-							self.get_own_slot(&mut e, loc, slot, member_ty_replacer),
-						MemberDeclaration::Method(_) | MemberDeclaration::AbstractMethod(_) =>
-							todo!(), //diagnostic
-					}
-				} else {
-					handle_bogus(&mut e, loc)
+				match self.ctx.get_own_member_or_add_diagnostic(loc, name) {
+					Some(InstMember(member_decl, member_ty_replacer)) =>
+						match member_decl {
+							MemberDeclaration::Slot(slot) =>
+								self.get_own_slot(&mut e, loc, slot, member_ty_replacer),
+							MemberDeclaration::Method(_) | MemberDeclaration::AbstractMethod(_) =>
+								todo!(), //diagnostic
+						},
+					None =>
+						handle_bogus(&mut e, loc),
 				}
 			}
 			ast::ExprData::StaticAccess(_, _) | ast::ExprData::TypeArguments(_, _) => {
-				self.add_diagnostic(loc, DiagnosticData::DelegatesNotYetSupported);
+				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
 				handle_bogus(&mut e, loc)
 			}
 			ast::ExprData::OperatorCall(ref left, operator, ref right) => {
@@ -117,10 +122,12 @@ impl<'a> Ectx<'a> {
 				self.check_call_ast_worker(&mut e, loc, target, args),
 			ast::ExprData::Recur(ref arg_asts) => {
 				if !e.in_tail_call_position() {
-					self.add_diagnostic(loc, DiagnosticData::NotATailCall)
+					self.add_diagnostic(loc, Diag::NotATailCall)
 				}
-				// For recursion, need to do substitution in the case that we are implementing an abstract method where the superclass took type arguments.
-				let args = match self.do_check_call_arguments(loc, &self.method_or_impl.method_or_abstract(), self.method_replacer, ArgAsts::Many(arg_asts)) {
+				// For recursion, need to do substitution in case we are
+				// implementing an abstract method where the superclass took type arguments.
+				let moa = &self.method_or_impl.method_or_abstract();
+				let args = match self.check_arguments(loc, moa, self.method_replacer, ArgAsts::Many(arg_asts)) {
 					Some(a) => a,
 					None => return handle_bogus(&mut e, loc)
 				};
@@ -130,12 +137,12 @@ impl<'a> Ectx<'a> {
 				let slots = match *self.ctx.current_class.head() {
 					ClassHead::Slots(_, ref slots) => slots,
 					_ => {
-						self.add_diagnostic(loc, DiagnosticData::NewInvalid(self.ctx.current_class.ptr()));
+						self.add_diagnostic(loc, Diag::NewInvalid(self.ctx.current_class.ptr()));
 						return handle_bogus(&mut e, loc)
 					}
 				};
 				if arg_asts.len() != slots.len() {
-					self.add_diagnostic(loc, DiagnosticData::NewArgumentCountMismatch(slots.len(), arg_asts.len()));
+					self.add_diagnostic(loc, Diag::NewArgumentCountMismatch(slots.len(), arg_asts.len()));
 					return handle_bogus(&mut e, loc)
 				}
 
@@ -163,21 +170,22 @@ impl<'a> Ectx<'a> {
 					Ty::Plain(target_effect, ref target_class) => {
 						let InstMember(member_decl, replacer) =
 							//TODO: just get_slot_of_inst_cls_or_add_diagnostic
-							match self.get_member_of_inst_cls_or_add_diagnostic(target.loc(), target_class, property_name) {
+							match self.get_member_of_inst_cls(target.loc(), target_class, property_name) {
 								Some(m) => m,
 								None => return handle_bogus(&mut e, loc),
 							};
 						let slot = match member_decl {
 							MemberDeclaration::Slot(s) => s,
 							_ => {
-								self.add_diagnostic(target.loc(), DiagnosticData::DelegatesNotYetSupported);
+								self.add_diagnostic(target.loc(), Diag::DelegatesNotYetSupported);
 								return handle_bogus(&mut e, loc)
 							}
 						};
 						if slot.mutable && !target_effect.can_get() {
-							self.add_diagnostic(loc, DiagnosticData::MissingEffectToGetSlot(slot.clone_ptr()))
+							self.add_diagnostic(loc, Diag::MissingEffectToGetSlot(slot.clone_ptr()))
 						}
-						let slot_ty = instantiate_ty_and_narrow_effects(target_effect, &slot.ty, &replacer, loc, &mut self.ctx.borrow_diags());
+						let slot_ty = instantiate_ty_and_narrow_effects(
+							target_effect, &slot.ty, &replacer, loc, &mut self.ctx.borrow_diags());
 						(slot, slot_ty)
 					},
 					Ty::Param(_) =>
@@ -186,22 +194,23 @@ impl<'a> Ectx<'a> {
 				self.handle(&mut e, loc, ExprData::GetSlot(Box::new(target), slot, slot_ty))
 			}
 			ast::ExprData::SetProperty(property_name, ref value_ast) => {
-				let InstMember(member_decl, replacer) = match self.ctx.get_own_member_or_add_diagnostic(loc, property_name) {
-					Some(m) => m,
-					None => return handle_bogus(&mut e, loc)
-				};
+				let InstMember(member_decl, replacer) =
+					match self.ctx.get_own_member_or_add_diagnostic(loc, property_name) {
+						Some(m) => m,
+						None => return handle_bogus(&mut e, loc)
+					};
 				let slot = match member_decl {
 					MemberDeclaration::Slot(s) => s,
 					_ => {
-						self.add_diagnostic(loc, DiagnosticData::CantSetNonSlot(member_decl));
+						self.add_diagnostic(loc, Diag::CantSetNonSlot(member_decl));
 						return handle_bogus(&mut e, loc)
 					}
 				};
 				if !slot.mutable {
-					self.add_diagnostic(loc, DiagnosticData::SlotNotMutable(slot.clone_ptr()))
+					self.add_diagnostic(loc, Diag::SlotNotMutable(slot.clone_ptr()))
 				}
 				if !self.self_effect.can_set() {
-					self.add_diagnostic(loc, DiagnosticData::MissingEffectToSetSlot(self.self_effect, slot.clone_ptr()))
+					self.add_diagnostic(loc, Diag::MissingEffectToSetSlot(self.self_effect, slot.clone_ptr()))
 				}
 
 				let value = self.check_subtype(instantiate_ty(&slot.ty, &replacer), value_ast);
@@ -252,16 +261,21 @@ impl<'a> Ectx<'a> {
 							self || This is of type Foo[T] where T is the same as the type parameter on Foo.
 
 					fun use-it(Foo[Int] foo)
-						foo.get-self() || The return type has the same T, so it will be instantiated to return Foo[Int].
+                        || The return type has the same T,
+						|| so it will be instantiated to return Foo[Int].
+						foo.get-self()
 				*/
-				self.handle(&mut e, loc, ExprData::SelfExpr(Ty::Plain(self.self_effect, self.current_inst_cls())))
+                let expr = ExprData::SelfExpr(Ty::Plain(self.self_effect, self.current_inst_cls()));
+				self.handle(&mut e, loc, expr)
 			}
 			ast::ExprData::IfElse(ref condition_ast, ref then_ast, ref else_ast) => {
-				let condition = self.check_bool(condition_ast);
+				let cond = self.check_bool(condition_ast);
 				let then = self.check_expr(&mut e, then_ast);
 				let elze = self.check_expr(&mut e, else_ast);
 				// 'expected' was handled in both 'then' and 'else'.
-				Handled(Expr(loc, ExprData::IfElse(Box::new(condition), Box::new(then), Box::new(elze), e.inferred_ty().clone())))
+                let ty = e.inferred_ty().clone();
+                let ifelse = ExprData::IfElse(Box::new(cond), Box::new(then), Box::new(elze), ty);
+				Handled(Expr(loc, ifelse))
 			}
 			ast::ExprData::WhenTest(ref case_asts, ref else_ast) => {
 				let cases = case_asts.map(|&ast::Case(case_loc, ref test_ast, ref result_ast)| {
@@ -286,9 +300,20 @@ impl<'a> Ectx<'a> {
 				pub exception_name: Sym,
 				pub then: Box<Expr>,
 				*/
-				let catch = op_catch_ast.as_ref().map(|&ast::Catch { loc: catch_loc, exception_type: ref exception_type_ast, exception_name_loc, exception_name, then: ref then_ast }| {
+				let catch = op_catch_ast.as_ref().map(|catch| {
+                    let &ast::Catch {
+						loc: catch_loc,
+						exception_type: ref exception_type_ast,
+						exception_name_loc,
+						exception_name,
+						then: ref then_ast
+					} = catch;
 					let exception_ty = self.ctx.get_ty(exception_type_ast);
-					let caught = Own::new(Local { loc: exception_name_loc, ty: exception_ty, name: exception_name });
+					let caught = Own::new(Local {
+                        loc: exception_name_loc,
+                        ty: exception_ty,
+                        name: exception_name
+                    });
 					self.add_to_scope(caught.ptr());
 					let then = self.check_expr(&mut e, then_ast);
 					self.pop_from_scope();
@@ -307,10 +332,10 @@ impl<'a> Ectx<'a> {
 	fn add_to_scope(&self, local: Ptr<Local>) {
 		// It's important that we push even in the presence of errors, because we will always pop.
 		if let Some(param) = self.current_parameters.find(|p| p.name == local.name) {
-			self.add_diagnostic(local.loc, DiagnosticData::CantReassignParameter(param.ptr()))
+			self.add_diagnostic(local.loc, Diag::CantReassignParameter(param.ptr()))
 		}
 		if let Some(old_local) = self.locals.borrow().iter().find(|l| l.name == local.name) {
-			self.add_diagnostic(local.loc, DiagnosticData::CantReassignLocal(old_local.clone_ptr()))
+			self.add_diagnostic(local.loc, Diag::CantReassignLocal(old_local.clone_ptr()))
 		}
 		self.locals.borrow_mut().push(local)
 	}
@@ -319,25 +344,57 @@ impl<'a> Ectx<'a> {
 		assert!(popped.is_some())
 	}
 
-	fn check_call_ast_worker(&self, mut expected: &mut Expected, loc: Loc, target: &ast::Expr, args: &Arr<ast::Expr>) -> Handled{
+	fn check_call_ast_worker(
+		&self,
+		mut expected: &mut Expected,
+		loc: Loc,
+		target: &ast::Expr,
+		args: &Arr<ast::Expr>,
+	) -> Handled {
 		let &ast::Expr(target_loc, ref target_data) = target;
 		let arr_empty = Arr::empty();
 		let (&ast::Expr(real_target_loc, ref real_target_data), ty_arg_asts) = match *target_data {
-			ast::ExprData::TypeArguments(ref real_target, ref ty_arg_asts) => (real_target.as_ref(), ty_arg_asts),
+			ast::ExprData::TypeArguments(ref real_target, ref ty_arg_asts) => (
+				real_target.as_ref(),
+				ty_arg_asts,
+			),
 			_ => (target, &arr_empty),
 		};
 		match *real_target_data {
 			ast::ExprData::StaticAccess(class_name, static_method_name) =>
-				match self.ctx.access_class_declaration_or_add_diagnostic(real_target_loc, class_name) {
-					Some(cls) => self.call_static_method(&mut expected, loc, cls, static_method_name, ty_arg_asts, args),
-					None => handle_bogus(&mut expected, target_loc)
+				match self.ctx.access_class_declaration_or_add_diagnostic(
+					real_target_loc,
+					class_name,
+				) {
+					Some(cls) => self.call_static_method(
+						&mut expected,
+						loc,
+						cls,
+						static_method_name,
+						ty_arg_asts,
+						args,
+					),
+					None => handle_bogus(&mut expected, target_loc),
 				},
-			ast::ExprData::GetProperty(ref property_target, property_name) =>
-				self.call_method(&mut expected, loc, property_target, property_name, ty_arg_asts, ArgAsts::Many(args)),
-			ast::ExprData::Access(name) =>
-				self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
+			ast::ExprData::GetProperty(ref property_target, property_name) => self.call_method(
+				&mut expected,
+				loc,
+				property_target,
+				property_name,
+				ty_arg_asts,
+				ArgAsts::Many(
+					args,
+				),
+			),
+			ast::ExprData::Access(name) => self.call_own_method(
+				&mut expected,
+				loc,
+				name,
+				ty_arg_asts,
+				args,
+			),
 			_ => {
-				self.add_diagnostic(loc, DiagnosticData::DelegatesNotYetSupported);
+				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
 				handle_bogus(&mut expected, target_loc)
 			}
 		}
@@ -350,25 +407,34 @@ impl<'a> Ectx<'a> {
 		cls: Ptr<ClassDeclaration>,
 		method_name: Sym,
 		ty_arg_asts: &Arr<ast::Ty>,
-		arg_asts: &Arr<ast::Expr>) -> Handled {
+		arg_asts: &Arr<ast::Expr>,
+	) -> Handled {
 		let method_decl = match cls.find_static_method(method_name) {
 			Some(m) => m,
 			None => {
-				self.add_diagnostic(loc, DiagnosticData::StaticMethodNotFound(cls.clone_ptr(), method_name));
-				return handle_bogus(&mut expected, loc)
+				self.add_diagnostic(loc, Diag::StaticMethodNotFound(cls.clone_ptr(), method_name));
+				return handle_bogus(&mut expected, loc);
 			}
 		};
 
-		let method_inst = match self.instantiate_method_or_add_diagnostic(&MethodOrAbstract::Method(method_decl.ptr()), ty_arg_asts) {
+		let method_inst = match self.instantiate_method_or_add_diagnostic(
+			&MethodOrAbstract::Method(method_decl.ptr()),
+			ty_arg_asts,
+		) {
 			Some(m) => m,
 			None => return handle_bogus(&mut expected, loc),
 		};
 
 		// No need to check selfEffect, because this is a static method.
 		// Static methods can't look at their class' type arguments
-		let args = match self.check_call_arguments(loc, &method_inst, &TyReplacer::do_nothing(), ArgAsts::Many(arg_asts)) {
+		let args = match self.check_call_arguments(
+			loc,
+			&method_inst,
+			&TyReplacer::do_nothing(),
+			ArgAsts::Many(arg_asts),
+		) {
 			Some(a) => a,
-			None => return handle_bogus(&mut expected, loc)
+			None => return handle_bogus(&mut expected, loc),
 		};
 
 		let ty = instantiate_return_type(&method_inst);
@@ -386,14 +452,14 @@ impl<'a> Ectx<'a> {
 		loc: Loc,
 		method_name: Sym,
 		ty_arg_asts: &Arr<ast::Ty>,
-		arg_asts: &Arr<ast::Expr>) -> Handled {
-		/*
-		Note: InstCls is still relevent here; even if 'self' is not an inst, in a superclass we will fill in type parameters.
-		*/
+		arg_asts: &Arr<ast::Expr>,
+	) -> Handled {
+		// Note: InstCls is still relevent here:
+		// Even if 'self' is not an inst, in a superclass we will fill in type parameters.
 		let InstMember(member_decl, member_replacer) =
-			match self.get_member_of_inst_cls_or_add_diagnostic(loc, &self.current_inst_cls(), method_name) {
+			match self.get_member_of_inst_cls(loc, &self.current_inst_cls(), method_name) {
 				Some(m) => m,
-				None => return handle_bogus(&mut expected, loc)
+				None => return handle_bogus(&mut expected, loc),
 			};
 
 		//TODO: helper fn for converting member -> method
@@ -401,17 +467,23 @@ impl<'a> Ectx<'a> {
 			MemberDeclaration::Method(m) => MethodOrAbstract::Method(m),
 			MemberDeclaration::AbstractMethod(a) => MethodOrAbstract::Abstract(a),
 			_ => {
-				self.add_diagnostic(loc, DiagnosticData::DelegatesNotYetSupported);
-				return handle_bogus(&mut expected, loc)
+				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
+				return handle_bogus(&mut expected, loc);
 			}
 		};
 
-		let method_inst = match self.instantiate_method_or_add_diagnostic(&method_decl, ty_arg_asts) {
-			Some(m) => m,
-			None => return handle_bogus(&mut expected, loc),
-		};
+		let method_inst =
+			match self.instantiate_method_or_add_diagnostic(&method_decl, ty_arg_asts) {
+				Some(m) => m,
+				None => return handle_bogus(&mut expected, loc),
+			};
 
-		let args = match self.check_call_arguments(loc, &method_inst, &member_replacer, ArgAsts::Many(arg_asts)) {
+		let args = match self.check_call_arguments(
+			loc,
+			&method_inst,
+			&member_replacer,
+			ArgAsts::Many(arg_asts),
+		) {
 			Some(a) => a,
 			None => return handle_bogus(&mut expected, loc),
 		};
@@ -423,12 +495,15 @@ impl<'a> Ectx<'a> {
 			ExprData::StaticMethodCall(method_inst, args, ty)
 		} else {
 			if self.is_static {
-				self.add_diagnostic(loc, DiagnosticData::CantCallInstanceMethodFromStaticMethod(method_decl));
-				return handle_bogus(&mut expected, loc)
+				self.add_diagnostic(loc, Diag::CantCallInstanceMethodFromStaticMethod(method_decl));
+				return handle_bogus(&mut expected, loc);
 			}
 
 			if !self.self_effect.contains(method_decl.self_effect()) {
-				self.add_diagnostic(loc, DiagnosticData::IllegalEffect(self.self_effect, method_decl.self_effect()))
+				self.add_diagnostic(
+					loc,
+					Diag::IllegalEffect(self.self_effect, method_decl.self_effect()),
+				)
 			}
 
 			ExprData::MyInstanceMethodCall(method_inst, args, ty)
@@ -444,7 +519,8 @@ impl<'a> Ectx<'a> {
 		target_ast: &ast::Expr,
 		method_name: Sym,
 		ty_arg_asts: &Arr<ast::Ty>,
-		arg_asts: ArgAsts) -> Handled {
+		arg_asts: ArgAsts,
+	) -> Handled {
 		let target = self.check_infer(target_ast);
 		let (method_inst, args, ty) = match *target.ty() {
 			Ty::Bogus =>
@@ -452,7 +528,7 @@ impl<'a> Ectx<'a> {
 				return handle_bogus(&mut expected, loc),
 			Ty::Plain(target_effect, ref target_inst_cls) => {
 				let InstMember(member_decl, member_replacer) =
-					match self.get_member_of_inst_cls_or_add_diagnostic(loc, target_inst_cls, method_name) {
+					match self.get_member_of_inst_cls(loc, target_inst_cls, method_name) {
 						Some(member) => member,
 						None => return handle_bogus(&mut expected, loc)
 					};
@@ -461,23 +537,24 @@ impl<'a> Ectx<'a> {
 					MemberDeclaration::Method(m) => MethodOrAbstract::Method(m),
 					MemberDeclaration::AbstractMethod(a) => MethodOrAbstract::Abstract(a),
 					_ => {
-						self.add_diagnostic(loc, DiagnosticData::DelegatesNotYetSupported);
+						self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
 						return handle_bogus(&mut expected, loc)
 					}
 				};
 
 				if let MethodOrAbstract::Method(ref m) = method {
 					if m.is_static {
-						self.add_diagnostic(loc, DiagnosticData::CantAccessStaticMethodThroughInstance(m.clone_ptr()));
+						self.add_diagnostic(loc, Diag::CantAccessStaticMethodThroughInstance(m.clone_ptr()));
 						return handle_bogus(&mut expected, loc)
 					}
 
 					if !target_effect.contains(m.self_effect()) {
-						self.add_diagnostic(loc, DiagnosticData::IllegalEffect(target_effect, m.self_effect()))
+						self.add_diagnostic(loc, Diag::IllegalEffect(target_effect, m.self_effect()))
 					}
 				}
 
-				// Note: member is instantiated based on the *class* type arguments, but there may sill be *method* type arguments.
+				// Note: member is instantiated based on the *class* type arguments,
+                // but there may sill be *method* type arguments.
 				let method_inst = match self.instantiate_method_or_add_diagnostic(&method, ty_arg_asts) {
 					Some(i) => i,
 					None => return handle_bogus(&mut expected, loc)
@@ -503,34 +580,38 @@ impl<'a> Ectx<'a> {
 		loc: Loc,
 		method_inst: &MethodInst,
 		replacer: &TyReplacer,
-		arg_asts: ArgAsts)
-		-> Option<Arr<Expr>> {
-
+		arg_asts: ArgAsts,
+	) -> Option<Arr<Expr>> {
 		let method_decl = &method_inst.0;
 		let replacer = TyReplacer::of_inst_method(method_inst).combine(replacer);
-		self.do_check_call_arguments(loc, method_decl, &replacer, arg_asts)
+		self.check_arguments(loc, method_decl, &replacer, arg_asts)
 	}
 
-	fn do_check_call_arguments(
+	fn check_arguments(
 		&self,
 		loc: Loc,
 		method_decl: &MethodOrAbstract,
 		replacer: &TyReplacer,
-		arg_asts: ArgAsts)
-		-> Option<Arr<Expr>> {
+		arg_asts: ArgAsts,
+	) -> Option<Arr<Expr>> {
 		let parameters = method_decl.parameters();
 		match arg_asts {
 			ArgAsts::One(arg_ast) => {
 				if let Some(parameter) = parameters.only() {
-					Some(Arr::_1(self.check_subtype(instantiate_ty(&parameter.ty, replacer), arg_ast)))
+					Some(
+						Arr::_1(self.check_subtype(instantiate_ty(&parameter.ty, replacer), arg_ast)),
+					)
 				} else {
-					self.add_diagnostic(loc, DiagnosticData::ArgumentCountMismatch(method_decl.copy(), 1));
+					self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl.copy(), 1));
 					None
 				}
 			}
 			ArgAsts::Many(arg_asts_array) => {
 				if parameters.len() != arg_asts_array.len() {
-					self.add_diagnostic(loc, DiagnosticData::ArgumentCountMismatch(method_decl.copy(), arg_asts_array.len()));
+					self.add_diagnostic(
+						loc,
+						Diag::ArgumentCountMismatch(method_decl.copy(), arg_asts_array.len()),
+					);
 					None
 				} else {
 					Some(parameters.zip(arg_asts_array, |parameter, arg_ast| {
@@ -539,7 +620,6 @@ impl<'a> Ectx<'a> {
 				}
 			}
 		}
-
 	}
 
 	//mv
@@ -547,7 +627,11 @@ impl<'a> Ectx<'a> {
 		ty_arg_asts.map(|ty_ast| self.ctx.get_ty(ty_ast))
 	}
 
-	fn instantiate_method_or_add_diagnostic(&self, method_decl: &MethodOrAbstract, ty_arg_asts: &Arr<ast::Ty>) -> Option<MethodInst> {
+	fn instantiate_method_or_add_diagnostic(
+		&self,
+		method_decl: &MethodOrAbstract,
+		ty_arg_asts: &Arr<ast::Ty>,
+	) -> Option<MethodInst> {
 		if ty_arg_asts.len() != method_decl.type_parameters().len() {
 			todo!()
 		}
@@ -558,39 +642,58 @@ impl<'a> Ectx<'a> {
 	NOTE: Caller is responsible for checking that we can access this member's effect!
 	If this returns None, we've already handled the error reporting, so just call handleBogus.
 	*/
-	fn get_member_of_inst_cls_or_add_diagnostic(&self, loc: Loc, inst_cls: &InstCls, member_name: Sym) -> Option<InstMember> {
+	fn get_member_of_inst_cls(
+		&self,
+		loc: Loc,
+		inst_cls: &InstCls,
+		member_name: Sym,
+	) -> Option<InstMember> {
 		let res = try_get_member_of_inst_cls(inst_cls, member_name);
 		if res.is_none() {
-			self.add_diagnostic(loc, DiagnosticData::MemberNotFound(inst_cls.0.clone_ptr(), member_name))
+			self.add_diagnostic(loc, Diag::MemberNotFound(inst_cls.0.clone_ptr(), member_name))
 		}
 		res
 	}
 
 	//TODO:inline
-	fn get_own_slot(&self, mut expected: &mut Expected, loc: Loc, slot: Ptr<SlotDeclaration>, replacer: TyReplacer) -> Handled {
+	fn get_own_slot(
+		&self,
+		mut expected: &mut Expected,
+		loc: Loc,
+		slot: Ptr<SlotDeclaration>,
+		replacer: TyReplacer,
+	) -> Handled {
 		if self.is_static {
-			self.add_diagnostic(loc, DiagnosticData::CantAccessSlotFromStaticMethod(slot));
-			return handle_bogus(&mut expected, loc)
+			self.add_diagnostic(loc, Diag::CantAccessSlotFromStaticMethod(slot));
+			return handle_bogus(&mut expected, loc);
 		}
 
 		if slot.mutable && !self.self_effect.can_get() {
-			self.add_diagnostic(loc, DiagnosticData::MissingEffectToGetSlot(slot.clone_ptr()))
+			self.add_diagnostic(loc, Diag::MissingEffectToGetSlot(slot.clone_ptr()))
 		}
 
-		let slot_ty = instantiate_ty_and_narrow_effects(self.self_effect, &slot.ty, &replacer, loc, &mut self.ctx.borrow_diags());
+		let slot_ty = instantiate_ty_and_narrow_effects(
+			self.self_effect,
+			&slot.ty,
+			&replacer,
+			loc,
+			&mut self.ctx.borrow_diags(),
+		);
 		self.handle(&mut expected, loc, ExprData::GetMySlot(slot, slot_ty))
 	}
 
 	fn handle(&self, expected: &mut Expected, loc: Loc, e: ExprData) -> Handled {
 		match *expected {
-			Expected::Return(ref ty) | Expected::SubTypeOf(ref ty) =>
-				self.check_ty(ty, loc, e),
+			Expected::Return(ref ty) |
+			Expected::SubTypeOf(ref ty) => self.check_ty(ty, loc, e),
 			Expected::Infer(ref mut inferred_ty) => {
 				let new_inferred_ty = match *inferred_ty {
-					Some(ref mut last_inferred_ty) =>
-						self.get_compatible_type(loc, last_inferred_ty, e.ty()),
-					None =>
-						e.ty().clone(),
+					Some(ref mut last_inferred_ty) => self.get_compatible_type(
+						loc,
+						last_inferred_ty,
+						e.ty(),
+					),
+					None => e.ty().clone(),
 				};
 				*inferred_ty = Some(new_inferred_ty);
 				Handled(Expr(loc, e))
@@ -602,7 +705,7 @@ impl<'a> Ectx<'a> {
 		if is_assignable(expected_ty, e.ty()) {
 			Handled(Expr(loc, e))
 		} else {
-			self.add_diagnostic(loc, DiagnosticData::NotAssignable(expected_ty.clone(), e.ty().clone()));
+			self.add_diagnostic(loc, Diag::NotAssignable(expected_ty.clone(), e.ty().clone()));
 			Handled(Expr(loc, ExprData::BogusCast(expected_ty.clone(), Box::new(Expr(loc, e)))))
 		}
 	}
@@ -611,7 +714,7 @@ impl<'a> Ectx<'a> {
 		match get_common_compatible_type(a, b) {
 			Some(c) => c,
 			None => {
-				self.add_diagnostic(loc, DiagnosticData::CantCombineTypes(a.clone(), b.clone()));
+				self.add_diagnostic(loc, Diag::CantCombineTypes(a.clone(), b.clone()));
 				Ty::Bogus
 			}
 		}
@@ -619,7 +722,10 @@ impl<'a> Ectx<'a> {
 }
 
 fn handle_bogus(expected: &mut Expected, loc: Loc) -> Handled {
-	let ty = match expected.current_expected_ty() { Some(t) => t.clone(), None => Ty::Bogus };
+	let ty = match expected.current_expected_ty() {
+		Some(t) => t.clone(),
+		None => Ty::Bogus,
+	};
 	Handled(Expr(loc, ExprData::Bogus(ty)))
 }
 
@@ -639,17 +745,16 @@ impl Expected {
 
 	fn current_expected_ty(&self) -> Option<&Ty> {
 		match *self {
-			Expected::Return(ref ty) | Expected::SubTypeOf(ref ty) =>
-				Some(ty),
-			Expected::Infer(ref ty_op) =>
-				ty_op.as_ref(),
+			Expected::Return(ref ty) |
+			Expected::SubTypeOf(ref ty) => Some(ty),
+			Expected::Infer(ref ty_op) => ty_op.as_ref(),
 		}
 	}
 
 	fn in_tail_call_position(&self) -> bool {
 		match *self {
 			Expected::Return(_) => true,
-			_ => false
+			_ => false,
 		}
 	}
 }
@@ -658,7 +763,7 @@ impl Expected {
 // TODO: use a trait, and make fns on this generic
 enum ArgAsts<'a> {
 	One(&'a ast::Expr),
-	Many(&'a Arr<ast::Expr>)
+	Many(&'a Arr<ast::Expr>),
 }
 
 //mv
@@ -666,7 +771,12 @@ fn instantiate_return_type(inst_method: &MethodInst) -> Ty {
 	instantiate_ty(inst_method.0.return_ty(), &TyReplacer::of_inst_method(inst_method))
 }
 
-fn instantiate_return_type_with_extra_replacer(inst_method: &MethodInst, replacer: &TyReplacer) -> Ty {
-	instantiate_ty(inst_method.0.return_ty(), &TyReplacer::of_inst_method(inst_method).combine(replacer))
+fn instantiate_return_type_with_extra_replacer(
+	inst_method: &MethodInst,
+	replacer: &TyReplacer,
+) -> Ty {
+	instantiate_ty(
+		inst_method.0.return_ty(),
+		&TyReplacer::of_inst_method(inst_method).combine(replacer),
+	)
 }
-

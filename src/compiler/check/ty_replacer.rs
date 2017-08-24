@@ -1,8 +1,8 @@
 use util::arr::Arr;
-use util::ptr::{ Own, Ptr };
+use util::ptr::{Own, Ptr};
 
-use super::super::model::method::{ MethodInst };
-use super::super::model::ty::{ InstCls, Ty, TypeParameter };
+use super::super::model::method::MethodInst;
+use super::super::model::ty::{InstCls, Ty, TypeParameter};
 
 struct Inner(Ptr<TypeParameter>, Ty);
 impl Clone for Inner {
@@ -21,19 +21,23 @@ impl TyReplacer {
 		new(&class.type_parameters, type_arguments)
 	}
 
-	pub fn of_inst_method(&MethodInst(ref method_decl, ref type_arguments): &MethodInst) -> TyReplacer {
+	pub fn of_inst_method(
+		&MethodInst(ref method_decl, ref type_arguments): &MethodInst,
+	) -> TyReplacer {
 		new(method_decl.type_parameters(), type_arguments)
 	}
 
 	pub fn replace_or_same(&self, ty: &Ptr<TypeParameter>) -> Ty {
-		self.replace(ty).unwrap_or_else(|| Ty::Param(ty.clone_ptr()))
+		self.replace(ty).unwrap_or_else(
+			|| Ty::Param(ty.clone_ptr()),
+		)
 	}
 
 	pub fn replace(&self, tp: &Ptr<TypeParameter>) -> Option<Ty> {
 		for i in 0..self.0.len() {
 			let &Inner(ref ty_parameter, ref replace_ty) = &self.0[i];
 			if tp.fast_equals(ty_parameter) {
-				return Some(replace_ty.clone())
+				return Some(replace_ty.clone());
 			}
 		}
 		None

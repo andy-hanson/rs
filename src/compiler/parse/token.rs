@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::iter::FromIterator;
 use std::hash::Hash;
+use std::iter::FromIterator;
 
 use util::arr::Arr;
 
@@ -77,7 +77,7 @@ impl Token {
 	pub fn token_name(self) -> &'static str {
 		match TOKEN_TO_NAME.get(&self) {
 			Some(name) => name,
-			None =>	match self {
+			None => match self {
 				Token::Diagnostic => panic!(),
 				Token::Name => "name",
 				Token::TyName => "type name",
@@ -106,12 +106,12 @@ impl Token {
 				Token::Space => " ",
 				Token::Underscore => "_",
 				_ => panic!(), // Should be handled by TOKEN_TO_NAME
-			}
+			},
 		}
 	}
 }
 
-fn must_add<K : Hash + Eq, V>(h: &mut HashMap<K, V>, k: K, v: V) {
+fn must_add<K: Hash + Eq, V>(h: &mut HashMap<K, V>, k: K, v: V) {
 	if let Some(_old) = h.insert(k, v) {
 		panic!()
 	}

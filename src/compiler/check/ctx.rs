@@ -1,17 +1,17 @@
-use std::cell::{ RefCell, RefMut };
+use std::cell::{RefCell, RefMut};
 
-use util::arr::{ Arr, ArrBuilder };
+use util::arr::{Arr, ArrBuilder};
 use util::loc::Loc;
-use util::ptr::{ Own, Ptr };
+use util::ptr::{Own, Ptr};
 use util::sym::Sym;
 
-use super::super::diag::{ Diagnostic, DiagnosticData };
+use super::super::diag::{Diag, Diagnostic};
 use super::super::model::class::ClassDeclaration;
 use super::super::model::module::Imported;
-use super::super::model::ty::{ Ty, TypeParameter };
+use super::super::model::ty::{Ty, TypeParameter};
 use super::super::parse::ast;
 
-use super::class_utils::{ try_get_member_from_class_declaration, InstMember };
+use super::class_utils::{InstMember, try_get_member_from_class_declaration};
 
 pub struct Ctx {
 	pub current_class: Own<ClassDeclaration>,
@@ -32,34 +32,42 @@ impl Ctx {
 		self.get_ty_or_type_parameter(ty_ast, &Arr::empty())
 	}
 
-	pub fn get_ty_or_type_parameter(&self, ty_ast: &ast::Ty, type_parameters: &Arr<Own<TypeParameter>>) -> Ty {
+	pub fn get_ty_or_type_parameter(
+		&self,
+		ty_ast: &ast::Ty,
+		type_parameters: &Arr<Own<TypeParameter>>,
+	) -> Ty {
 		unused!(ty_ast, type_parameters);
 		todo!()
 	}
 
-	pub fn access_class_declaration_or_add_diagnostic(&self, loc: Loc, name: Sym) -> Option<Ptr<ClassDeclaration>> {
+	pub fn access_class_declaration_or_add_diagnostic(
+		&self,
+		loc: Loc,
+		name: Sym,
+	) -> Option<Ptr<ClassDeclaration>> {
 		let res = self.access_class_declaration(name);
 		if res.is_none() {
-			self.add_diagnostic(loc, DiagnosticData::ClassNotFound(name))
+			self.add_diagnostic(loc, Diag::ClassNotFound(name))
 		}
 		res
 	}
 
 	fn access_class_declaration(&self, name: Sym) -> Option<Ptr<ClassDeclaration>> {
 		if name == self.current_class.name {
-			return Some(self.current_class.ptr())
+			return Some(self.current_class.ptr());
 		}
 
 		for i in self.imports.iter() {
 			if i.name() == name {
-				return Some(i.imported_class())
+				return Some(i.imported_class());
 			}
 		}
 
 		todo!() //TODO: handle builtins!
 	}
 
-	pub fn add_diagnostic(&self, loc: Loc, data: DiagnosticData) {
+	pub fn add_diagnostic(&self, loc: Loc, data: Diag) {
 		self.borrow_diags().add(Diagnostic(loc, data))
 	}
 
@@ -68,7 +76,7 @@ impl Ctx {
 		//TODO:neater
 		let res = try_get_member_from_class_declaration(&self.current_class, name);
 		if res.is_none() {
-			self.add_diagnostic(loc, DiagnosticData::MemberNotFound(self.current_class.ptr(), name))
+			self.add_diagnostic(loc, Diag::MemberNotFound(self.current_class.ptr(), name))
 		}
 		res
 	}

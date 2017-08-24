@@ -5,9 +5,9 @@ mod parse_ty;
 mod parse_expr;
 mod token;
 
-use util::arr::Arr;
 use self::lexer::Lexer;
 use self::parse_module::parse_module;
+use util::arr::Arr;
 
 pub use self::lexer::Result;
 

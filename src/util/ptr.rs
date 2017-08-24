@@ -1,4 +1,4 @@
-use std::cell::{ UnsafeCell };
+use std::cell::UnsafeCell;
 use std::ops::Deref;
 
 pub struct Own<T> {
@@ -38,9 +38,7 @@ impl<T> Drop for Own<T> {
 pub struct Ptr<T>(*const Own<T>);
 impl<T> Ptr<T> {
 	pub fn clone_ptr(&self) -> Ptr<T> {
-		unsafe {
-			(*self.0).ptr()
-		}
+		unsafe { (*self.0).ptr() }
 	}
 
 	pub fn ptr_equals(&self, other: &Ptr<T>) -> bool {
@@ -50,9 +48,7 @@ impl<T> Ptr<T> {
 impl<T> Deref for Ptr<T> {
 	type Target = T;
 	fn deref(&self) -> &T {
-		unsafe {
-			&(*self.0).value
-		}
+		unsafe { &(*self.0).value }
 	}
 }
 impl<T> Drop for Ptr<T> {

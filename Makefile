@@ -4,9 +4,6 @@ clean:
 build:
 	cargo build
 
-format:
-
-
 run:
 	cargo run
 
@@ -15,7 +12,7 @@ install_deps:
 	rustup run nightly cargo install clippy rustfmt-nightly
 
 fmt:
-	rustup run nightly cargo fmt
+	rustup run nightly cargo fmt -- --write-mode overwrite
 
 lint:
 	rustup run nightly cargo clippy

@@ -3,7 +3,7 @@ pub enum Effect {
 	Pure,
 	Get,
 	Set,
-	Io
+	Io,
 }
 impl Effect {
 	pub fn contains(self, other: Effect) -> bool {

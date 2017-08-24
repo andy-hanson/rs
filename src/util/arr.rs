@@ -1,4 +1,4 @@
-use std::ops::{ Index, Range };
+use std::ops::{Index, Range};
 use std::slice::Iter;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
@@ -62,7 +62,7 @@ impl<T> Arr<T> {
 		self.0.into_iter()
 	}
 
-	pub fn map<U, F : FnMut(&T) -> U>(&self, mut f: F) -> Arr<U> {
+	pub fn map<U, F: FnMut(&T) -> U>(&self, mut f: F) -> Arr<U> {
 		let mut b = ArrBuilder::new();
 		for x in self.iter() {
 			b.add(f(x))
@@ -70,7 +70,7 @@ impl<T> Arr<T> {
 		b.finish()
 	}
 
-	pub fn map_with_index<U, F : Fn(&T, usize) -> U>(&self, f: F) -> Arr<U> {
+	pub fn map_with_index<U, F: Fn(&T, usize) -> U>(&self, f: F) -> Arr<U> {
 		let mut b = ArrBuilder::new();
 		for i in self.range() {
 			b.add(f(&self[i], i))
@@ -78,12 +78,12 @@ impl<T> Arr<T> {
 		b.finish()
 	}
 
-	pub fn map_defined_probably_all<U, F : FnMut(&T) -> Option<U>>(&self, f: F) -> Arr<U> {
+	pub fn map_defined_probably_all<U, F: FnMut(&T) -> Option<U>>(&self, f: F) -> Arr<U> {
 		//TODO:PERF we will probably map all, so allocate self.len() space ahead of time
 		self.map_defined(f)
 	}
 
-	pub fn map_defined<U, F : FnMut(&T) -> Option<U>>(&self, mut f: F) -> Arr<U> {
+	pub fn map_defined<U, F: FnMut(&T) -> Option<U>>(&self, mut f: F) -> Arr<U> {
 		let mut b = ArrBuilder::<U>::new();
 		for x in self.iter() {
 			if let Some(y) = f(x) {
@@ -93,10 +93,10 @@ impl<T> Arr<T> {
 		b.finish()
 	}
 
-	pub fn find<F : Fn(&T) -> bool>(&self, f: F) -> Option<&T> {
+	pub fn find<F: Fn(&T) -> bool>(&self, f: F) -> Option<&T> {
 		for x in self.iter() {
 			if f(x) {
-				return Some(x)
+				return Some(x);
 			}
 		}
 		None
@@ -110,7 +110,7 @@ impl<T> Arr<T> {
 		}
 	}
 
-	pub fn zip<U, V, F : Fn(&T, &U) -> V>(&self, other: &Arr<U>, f: F) -> Arr<V> {
+	pub fn zip<U, V, F: Fn(&T, &U) -> V>(&self, other: &Arr<U>, f: F) -> Arr<V> {
 		assert_eq!(self.len(), other.len());
 		let mut b = ArrBuilder::<V>::new();
 		for i in self.range() {
@@ -119,7 +119,7 @@ impl<T> Arr<T> {
 		b.finish()
 	}
 
-	pub fn do_zip<U, F : Fn(&T, &U) -> ()>(&self, other: &Arr<U>, f: F) {
+	pub fn do_zip<U, F: Fn(&T, &U) -> ()>(&self, other: &Arr<U>, f: F) {
 		assert_eq!(self.len(), other.len());
 		for i in self.range() {
 			f(&self[i], &other[i])
@@ -128,17 +128,17 @@ impl<T> Arr<T> {
 
 	pub fn each_equals<F: Fn(&T, &T) -> bool>(&self, other: &Arr<T>, f: F) -> bool {
 		if self.len() != other.len() {
-			return false
+			return false;
 		}
 		for i in self.range() {
 			if !f(&self[i], &other[i]) {
-				return false
+				return false;
 			}
 		}
 		true
 	}
 }
-impl<T : Clone> Arr<T> {
+impl<T: Clone> Arr<T> {
 	pub fn into_vec(self) -> Vec<T> {
 		let mut v = Vec::new();
 		v.clone_from_slice(&self.0);
@@ -187,7 +187,7 @@ impl<T : Clone> Arr<T> {
 		b.finish()
 	}
 }
-impl<T : Copy> Arr<T> {
+impl<T: Copy> Arr<T> {
 	pub fn from_slice(slice: &[T]) -> Arr<T> {
 		// TODO: better way?
 		let mut v = Vec::new();
@@ -195,7 +195,7 @@ impl<T : Copy> Arr<T> {
 		Arr(v.into_boxed_slice())
 	}
 
-	pub fn map_on_copies<U, F : Fn(T) -> U>(&self, f: F) -> Arr<U> {
+	pub fn map_on_copies<U, F: Fn(T) -> U>(&self, f: F) -> Arr<U> {
 		let mut b = ArrBuilder::new();
 		for x in self.iter() {
 			b.add(f(*x))
@@ -204,15 +204,15 @@ impl<T : Copy> Arr<T> {
 	}
 }
 
-impl<T : Eq> Arr<T> {
+impl<T: Eq> Arr<T> {
 	pub fn ends_with(&self, other: &Arr<T>) -> bool {
 		if self.len() < other.len() {
-			return false
+			return false;
 		}
 
 		for i in other.range() {
 			if self[self.len() - i] != other[other.len() - i] {
-				return false
+				return false;
 			}
 		}
 

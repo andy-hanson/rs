@@ -1,24 +1,24 @@
-use util::arr::{ Arr };
-use util::ptr::{ Own, LateOwn };
+use util::arr::Arr;
+use util::ptr::{LateOwn, Own};
 use util::sym::Sym;
 
-use super::super::diag::{ Diagnostic };
-use super::super::model::class::{ ClassDeclaration, ClassHead, SlotDeclaration, Super };
+use super::super::diag::Diagnostic;
+use super::super::model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
 use super::super::model::expr::Expr;
-use super::super::model::method::{ MethodSignature, MethodWithBody, MethodOrImpl, Parameter };
-use super::super::model::module::{ Imported };
-use super::super::model::ty::{ TypeParameter, TypeParameterOrigin };
+use super::super::model::method::{MethodOrImpl, MethodSignature, MethodWithBody, Parameter};
+use super::super::model::module::Imported;
+use super::super::model::ty::{TypeParameter, TypeParameterOrigin};
 use super::super::parse::ast;
 
-use super::ctx::Ctx;
 use super::check_expr::check_method_body;
+use super::ctx::Ctx;
 use super::ty_replacer::TyReplacer;
 
 pub fn check_class(
 	imports: Arr<Imported>,
 	ast: &ast::ClassDeclaration,
-	name: Sym
-	) -> (Own<ClassDeclaration>, Arr<Diagnostic>) {
+	name: Sym,
+) -> (Own<ClassDeclaration>, Arr<Diagnostic>) {
 
 	let type_parameters = ast.type_parameters.map_on_copies(TypeParameter::create);
 	// Create the class early and assign its properties later.
@@ -33,7 +33,12 @@ pub fn check_class(
 
 fn do_check(ctx: &mut Ctx, ast: &ast::ClassDeclaration) {
 	// type parameters already handled before calling this.
-	let &ast::ClassDeclaration { head: ref head_ast, supers: ref super_asts, methods: ref method_asts, .. } = ast;
+	let &ast::ClassDeclaration {
+		head: ref head_ast,
+		supers: ref super_asts,
+		methods: ref method_asts,
+		..
+	} = ast;
 
 	let methods = method_asts.map(|m| check_method_initial(ctx, m));
 	ctx.current_class.set_methods(methods);
@@ -50,7 +55,13 @@ fn do_check(ctx: &mut Ctx, ast: &ast::ClassDeclaration) {
 		let method_ast = &method_asts[i];
 		let method = ctx.current_class.methods()[i].ptr();
 		let body: Option<Expr> = match method_ast.body {
-			Some(ref body) => Some(check_method_body(ctx, &MethodOrImpl::Method(method.clone_ptr()), &TyReplacer::do_nothing(), method.is_static, body)),
+			Some(ref body) => Some(check_method_body(
+				ctx,
+				&MethodOrImpl::Method(method.clone_ptr()),
+				&TyReplacer::do_nothing(),
+				method.is_static,
+				body,
+			)),
 			None => None,
 		};
 		method.set_body(body)
@@ -59,8 +70,16 @@ fn do_check(ctx: &mut Ctx, ast: &ast::ClassDeclaration) {
 
 fn check_method_initial(ctx: &mut Ctx, ast: &ast::Method) -> Own<MethodWithBody> {
 	// Don't check method bodies yet, just fill their heads.
-	let &ast::Method { loc, is_static, type_parameters: ref type_parameter_asts, return_ty: ref return_ty_ast, name, self_effect,
-		parameters: ref parameter_asts, .. } = ast;
+	let &ast::Method {
+		loc,
+		is_static,
+		type_parameters: ref type_parameter_asts,
+		return_ty: ref return_ty_ast,
+		name,
+		self_effect,
+		parameters: ref parameter_asts,
+		..
+	} = ast;
 	let type_parameters = type_parameter_asts.map_on_copies(TypeParameter::create);
 	let return_ty = ctx.get_ty_or_type_parameter(return_ty_ast, &type_parameters);
 	let parameters = check_parameters(ctx, parameter_asts, &type_parameters);
@@ -81,7 +100,11 @@ fn check_method_initial(ctx: &mut Ctx, ast: &ast::Method) -> Own<MethodWithBody>
 	method
 }
 
-fn check_parameters(ctx: &mut Ctx, param_asts: &Arr<ast::Parameter>, type_parameters: &Arr<Own<TypeParameter>>) -> Arr<Own<Parameter>> {
+fn check_parameters(
+	ctx: &mut Ctx,
+	param_asts: &Arr<ast::Parameter>,
+	type_parameters: &Arr<Own<TypeParameter>>,
+) -> Arr<Own<Parameter>> {
 	param_asts.map_with_index(|&ast::Parameter { loc, ty: ref ty_ast, name }, index| {
 		for prior_param in param_asts.iter().take(index) {
 			if prior_param.name == name {
@@ -89,7 +112,12 @@ fn check_parameters(ctx: &mut Ctx, param_asts: &Arr<ast::Parameter>, type_parame
 				//ctx.add_diagnostic(loc, )
 			}
 		}
-		Own::new(Parameter { loc, ty: ctx.get_ty_or_type_parameter(ty_ast, type_parameters), name, index: index as u32 })
+		Own::new(Parameter {
+			loc,
+			ty: ctx.get_ty_or_type_parameter(ty_ast, type_parameters),
+			name,
+			index: index as u32,
+		})
 	})
 }
 
@@ -100,7 +128,7 @@ fn check_head(ctx: &mut Ctx, ast: Option<&ast::ClassHead>) -> ClassHead {
 			if ctx.current_class.type_parameters.any() {
 				todo!() // Error: static class can't have type parameters
 			}
-			return ClassHead::Static
+			return ClassHead::Static;
 		}
 	};
 	match *head_data {

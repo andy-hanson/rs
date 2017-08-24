@@ -1,6 +1,6 @@
-use std::ops::{ Add, Sub };
+use std::ops::{Add, Sub};
 
-use util::arr::{ Arr, ArrBuilder };
+use util::arr::{Arr, ArrBuilder};
 
 #[derive(Copy, Clone)]
 pub struct Pos {
@@ -84,7 +84,7 @@ impl LineAndColumnGetter {
 	fn line_and_column_at_loc(&self, loc: Loc) -> LineAndColumnLoc {
 		LineAndColumnLoc {
 			start: self.line_and_column_at_pos(loc.start),
-			end: self.line_and_column_at_pos(loc.end)
+			end: self.line_and_column_at_pos(loc.end),
 		}
 	}
 
@@ -98,10 +98,11 @@ impl LineAndColumnGetter {
 			let middle_pos = self.line_to_pos[middle_line as usize];
 
 			if middle_pos == pos_index {
-				return LineAndColumn { line: middle_line, column: 0 }
+				return LineAndColumn { line: middle_line, column: 0 };
 			} else if middle_pos > pos_index {
 				high_line = middle_line - 1
-			} else { // middle_pos < pos_index
+			} else {
+				// middle_pos < pos_index
 				low_line = middle_line + 1
 			}
 		}
@@ -111,7 +112,6 @@ impl LineAndColumnGetter {
 	}
 }
 
-fn mid(a: u32, b: u32) -> u32{
+fn mid(a: u32, b: u32) -> u32 {
 	(a + b) / 2
 }
-

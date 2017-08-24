@@ -1,10 +1,10 @@
 use util::arr::Arr;
-use util::ptr::{ Own, Ptr, LateOwn };
+use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
 use super::class::ClassDeclaration;
-use super::method::MethodWithBody;
 use super::effect::Effect;
+use super::method::MethodWithBody;
 
 pub enum Ty {
 	Bogus,
@@ -74,15 +74,13 @@ impl Clone for InstCls {
 
 pub enum TypeParameterOrigin {
 	Class(Ptr<ClassDeclaration>),
-	Method(Ptr<MethodWithBody>)
+	Method(Ptr<MethodWithBody>),
 }
 impl<'a> TypeParameterOrigin {
 	fn copy(&self) -> TypeParameterOrigin {
 		match *self {
-			TypeParameterOrigin::Class(ref cls) =>
-				TypeParameterOrigin::Class(cls.clone_ptr()),
-			TypeParameterOrigin::Method(ref m) =>
-				TypeParameterOrigin::Method(m.clone_ptr()),
+			TypeParameterOrigin::Class(ref cls) => TypeParameterOrigin::Class(cls.clone_ptr()),
+			TypeParameterOrigin::Method(ref m) => TypeParameterOrigin::Method(m.clone_ptr()),
 		}
 	}
 }

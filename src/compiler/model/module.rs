@@ -4,7 +4,7 @@ use compiler::module_resolver::full_path;
 
 use util::arr::Arr;
 use util::path::Path;
-use util::ptr::{ Own, Ptr, LateOwn };
+use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
 use super::class::ClassDeclaration;
@@ -40,9 +40,17 @@ pub struct Module {
 	diagnostics: LateOwn<Arr<Diagnostic>>,
 }
 impl Module {
-	pub fn new(logical_path: Path, is_index: bool, document: Own<DocumentInfo>, imports: Arr<Imported>) -> Module {
+	pub fn new(
+		logical_path: Path,
+		is_index: bool,
+		document: Own<DocumentInfo>,
+		imports: Arr<Imported>,
+	) -> Module {
 		Module {
-			logical_path, is_index, document, imports,
+			logical_path,
+			is_index,
+			document,
+			imports,
 			class: LateOwn::new(),
 			diagnostics: LateOwn::new(),
 		}

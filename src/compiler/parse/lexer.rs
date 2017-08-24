@@ -4,8 +4,6 @@ use std::slice::Iter;
 
 use compiler::diag::{ Diagnostic, DiagnosticData };
 use util::arr::{ Arr, ArrBuilder };
-use util::ascii;
-use util::ascii::Ascii;
 use util::loc::{ Pos, Loc, POS_ZERO };
 use util::sym::Sym;
 
@@ -16,7 +14,7 @@ pub type Result<T> = ::std::result::Result<T, Diagnostic>;
 struct Reader<'a> {
 	source: &'a Arr<u8>,
 	iter: Iter<'a, u8>,
-	peek: Ascii,
+	peek: u8,
 	pos_cell: Cell<Pos>,
 }
 impl<'a> Reader<'a> {
@@ -24,13 +22,11 @@ impl<'a> Reader<'a> {
 		let len = source.len();
 		assert!(len >= 2);
 
-		let slast = source[len - 1];
-		assert!(Ascii(slast) == ascii::ZERO);
-		let snextlast = source[len - 2];
-		assert!(Ascii(snextlast) == ascii::NL);
+		assert!(source[len - 1] == b'\0');
+		assert!(source[len - 2] == b'\n');
 
 		let mut iter = source.iter();
-		let peek = Ascii(*iter.next().unwrap());
+		let peek = *iter.next().unwrap();
 		Reader { source, iter, peek, pos_cell: Cell::new(POS_ZERO) }
 	}
 
@@ -38,13 +34,13 @@ impl<'a> Reader<'a> {
 		self.pos_cell.get()
 	}
 
-	fn peek(&self) -> Ascii {
+	fn peek(&self) -> u8 {
 		self.peek
 	}
 
 	fn skip(&mut self) {
 		let x = self.iter.next();
-		self.peek = if let Some(ch) = x { Ascii(*ch) } else { ascii::ZERO }
+		self.peek = if let Some(ch) = x { *ch } else { b'\0' }
 	}
 
 	fn skip2(&mut self) {
@@ -52,7 +48,7 @@ impl<'a> Reader<'a> {
 		self.skip();
 	}
 
-	fn read_char(&mut self) -> Ascii {
+	fn read_char(&mut self) -> u8 {
 		let res = self.peek;
 		self.skip();
 		res
@@ -119,11 +115,11 @@ impl<'a> Lexer<'a> {
 		Sym::from_slice(self.token_slice(token_start))
 	}
 
-	fn read_char(&mut self) -> Ascii {
+	fn read_char(&mut self) -> u8 {
 		self.reader.read_char()
 	}
 
-	fn peek(&self) -> Ascii {
+	fn peek(&self) -> u8 {
 		self.reader.peek()
 	}
 
@@ -147,34 +143,34 @@ impl<'a> Lexer<'a> {
 		Loc { start, end: self.pos() }
 	}
 
-	fn skip_while<F : Fn(Ascii) -> bool>(&mut self, pred: F) {
+	fn skip_while<F : Fn(u8) -> bool>(&mut self, pred: F) {
 		while pred(self.peek()) {
 			self.reader.skip();
 		}
 	}
 
 	fn skip_empty_lines(&mut self) {
-		self.skip_while(|ch| ch == ascii::NL)
+		self.skip_while(|ch| ch == b'\n')
 	}
 
 	fn next_quote_part(&mut self) -> QuoteEnd {
 		let mut b = ArrBuilder::<u8>::new();
 		let mut is_end = false;
 		loop {
-			match self.read_char().0 {
-				ascii::U8_DOUBLE_QUOTE => {
+			match self.read_char() {
+				b'"' => {
 					is_end = true;
 					break;
 				}
-				ascii::U8_CURLYL => {
+				b'{' => {
 					is_end = false;
 					break;
 				}
-				ascii::U8_NL =>
-					panic!(),
-				ascii::U8_BACKSLASH => {
+				b'\n' =>
+					todo!(),
+				b'\\' => {
 					let ch = self.read_char();
-					b.add(escape(ch).0);
+					b.add(escape(ch));
 					break;
 				}
 				ch => {
@@ -188,14 +184,14 @@ impl<'a> Lexer<'a> {
 	}
 
 	fn take_number(&mut self, start_pos: Pos, is_signed: bool) -> Token {
-		self.skip_while(Ascii::is_digit);
-		let is_float = self.peek() == ascii::DOT;
+		self.skip_while(is_digit);
+		let is_float = self.peek() == b'.';
 		if is_float {
 			self.skip();
-			if !self.peek().is_digit() {
+			if !is_digit(self.peek()) {
 				panic!()
 			}
-			self.skip_while(Ascii::is_digit);
+			self.skip_while(is_digit);
 		}
 		// TODO:PERF less copying
 		self.quote_part_value = Arr::from_slice(self.slice_from(start_pos));
@@ -203,7 +199,7 @@ impl<'a> Lexer<'a> {
 	}
 
 	fn take_name_or_keyword(&mut self, start_pos: Pos) -> Token {
-		self.skip_while(Ascii::is_name_char);
+		self.skip_while(is_name_char);
 		Token::keyword_from_name(self.slice_from(start_pos)).unwrap_or(Token::Name)
 	}
 
@@ -218,9 +214,8 @@ impl<'a> Lexer<'a> {
 
 	fn take_next(&mut self) -> Token {
 		let start = self.pos();
-		let ch = self.read_char();
-		match ch.0 {
-			ascii::U8_0 => {
+		match self.read_char() {
+			b'\0' => {
 				// Remember to dedent before finishing
 				if self.indent != 0 {
 					self.indent -= 1;
@@ -231,8 +226,8 @@ impl<'a> Lexer<'a> {
 				}
 			}
 
-			ascii::U8_SPACE => {
-				if self.peek() == ascii::NL {
+			b' ' => {
+				if self.peek() == b'\n' {
 					self.diagnostic = Some(Diagnostic(self.single_char_loc(), DiagnosticData::TrailingSpace));
 					Token::Diagnostic
 				} else {
@@ -240,46 +235,46 @@ impl<'a> Lexer<'a> {
 				}
 			}
 
-			ascii::U8_BAR => panic!(),
+			b'|' => panic!(),
 
-			ascii::U8_BACKSLASH => Token::Backslash,
-			ascii::U8_COMMA => Token::Comma,
-			ascii::U8_COLON => Token::Colon,
-			ascii::U8_PARENL => Token::ParenL,
-			ascii::U8_PARENR => Token::ParenR,
-			ascii::U8_BRACKETL => Token::BracketL,
-			ascii::U8_BRACKETR => Token::BracketR,
-			ascii::U8_CURLYL => Token::CurlyL,
-			ascii::U8_CURLYR => Token::CurlyR,
-			ascii::U8_UNDERSCORE => Token::Underscore,
-			ascii::U8_DOT => Token::Dot,
+			b'\\' => Token::Backslash,
+			b',' => Token::Comma,
+			b':' => Token::Colon,
+			b'(' => Token::ParenL,
+			b')' => Token::ParenR,
+			b'[' => Token::BracketL,
+			b']' => Token::BracketR,
+			b'{' => Token::CurlyL,
+			b'}' => Token::CurlyR,
+			b'_' => Token::Underscore,
+			b'.' => Token::Dot,
 
-			ascii::U8_DOUBLE_QUOTE => {
+			b'"' => {
 				let qp = self.next_quote_part();
 				if qp == QuoteEnd::QuoteEnd { Token::StringLiteral } else { Token::QuoteStart }
 			}
 
-			ascii::U8_DIGIT_0 ... ascii::U8_DIGIT_9_PLUS_ONE =>
+			b'0' ... b'9' =>
 				self.take_number(start, /*isSigned*/ false),
 
-			ascii::U8_LOWER_A ... ascii::U8_LOWER_Z_PLUS_ONE =>
+			b'a' ... b'z' =>
 				self.take_name_or_keyword(start),
 
-			ascii::U8_UPPER_A ... ascii::U8_UPPER_Z_PLUS_ONE => {
-				self.skip_while(Ascii::is_name_char);
+			b'A' ... b'Z' => {
+				self.skip_while(is_name_char);
 				Token::Operator
 			}
 
-			ascii::U8_MINUS | ascii::U8_PLUS =>
-				if self.peek().is_digit() {
+			b'-' | b'+' =>
+				if is_digit(self.peek()) {
 					self.take_number(start, /*isSigned*/ true)
 				} else {
-					self.skip_while(Ascii::is_operator_char);
+					self.skip_while(is_operator_char);
 					Token::Operator
 				},
 
-			ascii::U8_TIMES | ascii::U8_SLASH | ascii::U8_CARET | ascii::U8_QUESTION | ascii::U8_LESS | ascii::U8_GREATER => {
-				self.skip_while(Ascii::is_operator_char);
+			b'*' | b'/' | b'^' | b'?' | b'<' | b'>' => {
+				self.skip_while(is_operator_char);
 				Token::Operator
 			}
 
@@ -291,43 +286,43 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
-	fn try_take(&mut self, ch: Ascii) -> bool {
+	fn try_take(&mut self, ch: u8) -> bool {
 		let res = self.peek() == ch;
 		if res { self.skip() }
 		true
 	}
 
 	pub fn expect_newline_character(&mut self) -> Result<()> {
-		self.expect_character(ascii::NL, "newline")
+		self.expect_character(b'\n', "newline")
 	}
 
 	pub fn expect_tab_character(&mut self) -> Result<()> {
-		self.expect_character(ascii::TAB, "tab")
+		self.expect_character(b'\t', "tab")
 	}
 
-	fn expect_character(&mut self, expected: Ascii, expected_desc: &'static str) -> Result<()> {
+	fn expect_character(&mut self, expected: u8, expected_desc: &'static str) -> Result<()> {
 		let actual = self.read_char();
 		if actual == expected {
 			Ok(())
 		} else {
-			Err(Diagnostic(self.single_char_loc(), DiagnosticData::UnexpectedCharacter(actual.to_char(), expected_desc)))
+			Err(Diagnostic(self.single_char_loc(), DiagnosticData::UnexpectedCharacter(char::from(actual), expected_desc)))
 		}
 	}
 
-	fn expect_character_by_predicate<F : Fn(Ascii) -> bool>(&mut self, pred: F, expected_desc: &'static str) -> Result<()> {
+	fn expect_character_by_predicate<F : Fn(u8) -> bool>(&mut self, pred: F, expected_desc: &'static str) -> Result<()> {
 		let actual = self.read_char();
 		if pred(actual) {
 			Ok(())
 		} else {
-			Err(Diagnostic(self.single_char_loc(), DiagnosticData::UnexpectedCharacter(actual.to_char(), expected_desc)))
+			Err(Diagnostic(self.single_char_loc(), DiagnosticData::UnexpectedCharacter(char::from(actual), expected_desc)))
 		}
 	}
 
 	fn lex_indent(&mut self) -> Result<u32> {
 		let start = self.pos();
-		self.skip_while(|ch| ch == ascii::TAB);
+		self.skip_while(|ch| ch == b'\t');
 		let count = self.pos() - start;
-		if self.peek() == ascii::SPACE {
+		if self.peek() == b' ' {
 			Err(Diagnostic(self.loc_from(start), DiagnosticData::LeadingSpace))
 		} else {
 			Ok(count)
@@ -361,7 +356,7 @@ impl<'a> Lexer<'a> {
 			self.expect_tab_character()?
 		}
 
-		Ok(if self.try_take(ascii::TAB) {
+		Ok(if self.try_take(b'\t') {
 			NewlineOrDedent::Newline
 		} else {
 			self.indent -= 1;
@@ -376,7 +371,7 @@ impl<'a> Lexer<'a> {
 			self.expect_tab_character()?
 		}
 
-		Ok(if self.try_take(ascii::TAB) {
+		Ok(if self.try_take(b'\t') {
 			self.indent += 1;
 			NewlineOrIndent::Indent
 		} else {
@@ -385,7 +380,7 @@ impl<'a> Lexer<'a> {
 	}
 
 	pub fn at_eof(&self) -> bool {
-		self.peek() == ascii::ZERO
+		self.peek() == b'\0'
 	}
 
 	pub fn try_take_dedent_from_dedenting(&mut self) -> bool {
@@ -404,7 +399,7 @@ impl<'a> Lexer<'a> {
 		}
 
 		let start = self.pos();
-		if !self.try_take(ascii::NL) {
+		if !self.try_take(b'\n') {
 			return Ok(false)
 		}
 
@@ -440,7 +435,7 @@ impl<'a> Lexer<'a> {
 	}
 
 	pub fn try_take_newline(&mut self) -> Result<bool> {
-		if !self.try_take(ascii::NL) {
+		if !self.try_take(b'\n') {
 			Ok(false)
 		} else {
 			for _ in 0..self.indent {
@@ -455,7 +450,7 @@ impl<'a> Lexer<'a> {
 		for _ in 0..self.indent {
 			self.expect_tab_character()?
 		}
-		Ok(self.try_take(ascii::TAB))
+		Ok(self.try_take(b'\t'))
 	}
 
 	pub fn take_indent(&mut self) -> Result<()> {
@@ -468,24 +463,24 @@ impl<'a> Lexer<'a> {
 	}
 
 	fn try_take_space(&mut self) -> bool {
-		self.try_take(ascii::SPACE)
+		self.try_take(b' ')
 	}
 
-	pub fn take_equals(&mut self) -> Result<()> { self.expect_character(ascii::EQUAL, "'='") }
-	pub fn take_space(&mut self) -> Result<()> { self.expect_character(ascii::SPACE, "space") }
-	pub fn take_parenl(&mut self) -> Result<()> { self.expect_character(ascii::PARENL, "'('") }
-	pub fn take_parenr(&mut self) -> Result<()> { self.expect_character(ascii::PARENR, "')'") }
-	pub fn take_bracketl(&mut self) -> Result<()> { self.expect_character(ascii::BRACKETL, "'['") }
-	pub fn take_bracketr(&mut self) -> Result<()> { self.expect_character(ascii::BRACKETR, "']'") }
-	pub fn take_comma(&mut self) -> Result<()> { self.expect_character(ascii::COMMA, "','") }
-	pub fn take_dot(&mut self) -> Result<()> { self.expect_character(ascii::DOT, "'.'") }
+	pub fn take_equals(&mut self) -> Result<()> { self.expect_character(b'=', "'='") }
+	pub fn take_space(&mut self) -> Result<()> { self.expect_character(b' ', "space") }
+	pub fn take_parenl(&mut self) -> Result<()> { self.expect_character(b'(', "'('") }
+	pub fn take_parenr(&mut self) -> Result<()> { self.expect_character(b')', "')'") }
+	pub fn take_bracketl(&mut self) -> Result<()> { self.expect_character(b'[', "'['") }
+	pub fn take_bracketr(&mut self) -> Result<()> { self.expect_character(b']', "']'") }
+	pub fn take_comma(&mut self) -> Result<()> { self.expect_character(b',', "','") }
+	pub fn take_dot(&mut self) -> Result<()> { self.expect_character(b'.', "'.'") }
 
-	pub fn try_take_equals(&mut self) -> bool { self.try_take(ascii::EQUAL) }
-	pub fn try_take_parenr(&mut self) -> bool { self.try_take(ascii::PARENR) }
-	pub fn try_take_dot(&mut self) -> bool { self.try_take(ascii::DOT) }
-	pub fn try_take_colon(&mut self) -> bool { self.try_take(ascii::COLON) }
-	pub fn try_take_bracketl(&mut self) -> bool { self.try_take(ascii::BRACKETL) }
-	pub fn try_take_bracketr(&mut self) -> bool { self.try_take(ascii::BRACKETR) }
+	pub fn try_take_equals(&mut self) -> bool { self.try_take(b'=') }
+	pub fn try_take_parenr(&mut self) -> bool { self.try_take(b')') }
+	pub fn try_take_dot(&mut self) -> bool { self.try_take(b'.') }
+	pub fn try_take_colon(&mut self) -> bool { self.try_take(b':') }
+	pub fn try_take_bracketl(&mut self) -> bool { self.try_take(b'[') }
+	pub fn try_take_bracketr(&mut self) -> bool { self.try_take(b']') }
 
 	pub fn take_specific_keyword(&mut self, kw: &'static str) -> Result<()> {
 		self.must_read(kw, kw)
@@ -497,15 +492,15 @@ impl<'a> Lexer<'a> {
 
 	pub fn take_ty_name_slice(&mut self) -> Result<&[u8]> {
 		let start_pos = self.pos();
-		self.expect_character_by_predicate(Ascii::is_upper_case_letter, "type name")?;
-		self.skip_while(Ascii::is_name_char);
+		self.expect_character_by_predicate(is_upper_case_letter, "type name")?;
+		self.skip_while(is_name_char);
 		Ok(self.slice_from(start_pos))
 	}
 
 	fn take_name_slice(&mut self) -> Result<&[u8]> {
 		let start_pos = self.pos();
-		self.expect_character_by_predicate(Ascii::is_lower_case_letter, "(non-type) name")?;
-		self.skip_while(Ascii::is_name_char);
+		self.expect_character_by_predicate(is_lower_case_letter, "(non-type) name")?;
+		self.skip_while(is_name_char);
 		Ok(self.slice_from(start_pos))
 	}
 
@@ -528,11 +523,11 @@ impl<'a> Lexer<'a> {
 
 	pub fn take_catch_or_finally(&mut self) -> Result<CatchOrFinally> {
 		match self.read_char() {
-			ascii::C => {
+			b'c' => {
 				self.must_read("atch", "catch")?;
 				Ok(CatchOrFinally::Catch)
 			}
-			ascii::F => {
+			b'f' => {
 				self.must_read("inally", "finally")?;
 				Ok(CatchOrFinally::Finally)
 			}
@@ -544,12 +539,9 @@ impl<'a> Lexer<'a> {
 	pub fn take_slot_keyword(&mut self) -> Result<SlotKw> {
 		self.must_read("va", "'val' or 'var'")?;
 		match self.read_char() {
-			ascii::L =>
-				Ok(SlotKw::Val),
-			ascii::R =>
-				Ok(SlotKw::Var),
-			ch =>
-				Err(self.unexpected_char(ch, "'val' or 'var'"))
+			b'l' => Ok(SlotKw::Val),
+			b'r' => Ok(SlotKw::Var),
+			ch => Err(self.unexpected_char(ch, "'val' or 'var'")),
 		}
 	}
 
@@ -559,16 +551,16 @@ impl<'a> Lexer<'a> {
 		}
 
 		match self.read_char() {
-			ascii::D => {
+			b'd' => {
 				self.must_read("ef", "def")?;
 				Ok(MethodKw::Def)
 			}
-			ascii::F => {
+			b'f' => {
 				self.must_read("un", "fun")?;
 				Ok(MethodKw::Fun)
 			}
-			ascii::I => {
-				self.must_read_char(ascii::S, "is")?;
+			b'i' => {
+				self.must_read_char(b's', "is")?;
 				Ok(MethodKw::Is)
 			}
 			ch =>
@@ -578,12 +570,12 @@ impl<'a> Lexer<'a> {
 
 	fn must_read(&mut self, must_read_me: &'static str, expected_desc: &'static str) -> Result<()> {
 		for byte in must_read_me.as_bytes() {
-			self.must_read_char(Ascii(*byte), expected_desc)?
+			self.must_read_char(*byte, expected_desc)?
 		}
 		Ok(())
 	}
 
-	fn must_read_char(&mut self, must_read_me: Ascii, expected_desc: &'static str) -> Result<()> {
+	fn must_read_char(&mut self, must_read_me: u8, expected_desc: &'static str) -> Result<()> {
 		let ch = self.read_char();
 		if ch == must_read_me {
 			Ok(())
@@ -592,8 +584,8 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
-	fn unexpected_char(&self, actual: Ascii, expected_desc: &'static str) -> Diagnostic {
-		Diagnostic(self.single_char_loc(), DiagnosticData::UnexpectedCharacter(actual.to_char(), expected_desc))
+	fn unexpected_char(&self, actual: u8, expected_desc: &'static str) -> Diagnostic {
+		Diagnostic(self.single_char_loc(), DiagnosticData::UnexpectedCharacter(char::from(actual), expected_desc))
 	}
 
 }
@@ -606,14 +598,38 @@ pub enum CatchOrFinally { Catch, Finally }
 pub enum NewlineOrIndent { Newline, Indent }
 pub enum NewlineOrDedent { Newline, Dedent }
 
-fn escape(escaped: Ascii) -> Ascii {
-	match escaped.0 {
-		ascii::U8_DOUBLE_QUOTE | ascii::U8_CURLYL => escaped,
-		ascii::U8_N => ascii::NL,
-		ascii::U8_T => ascii::TAB,
-		_ => panic!() // bad escape
+fn escape(escaped: u8) -> u8 {
+	match escaped {
+		b'"' | b'{' => escaped,
+		b'n' => b'\n',
+		b't' => b'\t',
+		_ => todo!() // bad escape
 	}
 }
 
 #[derive(Eq, PartialEq)]
 pub enum QuoteEnd { QuoteEnd, QuoteInterpolation }
+
+
+fn is_digit(ch: u8) -> bool {
+	ch >= b'0' && ch <= b'9'
+}
+
+fn is_name_char(ch: u8) -> bool {
+	is_lower_case_letter(ch) || is_upper_case_letter(ch) || is_digit(ch)
+}
+
+fn is_lower_case_letter(ch: u8) -> bool {
+	ch >= b'a' && ch <= b'z'
+}
+
+fn is_upper_case_letter(ch: u8) -> bool {
+	ch >= b'A' && ch < b'Z'
+}
+
+fn is_operator_char(ch: u8) -> bool {
+	match ch {
+		b'-' | b'+' | b'*' | b'/' | b'^' | b'?' | b'<' | b'>' => true,
+		_ => false,
+	}
+}

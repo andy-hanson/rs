@@ -1,7 +1,6 @@
 use std::cmp::min;
 
 use util::arr::{ Arr, ArrBuilder };
-use util::ascii;
 use util::string_maker::{ Show, Shower, StringMaker };
 
 pub struct Path(pub Arr<Arr<u8>>);
@@ -100,7 +99,7 @@ impl Show for Path {
 
 fn is_path_part(s: &Arr<u8>) -> bool {
 	s.iter().all(|ch| match *ch {
-		ascii::U8_SLASH | ascii::U8_BACKSLASH => false,
+		b'/' | b'\\' => false,
 		_ => true
 	})
 }

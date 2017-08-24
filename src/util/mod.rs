@@ -1,5 +1,4 @@
 pub mod arr;
-pub mod ascii;
 pub mod either;
 pub mod path;
 pub mod loc;

@@ -1,6 +1,5 @@
 use std::ops::{ Add, Sub };
 
-use util::ascii::{ Ascii, NL };
 use util::arr::{ Arr, ArrBuilder };
 
 #[derive(Copy, Clone)]
@@ -75,7 +74,7 @@ impl LineAndColumnGetter {
 		line_to_pos.add(0); // line 0 as position 0
 		for pos in text.range() {
 			let ch = text[pos];
-			if Ascii(ch) == NL {
+			if ch == b'\n' {
 				line_to_pos.add((pos as u32) + 1)
 			}
 		}

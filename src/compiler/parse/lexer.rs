@@ -22,8 +22,8 @@ impl<'a> Reader<'a> {
 		let len = source.len();
 		assert!(len >= 2);
 
-		assert!(source[len - 1] == b'\0');
-		assert!(source[len - 2] == b'\n');
+		assert_eq!(source[len - 1], b'\0');
+		assert_eq!(source[len - 2], b'\n');
 
 		let mut iter = source.iter();
 		let peek = *iter.next().unwrap();

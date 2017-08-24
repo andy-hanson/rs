@@ -92,7 +92,7 @@ pub struct Parameter {
 	pub index: u32,
 }
 
-pub struct MethodInst(pub MethodOrAbstract, pub Arr<Ty>);
+pub struct InstMethod(pub MethodOrAbstract, pub Arr<Ty>);
 
 pub struct Impl {
 	pub implemented: Ptr<AbstractMethod>,

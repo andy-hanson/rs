@@ -5,9 +5,9 @@ use super::super::diag::Diagnostic;
 use super::super::model::effect::Effect;
 use super::super::model::ty::{InstCls, Ty};
 
-use super::ty_replacer::TyReplacer;
+use super::instantiator::Instantiator;
 
-pub fn get_common_compatible_type(a: &Ty, b: &Ty) -> Option<Ty> {
+pub fn common_type(a: &Ty, b: &Ty) -> Option<Ty> {
 	match *a {
 		Ty::Bogus => Some(b.clone()),
 		Ty::Plain(effect_a, ref inst_cls_a) => match *b {
@@ -58,7 +58,7 @@ fn is_subclass(expected: &InstCls, actual: &InstCls) -> bool {
 
 	for s in actual_cls.supers().iter() {
 		let instantiated_super_cls =
-			instantiate_inst_cls(&s.super_class, &TyReplacer::of_inst_cls(actual));
+			instantiate_inst_cls(&s.super_class, &Instantiator::of_inst_cls(actual));
 		if is_subclass(expected, &instantiated_super_cls) {
 			return true;
 		}
@@ -92,10 +92,10 @@ Say we have:
 
 	The rule is, we always *either* instantiate a type parameter *xor* narrow an effect.
 	*/
-pub fn instantiate_ty_and_narrow_effects(
+pub fn instantiate_and_narrow_effects(
 	narrowed_effect: Effect,
 	ty: &Ty,
-	replacer: &TyReplacer,
+	instantiator: &Instantiator,
 	loc: Loc,
 	mut diags: &mut ArrBuilder<Diagnostic>,
 ) -> Ty {
@@ -108,12 +108,12 @@ pub fn instantiate_ty_and_narrow_effects(
 			instantiate_inst_cls_and_forbid_effects(
 				narrowed_effect,
 				inst_cls,
-				replacer,
+				instantiator,
 				loc,
 				&mut diags,
 			),
 		),
-		Ty::Param(ref p) => replacer.replace_or_same(p),
+		Ty::Param(ref p) => instantiator.replace_or_same(p),
 	}
 }
 
@@ -123,13 +123,13 @@ pub fn narrow_effects(
 	loc: Loc,
 	diags: &mut ArrBuilder<Diagnostic>,
 ) -> Ty {
-	instantiate_ty_and_narrow_effects(narrowed_effect, ty, &TyReplacer::do_nothing(), loc, diags)
+	instantiate_and_narrow_effects(narrowed_effect, ty, &Instantiator::nil(), loc, diags)
 }
 
 fn instantiate_ty_and_forbid_effects(
 	narrowed_effect: Effect,
 	ty: &Ty,
-	replacer: &TyReplacer,
+	instantiator: &Instantiator,
 	loc: Loc,
 	mut diags: &mut ArrBuilder<Diagnostic>,
 ) -> Ty {
@@ -141,7 +141,7 @@ fn instantiate_ty_and_forbid_effects(
 				instantiate_inst_cls_and_forbid_effects(
 					narrowed_effect,
 					inst_cls,
-					replacer,
+					instantiator,
 					loc,
 					&mut diags,
 				),
@@ -149,42 +149,42 @@ fn instantiate_ty_and_forbid_effects(
 		} else {
 			todo!()
 		},
-		Ty::Param(ref p) => replacer.replace_or_same(p),
+		Ty::Param(ref p) => instantiator.replace_or_same(p),
 	}
 }
 
 fn instantiate_inst_cls_and_forbid_effects(
 	narrowed_effect: Effect,
 	inst_cls: &InstCls,
-	replacer: &TyReplacer,
+	instantiator: &Instantiator,
 	loc: Loc,
 	diags: &mut ArrBuilder<Diagnostic>,
 ) -> InstCls {
 	map_inst_cls(
 		inst_cls,
-		|arg| instantiate_ty_and_forbid_effects(narrowed_effect, arg, replacer, loc, diags),
+		|arg| instantiate_ty_and_forbid_effects(narrowed_effect, arg, instantiator, loc, diags),
 	)
 }
 
-fn instantiate_inst_cls(inst_cls: &InstCls, replacer: &TyReplacer) -> InstCls {
-	map_inst_cls(inst_cls, |arg| instantiate_ty(arg, replacer))
+fn instantiate_inst_cls(inst_cls: &InstCls, instantiator: &Instantiator) -> InstCls {
+	map_inst_cls(inst_cls, |arg| instantiate_type(arg, instantiator))
 }
 
 fn map_inst_cls<F: FnMut(&Ty) -> Ty>(
-	&InstCls(ref class_declaration, ref ty_arguments): &InstCls,
-	replace_arg: F,
+	&InstCls(ref decl, ref type_args): &InstCls,
+	replace_type_arg: F,
 ) -> InstCls {
-	let new_ty_arguments = ty_arguments.map(replace_arg);
-	InstCls(class_declaration.clone_ptr(), new_ty_arguments)
+	let new_ty_arguments = type_args.map(replace_type_arg);
+	InstCls(decl.clone_ptr(), new_ty_arguments)
 }
 
-pub fn instantiate_ty(ty: &Ty, replacer: &TyReplacer) -> Ty {
+pub fn instantiate_type(ty: &Ty, instantiator: &Instantiator) -> Ty {
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
-		Ty::Param(ref p) => replacer.replace_or_same(p),
-		Ty::Plain(effect, ref inst_cls) => Ty::Plain(
-			effect,
-			instantiate_inst_cls(inst_cls, replacer),
-		),
+		Ty::Param(ref p) => instantiator.replace_or_same(p),
+		Ty::Plain(effect, ref inst_cls) => {
+			let cls = instantiate_inst_cls(inst_cls, instantiator);
+			Ty::Plain(effect, cls)
+		}
 	}
 }

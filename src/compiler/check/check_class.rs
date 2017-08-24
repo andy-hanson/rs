@@ -12,7 +12,7 @@ use super::super::parse::ast;
 
 use super::check_expr::check_method_body;
 use super::ctx::Ctx;
-use super::ty_replacer::TyReplacer;
+use super::instantiator::Instantiator;
 
 pub fn check_class(
 	imports: Arr<Imported>,
@@ -58,7 +58,7 @@ fn do_check(ctx: &mut Ctx, ast: &ast::ClassDeclaration) {
 			Some(ref body) => Some(check_method_body(
 				ctx,
 				&MethodOrImpl::Method(method.clone_ptr()),
-				&TyReplacer::do_nothing(),
+				&Instantiator::nil(),
 				method.is_static,
 				body,
 			)),

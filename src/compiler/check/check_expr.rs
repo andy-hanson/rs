@@ -9,30 +9,29 @@ use super::super::diag::Diag;
 use super::super::model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration};
 use super::super::model::effect::{EFFECT_MAX, Effect};
 use super::super::model::expr::{Case, Catch, Expr, ExprData, Local, Pattern};
-use super::super::model::method::{MethodInst, MethodOrAbstract, MethodOrImpl, Parameter};
+use super::super::model::method::{InstMethod, MethodOrAbstract, MethodOrImpl, Parameter};
 use super::super::model::ty::{InstCls, Ty};
 use super::super::parse::ast;
 
 use super::class_utils::{InstMember, try_get_member_of_inst_cls};
 use super::ctx::Ctx;
-use super::ty_replacer::TyReplacer;
-use super::ty_utils::{get_common_compatible_type, instantiate_ty,
-                      instantiate_ty_and_narrow_effects, is_assignable};
+use super::instantiator::Instantiator;
+use super::type_utils::{common_type, instantiate_and_narrow_effects, instantiate_type,
+                        is_assignable};
 
 pub fn check_method_body(
 	ctx: &Ctx,
 	method_or_impl: &MethodOrImpl,
-	method_replacer: &TyReplacer,
+	method_instantiator: &Instantiator,
 	is_static: bool,
 	body: &ast::Expr,
 ) -> Expr {
-	unused!(ctx, method_replacer, is_static, body);
 	let signature = method_or_impl.signature();
-	let return_ty = instantiate_ty(&signature.return_ty, method_replacer);
-	let ectx = Ectx {
+	let return_ty = instantiate_type(&signature.return_ty, method_instantiator);
+	let ectx = CheckExprContext {
 		ctx,
 		method_or_impl,
-		method_replacer,
+		method_instantiator,
 		is_static,
 		self_effect: signature.self_effect,
 		current_parameters: &signature.parameters,
@@ -41,16 +40,16 @@ pub fn check_method_body(
 	ectx.check_return(return_ty, body)
 }
 
-struct Ectx<'a> {
+struct CheckExprContext<'a> {
 	ctx: &'a Ctx,
 	method_or_impl: &'a MethodOrImpl,
-	method_replacer: &'a TyReplacer,
+	method_instantiator: &'a Instantiator,
 	is_static: bool,
 	self_effect: Effect,
 	current_parameters: &'a Arr<Own<Parameter>>,
 	locals: RefCell<Vec<Ptr<Local>>>,
 }
-impl<'a> Ectx<'a> {
+impl<'a> CheckExprContext<'a> {
 	fn add_diagnostic(&self, loc: Loc, data: Diag) {
 		self.ctx.add_diagnostic(loc, data)
 	}
@@ -94,15 +93,15 @@ impl<'a> Ectx<'a> {
 				}
 
 				if let Some(param) = self.current_parameters.iter().find(|p| p.name == name) {
-					let ty = instantiate_ty(&param.ty, self.method_replacer);
+					let ty = instantiate_type(&param.ty, self.method_instantiator);
 					return self.handle(&mut e, loc, ExprData::AccessParameter(param.ptr(), ty))
 				}
 
 				match self.ctx.get_own_member_or_add_diagnostic(loc, name) {
-					Some(InstMember(member_decl, member_ty_replacer)) =>
+					Some(InstMember(member_decl, member_instantiator)) =>
 						match member_decl {
 							MemberDeclaration::Slot(slot) =>
-								self.get_own_slot(&mut e, loc, slot, member_ty_replacer),
+								self.get_own_slot(&mut e, loc, slot, member_instantiator),
 							MemberDeclaration::Method(_) | MemberDeclaration::AbstractMethod(_) =>
 								todo!(), //diagnostic
 						},
@@ -127,7 +126,8 @@ impl<'a> Ectx<'a> {
 				// For recursion, need to do substitution in case we are
 				// implementing an abstract method where the superclass took type arguments.
 				let moa = &self.method_or_impl.method_or_abstract();
-				let args = match self.check_arguments(loc, moa, self.method_replacer, ArgAsts::Many(arg_asts)) {
+				let inst = self.method_instantiator;
+				let args = match self.check_arguments(loc, moa, inst, ArgAsts::Many(arg_asts)) {
 					Some(a) => a,
 					None => return handle_bogus(&mut e, loc)
 				};
@@ -152,9 +152,9 @@ impl<'a> Ectx<'a> {
 
 				let ty_args = self.get_ty_args(ty_arg_asts);
 				let inst_cls = InstCls(self.ctx.current_class.ptr(), ty_args);
-				let replacer = TyReplacer::of_inst_cls(&inst_cls);
+				let instantiator = Instantiator::of_inst_cls(&inst_cls);
 				let args = arg_asts.zip(slots, |arg, slot|
-					self.check_subtype(instantiate_ty(&slot.ty, &replacer), arg));
+					self.check_subtype(instantiate_type(&slot.ty, &instantiator), arg));
 				let ty = Ty::Plain(EFFECT_MAX, inst_cls);
 				self.handle(&mut e, loc, ExprData::New(ty, args))
 			}
@@ -168,7 +168,7 @@ impl<'a> Ectx<'a> {
 					Ty::Bogus =>
 						return handle_bogus(&mut e, loc),
 					Ty::Plain(target_effect, ref target_class) => {
-						let InstMember(member_decl, replacer) =
+						let InstMember(member_decl, instantiator) =
 							//TODO: just get_slot_of_inst_cls_or_add_diagnostic
 							match self.get_member_of_inst_cls(target.loc(), target_class, property_name) {
 								Some(m) => m,
@@ -184,8 +184,8 @@ impl<'a> Ectx<'a> {
 						if slot.mutable && !target_effect.can_get() {
 							self.add_diagnostic(loc, Diag::MissingEffectToGetSlot(slot.clone_ptr()))
 						}
-						let slot_ty = instantiate_ty_and_narrow_effects(
-							target_effect, &slot.ty, &replacer, loc, &mut self.ctx.borrow_diags());
+						let slot_ty = instantiate_and_narrow_effects(
+							target_effect, &slot.ty, &instantiator, loc, &mut self.ctx.borrow_diags());
 						(slot, slot_ty)
 					},
 					Ty::Param(_) =>
@@ -194,7 +194,7 @@ impl<'a> Ectx<'a> {
 				self.handle(&mut e, loc, ExprData::GetSlot(Box::new(target), slot, slot_ty))
 			}
 			ast::ExprData::SetProperty(property_name, ref value_ast) => {
-				let InstMember(member_decl, replacer) =
+				let InstMember(member_decl, instantiator) =
 					match self.ctx.get_own_member_or_add_diagnostic(loc, property_name) {
 						Some(m) => m,
 						None => return handle_bogus(&mut e, loc)
@@ -213,7 +213,7 @@ impl<'a> Ectx<'a> {
 					self.add_diagnostic(loc, Diag::MissingEffectToSetSlot(self.self_effect, slot.clone_ptr()))
 				}
 
-				let value = self.check_subtype(instantiate_ty(&slot.ty, &replacer), value_ast);
+				let value = self.check_subtype(instantiate_type(&slot.ty, &instantiator), value_ast);
 				self.handle(&mut e, loc, ExprData::SetSlot(slot, Box::new(value)))
 			}
 			ast::ExprData::LetInProgress(_, _) =>
@@ -268,13 +268,17 @@ impl<'a> Ectx<'a> {
                 let expr = ExprData::SelfExpr(Ty::Plain(self.self_effect, self.current_inst_cls()));
 				self.handle(&mut e, loc, expr)
 			}
-			ast::ExprData::IfElse(ref condition_ast, ref then_ast, ref else_ast) => {
-				let cond = self.check_bool(condition_ast);
+			ast::ExprData::IfElse(ref test_ast, ref then_ast, ref else_ast) => {
+				let test = self.check_bool(test_ast);
 				let then = self.check_expr(&mut e, then_ast);
 				let elze = self.check_expr(&mut e, else_ast);
+                let ifelse = ExprData::IfElse {
+					test: Box::new(test),
+					then: Box::new(then),
+					elze: Box::new(elze),
+					ty: e.inferred_ty().clone(),
+				};
 				// 'expected' was handled in both 'then' and 'else'.
-                let ty = e.inferred_ty().clone();
-                let ifelse = ExprData::IfElse(Box::new(cond), Box::new(then), Box::new(elze), ty);
 				Handled(Expr(loc, ifelse))
 			}
 			ast::ExprData::WhenTest(ref case_asts, ref else_ast) => {
@@ -292,14 +296,7 @@ impl<'a> Ectx<'a> {
 				self.handle(&mut e, loc, ExprData::Assert(Box::new(asserted)))
 			}
 			ast::ExprData::Try(ref do_ast, ref op_catch_ast, ref op_finally_ast) => {
-				let do_ = self.check_expr(&mut e, do_ast);
-				/*
-				pub loc: Loc,
-				pub exception_ty: Ty,
-				pub exception_name_loc: Loc,
-				pub exception_name: Sym,
-				pub then: Box<Expr>,
-				*/
+				let body = self.check_expr(&mut e, do_ast);
 				let catch = op_catch_ast.as_ref().map(|catch| {
                     let &ast::Catch {
 						loc: catch_loc,
@@ -320,8 +317,9 @@ impl<'a> Ectx<'a> {
 					Catch(catch_loc, caught, Box::new(then))
 				});
 				let finally = op_finally_ast.as_ref().map(|f| Box::new(self.check_void(f)));
+				let try = ExprData::Try { body: Box::new(body), catch, finally, ty: e.inferred_ty().clone() };
 				// 'expected' handled when checking 'do' and 'catch'
-				Handled(Expr(loc, ExprData::Try(Box::new(do_), catch, finally, e.inferred_ty().clone())))
+				Handled(Expr(loc, try))
 			}
 			ast::ExprData::For(_, _, _) => //(local_name, ref looper, ref body) =>
 				todo!(),
@@ -430,7 +428,7 @@ impl<'a> Ectx<'a> {
 		let args = match self.check_call_arguments(
 			loc,
 			&method_inst,
-			&TyReplacer::do_nothing(),
+			&Instantiator::nil(),
 			ArgAsts::Many(arg_asts),
 		) {
 			Some(a) => a,
@@ -456,7 +454,7 @@ impl<'a> Ectx<'a> {
 	) -> Handled {
 		// Note: InstCls is still relevent here:
 		// Even if 'self' is not an inst, in a superclass we will fill in type parameters.
-		let InstMember(member_decl, member_replacer) =
+		let InstMember(member_decl, member_instantiator) =
 			match self.get_member_of_inst_cls(loc, &self.current_inst_cls(), method_name) {
 				Some(m) => m,
 				None => return handle_bogus(&mut expected, loc),
@@ -481,7 +479,7 @@ impl<'a> Ectx<'a> {
 		let args = match self.check_call_arguments(
 			loc,
 			&method_inst,
-			&member_replacer,
+			&member_instantiator,
 			ArgAsts::Many(arg_asts),
 		) {
 			Some(a) => a,
@@ -527,7 +525,7 @@ impl<'a> Ectx<'a> {
 				// Already issued an error, don't need another.
 				return handle_bogus(&mut expected, loc),
 			Ty::Plain(target_effect, ref target_inst_cls) => {
-				let InstMember(member_decl, member_replacer) =
+				let InstMember(member_decl, member_instantiator) =
 					match self.get_member_of_inst_cls(loc, target_inst_cls, method_name) {
 						Some(member) => member,
 						None => return handle_bogus(&mut expected, loc)
@@ -560,12 +558,12 @@ impl<'a> Ectx<'a> {
 					None => return handle_bogus(&mut expected, loc)
 				};
 
-				let args = match self.check_call_arguments(loc, &method_inst, &member_replacer, arg_asts) {
+				let args = match self.check_call_arguments(loc, &method_inst, &member_instantiator, arg_asts) {
 					Some(a) => a,
 					None => return handle_bogus(&mut expected, loc)
 				};
 
-				let ty = instantiate_return_type_with_extra_replacer(&method_inst, &member_replacer);
+				let ty = instantiate_return_type_with_extra_instantiator(&method_inst, &member_instantiator);
 				(method_inst, args, ty)
 			}
 			Ty::Param(_) =>
@@ -578,32 +576,37 @@ impl<'a> Ectx<'a> {
 	fn check_call_arguments(
 		&self,
 		loc: Loc,
-		method_inst: &MethodInst,
-		replacer: &TyReplacer,
+		method_inst: &InstMethod,
+		extra_instantiator: &Instantiator,
 		arg_asts: ArgAsts,
 	) -> Option<Arr<Expr>> {
 		let method_decl = &method_inst.0;
-		let replacer = TyReplacer::of_inst_method(method_inst).combine(replacer);
-		self.check_arguments(loc, method_decl, &replacer, arg_asts)
+		let instantiator = Instantiator::of_inst_method(method_inst).combine(extra_instantiator);
+		self.check_arguments(loc, method_decl, &instantiator, arg_asts)
 	}
 
 	fn check_arguments(
 		&self,
 		loc: Loc,
 		method_decl: &MethodOrAbstract,
-		replacer: &TyReplacer,
+		instantiator: &Instantiator,
 		arg_asts: ArgAsts,
 	) -> Option<Arr<Expr>> {
 		let parameters = method_decl.parameters();
 		match arg_asts {
 			ArgAsts::One(arg_ast) => {
-				if let Some(parameter) = parameters.only() {
-					Some(
-						Arr::_1(self.check_subtype(instantiate_ty(&parameter.ty, replacer), arg_ast)),
-					)
-				} else {
-					self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl.copy(), 1));
-					None
+				match parameters.only() {
+					Some(parameter) => {
+						let ty = instantiate_type(&parameter.ty, instantiator);
+						Some(Arr::_1(self.check_subtype(ty, arg_ast)))
+					}
+					None => {
+						self.add_diagnostic(
+							loc,
+							Diag::ArgumentCountMismatch(method_decl.copy(), 1),
+						);
+						None
+					}
 				}
 			}
 			ArgAsts::Many(arg_asts_array) => {
@@ -615,7 +618,7 @@ impl<'a> Ectx<'a> {
 					None
 				} else {
 					Some(parameters.zip(arg_asts_array, |parameter, arg_ast| {
-						self.check_subtype(instantiate_ty(&parameter.ty, replacer), arg_ast)
+						self.check_subtype(instantiate_type(&parameter.ty, instantiator), arg_ast)
 					}))
 				}
 			}
@@ -631,11 +634,11 @@ impl<'a> Ectx<'a> {
 		&self,
 		method_decl: &MethodOrAbstract,
 		ty_arg_asts: &Arr<ast::Ty>,
-	) -> Option<MethodInst> {
+	) -> Option<InstMethod> {
 		if ty_arg_asts.len() != method_decl.type_parameters().len() {
 			todo!()
 		}
-		Some(MethodInst(method_decl.copy(), self.get_ty_args(ty_arg_asts)))
+		Some(InstMethod(method_decl.copy(), self.get_ty_args(ty_arg_asts)))
 	}
 
 	/*
@@ -661,7 +664,7 @@ impl<'a> Ectx<'a> {
 		mut expected: &mut Expected,
 		loc: Loc,
 		slot: Ptr<SlotDeclaration>,
-		replacer: TyReplacer,
+		instantiator: Instantiator,
 	) -> Handled {
 		if self.is_static {
 			self.add_diagnostic(loc, Diag::CantAccessSlotFromStaticMethod(slot));
@@ -672,10 +675,10 @@ impl<'a> Ectx<'a> {
 			self.add_diagnostic(loc, Diag::MissingEffectToGetSlot(slot.clone_ptr()))
 		}
 
-		let slot_ty = instantiate_ty_and_narrow_effects(
+		let slot_ty = instantiate_and_narrow_effects(
 			self.self_effect,
 			&slot.ty,
-			&replacer,
+			&instantiator,
 			loc,
 			&mut self.ctx.borrow_diags(),
 		);
@@ -711,13 +714,10 @@ impl<'a> Ectx<'a> {
 	}
 
 	fn get_compatible_type(&self, loc: Loc, a: &Ty, b: &Ty) -> Ty {
-		match get_common_compatible_type(a, b) {
-			Some(c) => c,
-			None => {
-				self.add_diagnostic(loc, Diag::CantCombineTypes(a.clone(), b.clone()));
-				Ty::Bogus
-			}
-		}
+		common_type(a, b).unwrap_or_else(|| {
+			self.add_diagnostic(loc, Diag::CantCombineTypes(a.clone(), b.clone()));
+			Ty::Bogus
+		})
 	}
 }
 
@@ -767,16 +767,16 @@ enum ArgAsts<'a> {
 }
 
 //mv
-fn instantiate_return_type(inst_method: &MethodInst) -> Ty {
-	instantiate_ty(inst_method.0.return_ty(), &TyReplacer::of_inst_method(inst_method))
+fn instantiate_return_type(inst_method: &InstMethod) -> Ty {
+	instantiate_type(inst_method.0.return_ty(), &Instantiator::of_inst_method(inst_method))
 }
 
-fn instantiate_return_type_with_extra_replacer(
-	inst_method: &MethodInst,
-	replacer: &TyReplacer,
+fn instantiate_return_type_with_extra_instantiator(
+	inst_method: &InstMethod,
+	instantiator: &Instantiator,
 ) -> Ty {
-	instantiate_ty(
+	instantiate_type(
 		inst_method.0.return_ty(),
-		&TyReplacer::of_inst_method(inst_method).combine(replacer),
+		&Instantiator::of_inst_method(inst_method).combine(instantiator),
 	)
 }

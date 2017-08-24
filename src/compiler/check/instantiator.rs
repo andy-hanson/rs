@@ -1,7 +1,7 @@
 use util::arr::Arr;
 use util::ptr::{Own, Ptr};
 
-use super::super::model::method::MethodInst;
+use super::super::model::method::InstMethod;
 use super::super::model::ty::{InstCls, Ty, TypeParameter};
 
 struct Inner(Ptr<TypeParameter>, Ty);
@@ -11,20 +11,18 @@ impl Clone for Inner {
 	}
 }
 
-pub struct TyReplacer(Arr<Inner>);
-impl TyReplacer {
-	pub fn do_nothing() -> TyReplacer {
-		TyReplacer(Arr::empty())
+pub struct Instantiator(Arr<Inner>);
+impl Instantiator {
+	pub fn nil() -> Instantiator {
+		Instantiator(Arr::empty())
 	}
 
-	pub fn of_inst_cls(&InstCls(ref class, ref type_arguments): &InstCls) -> TyReplacer {
+	pub fn of_inst_cls(&InstCls(ref class, ref type_arguments): &InstCls) -> Instantiator {
 		new(&class.type_parameters, type_arguments)
 	}
 
-	pub fn of_inst_method(
-		&MethodInst(ref method_decl, ref type_arguments): &MethodInst,
-	) -> TyReplacer {
-		new(method_decl.type_parameters(), type_arguments)
+	pub fn of_inst_method(&InstMethod(ref decl, ref type_arguments): &InstMethod) -> Instantiator {
+		new(decl.type_parameters(), type_arguments)
 	}
 
 	pub fn replace_or_same(&self, ty: &Ptr<TypeParameter>) -> Ty {
@@ -43,8 +41,8 @@ impl TyReplacer {
 		None
 	}
 
-	pub fn combine(&self, other: &TyReplacer) -> TyReplacer {
-		TyReplacer(self.0.concat(&other.0))
+	pub fn combine(&self, other: &Instantiator) -> Instantiator {
+		Instantiator(self.0.concat(&other.0))
 	}
 
 	/*pub fn add_inst_cls(&mut self, (class_declaration, type_arguments): InstCls) {
@@ -62,8 +60,8 @@ impl TyReplacer {
 	}*/
 }
 
-fn new(type_parameters: &Arr<Own<TypeParameter>>, type_arguments: &Arr<Ty>) -> TyReplacer {
+fn new(type_parameters: &Arr<Own<TypeParameter>>, type_arguments: &Arr<Ty>) -> Instantiator {
 	assert_eq!(type_parameters.len(), type_arguments.len());
 	let s = type_parameters.zip(type_arguments, |tp, ta| Inner(tp.ptr(), ta.clone()));
-	TyReplacer(s)
+	Instantiator(s)
 }

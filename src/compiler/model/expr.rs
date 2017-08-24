@@ -1,5 +1,5 @@
 use super::class::SlotDeclaration;
-use super::method::{MethodInst, MethodOrImpl, Parameter};
+use super::method::{InstMethod, MethodOrImpl, Parameter};
 use super::ty::Ty;
 
 use util::arr::{Arr, ArrBuilder};
@@ -83,85 +83,26 @@ impl Expr {
 pub enum ExprData {
 	BogusCast(Ty, Box<Expr>),
 	Bogus(Ty),
-	AccessParameter(
-		Ptr<Parameter>,
-		/*not_data*/
-		Ty
-	),
+	AccessParameter(Ptr<Parameter>, Ty),
 	AccessLocal(Ptr<Local>),
 	Let(Pattern, Box<Expr>, Box<Expr>),
 	Seq(Box<Expr>, Box<Expr>),
 	Literal(LiteralValue),
-	IfElse(
-		/*test*/
-		Box<Expr>,
-		/*then*/
-		Box<Expr>,
-		/*else*/
-		Box<Expr>,
-		/*not_data*/
-		Ty
-	),
-	WhenTest(
-		Arr<Case>,
-		/*else*/
-		Box<Expr>,
-		/*not_data*/
-		Ty
-	),
-	Try(
-		/*do*/
-		Box<Expr>,
-		Option<Catch>,
-		/*finally*/
-		Option<Box<Expr>>,
-		/*not_data*/
-		Ty
-	),
+	IfElse { test: Box<Expr>, then: Box<Expr>, elze: Box<Expr>, ty: Ty },
+	WhenTest(Arr<Case>, Box<Expr>, Ty),
+	Try { body: Box<Expr>, catch: Option<Catch>, finally: Option<Box<Expr>>, ty: Ty },
 	For(For),
-	StaticMethodCall(
-		MethodInst,
-		Arr<Expr>,
-		/*not_data*/
-		Ty
-	),
-	InstanceMethodCall(
-		Box<Expr>,
-		MethodInst,
-		Arr<Expr>,
-		/*not_data*/
-		Ty
-	),
-	MyInstanceMethodCall(
-		MethodInst,
-		Arr<Expr>,
-		/*not_data*/
-		Ty
-	),
+	StaticMethodCall(InstMethod, Arr<Expr>, Ty),
+	InstanceMethodCall(Box<Expr>, InstMethod, Arr<Expr>, Ty),
+	MyInstanceMethodCall(InstMethod, Arr<Expr>, Ty),
 	// We store the Ty here instead of an InstCls so we can easily get a reference to it;
 	// It should always by Ty::Plain(EFFECT_MAX, some_InstCls).
 	New(Ty, Arr<Expr>),
-	ArrayLiteral(
-		/*element_type*/
-		Ty,
-		Arr<Expr>
-	),
-	GetMySlot(
-		Ptr<SlotDeclaration>,
-		/*not_data*/
-		Ty
-	),
-	GetSlot(
-		Box<Expr>,
-		Ptr<SlotDeclaration>,
-		/*not_data*/
-		Ty
-	),
+	ArrayLiteral { element_ty: Ty, elements: Arr<Expr> },
+	GetMySlot(Ptr<SlotDeclaration>, Ty),
+	GetSlot(Box<Expr>, Ptr<SlotDeclaration>, Ty),
 	SetSlot(Ptr<SlotDeclaration>, Box<Expr>),
-	SelfExpr(
-		/*not_data*/
-		Ty
-	),
+	SelfExpr(Ty),
 	Assert(Box<Expr>),
 	//RecurMethod(Ptr<MethodWithBody>, Arr<Expr>),
 	//RecurImpl(Ptr<Impl>, Arr<Expr>),
@@ -173,9 +114,9 @@ impl ExprData {
 			ExprData::BogusCast(ref ty, _) |
 			ExprData::Bogus(ref ty) |
 			ExprData::AccessParameter(_, ref ty) |
-			ExprData::IfElse(_, _, _, ref ty) |
+			ExprData::IfElse { ref ty, .. } |
 			ExprData::WhenTest(_, _, ref ty) |
-			ExprData::Try(_, _, _, ref ty) |
+			ExprData::Try { ref ty, .. } |
 			ExprData::StaticMethodCall(_, _, ref ty) |
 			ExprData::InstanceMethodCall(_, _, _, ref ty) |
 			ExprData::MyInstanceMethodCall(_, _, ref ty) |
@@ -188,7 +129,7 @@ impl ExprData {
 			ExprData::Seq(_, ref then) => then.ty(),
 			ExprData::Literal(ref v) => v.ty(),
 			ExprData::For(ref f) => &f.result_ty,
-			ExprData::ArrayLiteral(_, _) => todo!(), //array[array type]
+			ExprData::ArrayLiteral { .. } => todo!(), //array[array type]
 			ExprData::SetSlot(_, _) => todo!(), //void
 			ExprData::Assert(_) => todo!(), //void
 			//&ExprData::RecurMethod(ref method, _) => method.return_ty(),
@@ -202,7 +143,7 @@ impl ExprData {
 			ExprData::Let(_, ref a, ref b)
 				| ExprData::Seq(ref a, ref b)
 				=> Arr::_2(a, b),
-			ExprData::IfElse(ref test, ref then, ref elze, _) =>
+			ExprData::IfElse { ref test, ref then, ref elze, .. } =>
 				Arr::_3(test, then, elze),
 			ExprData::WhenTest(ref cases, ref elze, _) => {
 				let mut b = ArrBuilder::<&Expr>::new();
@@ -213,15 +154,15 @@ impl ExprData {
 				b.add(elze);
 				b.finish()
 			}
-			ExprData::Try(ref do_, ref catch, ref finally, _) =>
+			ExprData::Try { ref body, ref catch, ref finally, .. } =>
 				match *catch {
 					Some(Catch(_, _, ref catch_result)) =>
 						match *finally {
-							Some(ref f) => Arr::_3(do_, catch_result, f),
-							None => Arr::_2(do_, catch_result)
+							Some(ref f) => Arr::_3(body, catch_result, f),
+							None => Arr::_2(body, catch_result)
 						},
 					None =>
-						match *finally { Some(ref f) => Arr::_2(do_, f), None => Arr::_1(do_) }
+						match *finally { Some(ref f) => Arr::_2(body, f), None => Arr::_1(body) }
 				},
 			ExprData::For(ref f) => Arr::_2(&f.looper, &f.body),
 			ExprData::InstanceMethodCall(ref target, _, ref args, _) => {
@@ -235,7 +176,7 @@ impl ExprData {
 				| ExprData::Assert(ref e)
 				| ExprData::BogusCast(_, ref e)
 				=> Arr::_1(e),
-			ExprData::ArrayLiteral(_, ref args)
+			ExprData::ArrayLiteral { elements: ref args, .. }
 				| ExprData::New(_, ref args)
 				| ExprData::MyInstanceMethodCall(_, ref args, _)
 				| ExprData::StaticMethodCall(_, ref args, _)

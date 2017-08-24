@@ -554,7 +554,7 @@ impl<'a> Ectx<'a> {
 		Some(MethodInst(method_decl.copy(), self.get_ty_args(ty_arg_asts)))
 	}
 
-	/**
+	/*
 	NOTE: Caller is responsible for checking that we can access this member's effect!
 	If this returns None, we've already handled the error reporting, so just call handleBogus.
 	*/
@@ -626,10 +626,10 @@ fn handle_bogus(expected: &mut Expected, loc: Loc) -> Handled {
 struct Handled(Expr);
 
 enum Expected {
-	/** Return is identical to SubTypeOf, but marks that we're in a tail call position. */
+	/* Return is identical to SubTypeOf, but marks that we're in a tail call position. */
 	Return(Ty),
 	SubTypeOf(Ty),
-	/** Expected should always be passed by `&mut`, so that inferred types can be inserted here. */
+	/* Expected should always be passed by `&mut`, so that inferred types can be inserted here. */
 	Infer(Option<Ty>), //todo: unsafecell?
 }
 impl Expected {

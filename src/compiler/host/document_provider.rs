@@ -6,7 +6,7 @@ use super::file_input::{ FileInput, NativeFileInput, Result };
 
 pub trait DocumentProvider {
 	fn root_name(&self) -> Sym;
-	/**
+	/*
 	None for document not found.
 	Result::Err for any other error.
 	*/

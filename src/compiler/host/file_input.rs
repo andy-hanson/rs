@@ -8,7 +8,7 @@ use util::sym::Sym;
 
 pub trait FileInput {
 	fn root_name(&self) -> Sym;
-	/**
+	/*
 	None for file not found.
 	Result::Err for any other problems reading.
 	*/

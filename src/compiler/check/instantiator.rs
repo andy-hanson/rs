@@ -26,16 +26,15 @@ impl Instantiator {
 	}
 
 	pub fn replace_or_same(&self, ty: &Ptr<TypeParameter>) -> Ty {
-		self.replace(ty).unwrap_or_else(
-			|| Ty::Param(ty.clone_ptr()),
-		)
+		self.replace(ty)
+			.unwrap_or_else(|| Ty::Param(ty.clone_ptr()))
 	}
 
 	pub fn replace(&self, tp: &Ptr<TypeParameter>) -> Option<Ty> {
 		for i in 0..self.0.len() {
 			let &Inner(ref ty_parameter, ref replace_ty) = &self.0[i];
 			if tp.fast_equals(ty_parameter) {
-				return Some(replace_ty.clone());
+				return Some(replace_ty.clone())
 			}
 		}
 		None

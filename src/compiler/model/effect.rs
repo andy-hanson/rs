@@ -11,7 +11,11 @@ impl Effect {
 	}
 
 	pub fn min_common_effect(self, other: Effect) -> Effect {
-		if self.contains(other) { self } else { other }
+		if self.contains(other) {
+			self
+		} else {
+			other
+		}
 	}
 
 	pub fn is_pure(self) -> bool {

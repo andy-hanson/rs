@@ -32,7 +32,7 @@ fn parse_imports(l: &mut Lexer) -> Result<Arr<ast::Import>> {
 	let mut b = ArrBuilder::<ast::Import>::new();
 	loop {
 		if l.try_take_newline()? {
-			break Ok(b.finish());
+			break Ok(b.finish())
 		}
 
 		l.take_space()?;
@@ -73,7 +73,7 @@ fn parse_class(l: &mut Lexer, start: Pos, kw: Token) -> Result<ast::ClassDeclara
 fn try_parse_class_generic(l: &mut Lexer, start: Pos, kw: Token) -> Result<(Arr<Sym>, Pos, Token)> {
 	// e.g. `generic[T]`
 	if kw != Token::Generic {
-		return Ok((Arr::empty(), start, kw));
+		return Ok((Arr::empty(), start, kw))
 	}
 
 	l.take_bracketl()?;
@@ -82,7 +82,7 @@ fn try_parse_class_generic(l: &mut Lexer, start: Pos, kw: Token) -> Result<(Arr<
 		type_parameters.add(l.take_ty_name()?);
 		let is_next = !l.try_take_bracketr();
 		if !is_next {
-			break;
+			break
 		}
 		l.take_comma()?;
 		l.take_space()?;
@@ -214,7 +214,7 @@ fn parse_parameters(l: &mut Lexer, first: Option<ast::Parameter>) -> Result<Arr<
 	let mut parameters = ArrBuilder::<ast::Parameter>::new_with_optional_first(first);
 	loop {
 		if l.try_take_parenr() {
-			break Ok(parameters.finish());
+			break Ok(parameters.finish())
 		}
 		l.take_comma()?;
 		l.take_space()?;
@@ -234,7 +234,7 @@ fn parse_supers(
 	let mut supers = ArrBuilder::<ast::Super>::new();
 	loop {
 		if next != MethodKw::Is {
-			break Ok((supers.finish(), start, next));
+			break Ok((supers.finish(), start, next))
 		}
 
 		supers.add(parse_super(l, start)?);
@@ -269,7 +269,7 @@ fn parse_impls(l: &mut Lexer) -> Result<Arr<ast::Impl>> {
 			let mut b = ArrBuilder::<Sym>::new_with_first(first);
 			loop {
 				if l.try_take_parenr() {
-					break b.finish();
+					break b.finish()
 				}
 				l.take_comma()?;
 				l.take_space()?;
@@ -282,7 +282,7 @@ fn parse_impls(l: &mut Lexer) -> Result<Arr<ast::Impl>> {
 
 		impls.add(ast::Impl::of(l.loc_from(start), name, parameters, body));
 		if l.try_take_dedent_from_dedenting() {
-			break Ok(impls.finish());
+			break Ok(impls.finish())
 		}
 	}
 }

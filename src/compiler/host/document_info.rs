@@ -1,6 +1,6 @@
 use util::arr::Arr;
 
-use compiler::parse::{Result, parse};
+use compiler::parse::{parse, Result};
 use compiler::parse::ast::Module;
 
 pub struct DocumentInfo {

@@ -15,7 +15,7 @@ pub enum Diag {
 		/*expected*/
 		u32,
 		/*actual*/
-		u32
+		u32,
 	),
 	LeadingSpace,
 	TrailingSpace,
@@ -31,7 +31,7 @@ pub enum Diag {
 		/*expected*/
 		Ty,
 		/*actual*/
-		Ty
+		Ty,
 	),
 	MemberNotFound(Ptr<ClassDeclaration>, Sym),
 	CantAccessSlotFromStaticMethod(Ptr<SlotDeclaration>),
@@ -39,7 +39,7 @@ pub enum Diag {
 	MissingEffectToSetSlot(
 		/*actual*/
 		Effect,
-		Ptr<SlotDeclaration>
+		Ptr<SlotDeclaration>,
 	),
 	DelegatesNotYetSupported,
 	CantAccessStaticMethodThroughInstance(Ptr<MethodWithBody>),
@@ -47,7 +47,7 @@ pub enum Diag {
 		/*allowed*/
 		Effect,
 		/*actual*/
-		Effect
+		Effect,
 	),
 	ArgumentCountMismatch(MethodOrAbstract, usize),
 	ClassNotFound(Sym),
@@ -59,7 +59,7 @@ pub enum Diag {
 		/*actual*/
 		usize,
 		/*expected*/
-		usize
+		usize,
 	),
 	CantSetNonSlot(MemberDeclaration),
 	SlotNotMutable(Ptr<SlotDeclaration>),

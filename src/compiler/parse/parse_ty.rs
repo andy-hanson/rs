@@ -71,7 +71,7 @@ pub fn try_take_type_parameters(l: &mut Lexer) -> Result<Arr<Sym>> {
 		loop {
 			b.add(l.take_ty_name()?);
 			if l.try_take_bracketr() {
-				break Ok(b.finish());
+				break Ok(b.finish())
 			}
 			l.take_comma()?;
 			l.take_space()?;
@@ -107,7 +107,7 @@ pub fn take_type_arguments_after_passing_bracketl(l: &mut Lexer) -> Result<Arr<a
 	loop {
 		b.add(parse_ty(l)?);
 		if l.try_take_bracketr() {
-			break Ok(b.finish());
+			break Ok(b.finish())
 		}
 		l.take_comma()?;
 		l.take_space()?;

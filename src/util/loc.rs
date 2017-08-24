@@ -98,7 +98,7 @@ impl LineAndColumnGetter {
 			let middle_pos = self.line_to_pos[middle_line as usize];
 
 			if middle_pos == pos_index {
-				return LineAndColumn { line: middle_line, column: 0 };
+				return LineAndColumn { line: middle_line, column: 0 }
 			} else if middle_pos > pos_index {
 				high_line = middle_line - 1
 			} else {

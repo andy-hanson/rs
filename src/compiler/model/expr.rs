@@ -45,7 +45,7 @@ pub struct Case(
 	/*test*/
 	pub Box<Expr>,
 	/*result*/
-	pub Box<Expr>
+	pub Box<Expr>,
 );
 
 pub struct Catch(
@@ -53,7 +53,7 @@ pub struct Catch(
 	/*caught*/
 	pub Own<Local>,
 	/*result*/
-	pub Box<Expr>
+	pub Box<Expr>,
 );
 
 pub struct For {
@@ -111,27 +111,26 @@ pub enum ExprData {
 impl ExprData {
 	pub fn ty(&self) -> &Ty {
 		match *self {
-			ExprData::BogusCast(ref ty, _) |
-			ExprData::Bogus(ref ty) |
-			ExprData::AccessParameter(_, ref ty) |
-			ExprData::IfElse { ref ty, .. } |
-			ExprData::WhenTest(_, _, ref ty) |
-			ExprData::Try { ref ty, .. } |
-			ExprData::StaticMethodCall(_, _, ref ty) |
-			ExprData::InstanceMethodCall(_, _, _, ref ty) |
-			ExprData::MyInstanceMethodCall(_, _, ref ty) |
-			ExprData::New(ref ty, _) |
-			ExprData::GetMySlot(_, ref ty) |
-			ExprData::GetSlot(_, _, ref ty) |
-			ExprData::SelfExpr(ref ty) => ty,
+			ExprData::BogusCast(ref ty, _)
+			| ExprData::Bogus(ref ty)
+			| ExprData::AccessParameter(_, ref ty)
+			| ExprData::IfElse { ref ty, .. }
+			| ExprData::WhenTest(_, _, ref ty)
+			| ExprData::Try { ref ty, .. }
+			| ExprData::StaticMethodCall(_, _, ref ty)
+			| ExprData::InstanceMethodCall(_, _, _, ref ty)
+			| ExprData::MyInstanceMethodCall(_, _, ref ty)
+			| ExprData::New(ref ty, _)
+			| ExprData::GetMySlot(_, ref ty)
+			| ExprData::GetSlot(_, _, ref ty)
+			| ExprData::SelfExpr(ref ty) => ty,
 			ExprData::AccessLocal(ref local) => &local.ty,
-			ExprData::Let(_, _, ref then) |
-			ExprData::Seq(_, ref then) => then.ty(),
+			ExprData::Let(_, _, ref then) | ExprData::Seq(_, ref then) => then.ty(),
 			ExprData::Literal(ref v) => v.ty(),
 			ExprData::For(ref f) => &f.result_ty,
 			ExprData::ArrayLiteral { .. } => todo!(), //array[array type]
-			ExprData::SetSlot(_, _) => todo!(), //void
-			ExprData::Assert(_) => todo!(), //void
+			ExprData::SetSlot(_, _) => todo!(),       //void
+			ExprData::Assert(_) => todo!(),           //void
 			//&ExprData::RecurMethod(ref method, _) => method.return_ty(),
 			//&ExprData::RecurImpl(ref imp, _) => imp.implemented.return_ty(),
 			ExprData::Recur(ref m, _) => m.return_ty(),

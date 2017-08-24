@@ -96,7 +96,7 @@ impl<T> Arr<T> {
 	pub fn find<F: Fn(&T) -> bool>(&self, f: F) -> Option<&T> {
 		for x in self.iter() {
 			if f(x) {
-				return Some(x);
+				return Some(x)
 			}
 		}
 		None
@@ -128,11 +128,11 @@ impl<T> Arr<T> {
 
 	pub fn each_equals<F: Fn(&T, &T) -> bool>(&self, other: &Arr<T>, f: F) -> bool {
 		if self.len() != other.len() {
-			return false;
+			return false
 		}
 		for i in self.range() {
 			if !f(&self[i], &other[i]) {
-				return false;
+				return false
 			}
 		}
 		true
@@ -207,12 +207,12 @@ impl<T: Copy> Arr<T> {
 impl<T: Eq> Arr<T> {
 	pub fn ends_with(&self, other: &Arr<T>) -> bool {
 		if self.len() < other.len() {
-			return false;
+			return false
 		}
 
 		for i in other.range() {
 			if self[self.len() - i] != other[other.len() - i] {
-				return false;
+				return false
 			}
 		}
 

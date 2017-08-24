@@ -42,11 +42,11 @@ impl Path {
 		let mut first_different_part = 0;
 		loop {
 			if first_different_part == min_length {
-				break;
+				break
 			}
 
 			if self.0[first_different_part] != other.0[first_different_part] {
-				break;
+				break
 			}
 
 			first_different_part += 1

@@ -11,7 +11,7 @@ use super::super::model::module::Imported;
 use super::super::model::ty::{Ty, TypeParameter};
 use super::super::parse::ast;
 
-use super::class_utils::{InstMember, try_get_member_from_class_declaration};
+use super::class_utils::{try_get_member_from_class_declaration, InstMember};
 
 pub struct Ctx {
 	pub current_class: Own<ClassDeclaration>,
@@ -55,12 +55,12 @@ impl Ctx {
 
 	fn access_class_declaration(&self, name: Sym) -> Option<Ptr<ClassDeclaration>> {
 		if name == self.current_class.name {
-			return Some(self.current_class.ptr());
+			return Some(self.current_class.ptr())
 		}
 
 		for i in self.imports.iter() {
 			if i.name() == name {
-				return Some(i.imported_class());
+				return Some(i.imported_class())
 			}
 		}
 

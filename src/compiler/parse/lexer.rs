@@ -4,7 +4,7 @@ use std::slice::Iter;
 
 use compiler::diag::{Diag, Diagnostic};
 use util::arr::{Arr, ArrBuilder};
-use util::loc::{Loc, POS_ZERO, Pos};
+use util::loc::{Loc, Pos, POS_ZERO};
 use util::sym::Sym;
 
 use super::token::Token;
@@ -160,21 +160,21 @@ impl<'a> Lexer<'a> {
 			match self.read_char() {
 				b'"' => {
 					is_end = true;
-					break;
+					break
 				}
 				b'{' => {
 					is_end = false;
-					break;
+					break
 				}
 				b'\n' => todo!(),
 				b'\\' => {
 					let ch = self.read_char();
 					b.add(escape(ch));
-					break;
+					break
 				}
 				ch => {
 					b.add(ch);
-					break;
+					break
 				}
 			}
 		}
@@ -235,14 +235,13 @@ impl<'a> Lexer<'a> {
 				}
 			}
 
-			b' ' => {
+			b' ' =>
 				if self.peek() == b'\n' {
 					self.diagnostic = Some(Diagnostic(self.single_char_loc(), Diag::TrailingSpace));
 					Token::Diagnostic
 				} else {
 					Token::Space
-				}
-			}
+				},
 
 			b'|' => panic!(),
 
@@ -280,16 +279,17 @@ impl<'a> Lexer<'a> {
 				Token::Operator
 			}
 
-			b'-' | b'+' => if is_digit(self.peek()) {
-				self.take_number(
-					start,
-					/*isSigned*/
-					true,
-				)
-			} else {
-				self.skip_while(is_operator_char);
-				Token::Operator
-			},
+			b'-' | b'+' =>
+				if is_digit(self.peek()) {
+					self.take_number(
+						start,
+						/*isSigned*/
+						true,
+					)
+				} else {
+					self.skip_while(is_operator_char);
+					Token::Operator
+				},
 
 			b'*' | b'/' | b'^' | b'?' | b'<' | b'>' => {
 				self.skip_while(is_operator_char);
@@ -297,13 +297,11 @@ impl<'a> Lexer<'a> {
 			}
 
 			ch => {
-				self.diagnostic = Some(Diagnostic(
-					self.single_char_loc(),
-					Diag::UnrecognizedCharacter(ch as char),
-				));
+				self.diagnostic = Some(
+					Diagnostic(self.single_char_loc(), Diag::UnrecognizedCharacter(ch as char)),
+				);
 				Token::Diagnostic
 			}
-
 		}
 	}
 
@@ -432,12 +430,12 @@ impl<'a> Lexer<'a> {
 	pub fn try_take_dedent(&mut self) -> Result<bool> {
 		if self.dedenting != 0 {
 			self.dedenting -= 1;
-			return Ok(true);
+			return Ok(true)
 		}
 
 		let start = self.pos();
 		if !self.try_take(b'\n') {
-			return Ok(false);
+			return Ok(false)
 		}
 
 		let x = self.handle_newline()?;
@@ -557,20 +555,14 @@ impl<'a> Lexer<'a> {
 
 	pub fn take_ty_name_slice(&mut self) -> Result<&[u8]> {
 		let start_pos = self.pos();
-		self.expect_character_by_predicate(
-			is_upper_case_letter,
-			"type name",
-		)?;
+		self.expect_character_by_predicate(is_upper_case_letter, "type name")?;
 		self.skip_while(is_name_char);
 		Ok(self.slice_from(start_pos))
 	}
 
 	fn take_name_slice(&mut self) -> Result<&[u8]> {
 		let start_pos = self.pos();
-		self.expect_character_by_predicate(
-			is_lower_case_letter,
-			"(non-type) name",
-		)?;
+		self.expect_character_by_predicate(is_lower_case_letter, "(non-type) name")?;
 		self.skip_while(is_name_char);
 		Ok(self.slice_from(start_pos))
 	}
@@ -627,7 +619,7 @@ impl<'a> Lexer<'a> {
 
 	pub fn take_method_keyword_or_eof(&mut self) -> Result<MethodKw> {
 		if self.at_eof() {
-			return Ok(MethodKw::Eof);
+			return Ok(MethodKw::Eof)
 		}
 
 		match self.read_char() {

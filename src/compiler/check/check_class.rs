@@ -19,7 +19,6 @@ pub fn check_class(
 	ast: &ast::ClassDeclaration,
 	name: Sym,
 ) -> (Own<ClassDeclaration>, Arr<Diagnostic>) {
-
 	let type_parameters = ast.type_parameters.map_on_copies(TypeParameter::create);
 	// Create the class early and assign its properties later.
 	// This allows us to access the class' type when checking type annotations.
@@ -128,7 +127,7 @@ fn check_head(ctx: &mut Ctx, ast: Option<&ast::ClassHead>) -> ClassHead {
 			if ctx.current_class.type_parameters.any() {
 				todo!() // Error: static class can't have type parameters
 			}
-			return ClassHead::Static;
+			return ClassHead::Static
 		}
 	};
 	match *head_data {
@@ -136,12 +135,8 @@ fn check_head(ctx: &mut Ctx, ast: Option<&ast::ClassHead>) -> ClassHead {
 			unused!(loc);
 			todo!()
 		}
-		ast::ClassHeadData::Slots(_) => {
-			todo!()
-		}
-		ast::ClassHeadData::Builtin => {
-			ClassHead::Builtin
-		}
+		ast::ClassHeadData::Slots(_) => todo!(),
+		ast::ClassHeadData::Builtin => ClassHead::Builtin,
 	}
 }
 

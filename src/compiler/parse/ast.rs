@@ -237,7 +237,7 @@ pub enum ExprData {
 		/*class_name*/
 		Sym,
 		/*static_method_name*/
-		Sym
+		Sym,
 	),
 	OperatorCall(Box<Expr>, Sym, Box<Expr>),
 	TypeArguments(Box<Expr>, Arr<Ty>),
@@ -262,7 +262,7 @@ pub enum ExprData {
 		/*looper*/
 		Box<Expr>,
 		/*body*/
-		Box<Expr>
+		Box<Expr>,
 	),
 }
 
@@ -271,7 +271,7 @@ pub struct Case(
 	/*test*/
 	pub Expr,
 	/*result*/
-	pub Expr
+	pub Expr,
 );
 
 pub struct Catch {

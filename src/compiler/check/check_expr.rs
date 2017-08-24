@@ -7,13 +7,13 @@ use util::sym::Sym;
 
 use super::super::diag::Diag;
 use super::super::model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration};
-use super::super::model::effect::{EFFECT_MAX, Effect};
+use super::super::model::effect::{Effect, EFFECT_MAX};
 use super::super::model::expr::{Case, Catch, Expr, ExprData, Local, Pattern};
 use super::super::model::method::{InstMethod, MethodOrAbstract, MethodOrImpl, Parameter};
 use super::super::model::ty::{InstCls, Ty};
 use super::super::parse::ast;
 
-use super::class_utils::{InstMember, try_get_member_of_inst_cls};
+use super::class_utils::{try_get_member_of_inst_cls, InstMember};
 use super::ctx::Ctx;
 use super::instantiator::Instantiator;
 use super::type_utils::{common_type, instantiate_and_narrow_effects, instantiate_type,
@@ -352,45 +352,34 @@ impl<'a> CheckExprContext<'a> {
 		let &ast::Expr(target_loc, ref target_data) = target;
 		let arr_empty = Arr::empty();
 		let (&ast::Expr(real_target_loc, ref real_target_data), ty_arg_asts) = match *target_data {
-			ast::ExprData::TypeArguments(ref real_target, ref ty_arg_asts) => (
-				real_target.as_ref(),
-				ty_arg_asts,
-			),
+			ast::ExprData::TypeArguments(ref real_target, ref ty_arg_asts) =>
+				(real_target.as_ref(), ty_arg_asts),
 			_ => (target, &arr_empty),
 		};
 		match *real_target_data {
-			ast::ExprData::StaticAccess(class_name, static_method_name) =>
-				match self.ctx.access_class_declaration_or_add_diagnostic(
-					real_target_loc,
-					class_name,
-				) {
-					Some(cls) => self.call_static_method(
-						&mut expected,
-						loc,
-						cls,
-						static_method_name,
-						ty_arg_asts,
-						args,
-					),
-					None => handle_bogus(&mut expected, target_loc),
-				},
+			ast::ExprData::StaticAccess(class_name, static_method_name) => match self.ctx
+				.access_class_declaration_or_add_diagnostic(real_target_loc, class_name)
+			{
+				Some(cls) => self.call_static_method(
+					&mut expected,
+					loc,
+					cls,
+					static_method_name,
+					ty_arg_asts,
+					args,
+				),
+				None => handle_bogus(&mut expected, target_loc),
+			},
 			ast::ExprData::GetProperty(ref property_target, property_name) => self.call_method(
 				&mut expected,
 				loc,
 				property_target,
 				property_name,
 				ty_arg_asts,
-				ArgAsts::Many(
-					args,
-				),
+				ArgAsts::Many(args),
 			),
-			ast::ExprData::Access(name) => self.call_own_method(
-				&mut expected,
-				loc,
-				name,
-				ty_arg_asts,
-				args,
-			),
+			ast::ExprData::Access(name) =>
+				self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
 			_ => {
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
 				handle_bogus(&mut expected, target_loc)
@@ -411,7 +400,7 @@ impl<'a> CheckExprContext<'a> {
 			Some(m) => m,
 			None => {
 				self.add_diagnostic(loc, Diag::StaticMethodNotFound(cls.clone_ptr(), method_name));
-				return handle_bogus(&mut expected, loc);
+				return handle_bogus(&mut expected, loc)
 			}
 		};
 
@@ -466,15 +455,15 @@ impl<'a> CheckExprContext<'a> {
 			MemberDeclaration::AbstractMethod(a) => MethodOrAbstract::Abstract(a),
 			_ => {
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
-				return handle_bogus(&mut expected, loc);
+				return handle_bogus(&mut expected, loc)
 			}
 		};
 
-		let method_inst =
-			match self.instantiate_method_or_add_diagnostic(&method_decl, ty_arg_asts) {
-				Some(m) => m,
-				None => return handle_bogus(&mut expected, loc),
-			};
+		let method_inst = match self.instantiate_method_or_add_diagnostic(&method_decl, ty_arg_asts)
+		{
+			Some(m) => m,
+			None => return handle_bogus(&mut expected, loc),
+		};
 
 		let args = match self.check_call_arguments(
 			loc,
@@ -494,7 +483,7 @@ impl<'a> CheckExprContext<'a> {
 		} else {
 			if self.is_static {
 				self.add_diagnostic(loc, Diag::CantCallInstanceMethodFromStaticMethod(method_decl));
-				return handle_bogus(&mut expected, loc);
+				return handle_bogus(&mut expected, loc)
 			}
 
 			if !self.self_effect.contains(method_decl.self_effect()) {
@@ -594,22 +583,17 @@ impl<'a> CheckExprContext<'a> {
 	) -> Option<Arr<Expr>> {
 		let parameters = method_decl.parameters();
 		match arg_asts {
-			ArgAsts::One(arg_ast) => {
-				match parameters.only() {
-					Some(parameter) => {
-						let ty = instantiate_type(&parameter.ty, instantiator);
-						Some(Arr::_1(self.check_subtype(ty, arg_ast)))
-					}
-					None => {
-						self.add_diagnostic(
-							loc,
-							Diag::ArgumentCountMismatch(method_decl.copy(), 1),
-						);
-						None
-					}
+			ArgAsts::One(arg_ast) => match parameters.only() {
+				Some(parameter) => {
+					let ty = instantiate_type(&parameter.ty, instantiator);
+					Some(Arr::_1(self.check_subtype(ty, arg_ast)))
 				}
-			}
-			ArgAsts::Many(arg_asts_array) => {
+				None => {
+					self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl.copy(), 1));
+					None
+				}
+			},
+			ArgAsts::Many(arg_asts_array) =>
 				if parameters.len() != arg_asts_array.len() {
 					self.add_diagnostic(
 						loc,
@@ -620,8 +604,7 @@ impl<'a> CheckExprContext<'a> {
 					Some(parameters.zip(arg_asts_array, |parameter, arg_ast| {
 						self.check_subtype(instantiate_type(&parameter.ty, instantiator), arg_ast)
 					}))
-				}
-			}
+				},
 		}
 	}
 
@@ -668,7 +651,7 @@ impl<'a> CheckExprContext<'a> {
 	) -> Handled {
 		if self.is_static {
 			self.add_diagnostic(loc, Diag::CantAccessSlotFromStaticMethod(slot));
-			return handle_bogus(&mut expected, loc);
+			return handle_bogus(&mut expected, loc)
 		}
 
 		if slot.mutable && !self.self_effect.can_get() {
@@ -687,15 +670,11 @@ impl<'a> CheckExprContext<'a> {
 
 	fn handle(&self, expected: &mut Expected, loc: Loc, e: ExprData) -> Handled {
 		match *expected {
-			Expected::Return(ref ty) |
-			Expected::SubTypeOf(ref ty) => self.check_ty(ty, loc, e),
+			Expected::Return(ref ty) | Expected::SubTypeOf(ref ty) => self.check_ty(ty, loc, e),
 			Expected::Infer(ref mut inferred_ty) => {
 				let new_inferred_ty = match *inferred_ty {
-					Some(ref mut last_inferred_ty) => self.get_compatible_type(
-						loc,
-						last_inferred_ty,
-						e.ty(),
-					),
+					Some(ref mut last_inferred_ty) =>
+						self.get_compatible_type(loc, last_inferred_ty, e.ty()),
 					None => e.ty().clone(),
 				};
 				*inferred_ty = Some(new_inferred_ty);
@@ -745,8 +724,7 @@ impl Expected {
 
 	fn current_expected_ty(&self) -> Option<&Ty> {
 		match *self {
-			Expected::Return(ref ty) |
-			Expected::SubTypeOf(ref ty) => Some(ty),
+			Expected::Return(ref ty) | Expected::SubTypeOf(ref ty) => Some(ty),
 			Expected::Infer(ref ty_op) => ty_op.as_ref(),
 		}
 	}

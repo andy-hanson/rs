@@ -336,9 +336,8 @@ fn parse_simple_expr_without_suffixes(
 		Token::NatLiteral => Ok(ast::Expr::literal(loc, LiteralValue::Nat(l.token_nat()))),
 		Token::IntLiteral => Ok(ast::Expr::literal(loc, LiteralValue::Int(l.token_int()))),
 		Token::FloatLiteral => Ok(ast::Expr::literal(loc, LiteralValue::Float(l.token_float()))),
-		Token::StringLiteral => Ok(
-			ast::Expr::literal(loc, LiteralValue::String(l.quote_part_value())),
-		),
+		Token::StringLiteral =>
+			Ok(ast::Expr::literal(loc, LiteralValue::String(l.quote_part_value()))),
 		Token::Pass => Ok(ast::Expr::literal(loc, LiteralValue::Pass)),
 		Token::True => Ok(ast::Expr::literal(loc, LiteralValue::Bool(true))),
 		Token::False => Ok(ast::Expr::literal(loc, LiteralValue::Bool(false))),
@@ -374,7 +373,7 @@ fn parse_when(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
 		case_start = l.pos();
 		case_start_token = l.next_token();
 		if case_start_token != Token::Else {
-			break;
+			break
 		}
 	}
 

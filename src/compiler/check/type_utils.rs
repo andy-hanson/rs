@@ -12,13 +12,12 @@ pub fn common_type(a: &Ty, b: &Ty) -> Option<Ty> {
 		Ty::Bogus => Some(b.clone()),
 		Ty::Plain(effect_a, ref inst_cls_a) => match *b {
 			Ty::Bogus => Some(a.clone()),
-			Ty::Plain(effect_b, ref inst_cls_b) => {
+			Ty::Plain(effect_b, ref inst_cls_b) =>
 				if inst_cls_a.fast_equals(inst_cls_b) {
 					Some(Ty::Plain(effect_a.min_common_effect(effect_b), inst_cls_a.clone()))
 				} else {
 					None
-				}
-			}
+				},
 			Ty::Param(_) => todo!(),
 		},
 		Ty::Param(_) => todo!(),
@@ -28,18 +27,15 @@ pub fn common_type(a: &Ty, b: &Ty) -> Option<Ty> {
 pub fn is_assignable(expected: &Ty, actual: &Ty) -> bool {
 	match *expected {
 		Ty::Bogus => true,
-		Ty::Param(ref tpe) => {
-			match *actual {
-				Ty::Param(ref tpa) => tpe.fast_equals(tpa),
-				_ => false,
-			}
-		}
+		Ty::Param(ref tpe) => match *actual {
+			Ty::Param(ref tpa) => tpe.fast_equals(tpa),
+			_ => false,
+		},
 		Ty::Plain(effect_expected, ref inst_cls_expected) => match *actual {
 			Ty::Bogus => true,
-			Ty::Plain(effect_actual, ref inst_cls_actual) => effect_actual.contains(
-				effect_expected,
-			) &&
-				is_subclass(inst_cls_expected, inst_cls_actual),
+			Ty::Plain(effect_actual, ref inst_cls_actual) =>
+				effect_actual.contains(effect_expected) &&
+					is_subclass(inst_cls_expected, inst_cls_actual),
 			Ty::Param(_) => todo!(),
 		},
 	}
@@ -53,14 +49,14 @@ fn is_subclass(expected: &InstCls, actual: &InstCls) -> bool {
 	if expected_cls.ptr_equals(actual_cls) &&
 		expected_ty_arguments.each_equals(actual_ty_arguments, Ty::fast_equals)
 	{
-		return true;
+		return true
 	}
 
 	for s in actual_cls.supers().iter() {
 		let instantiated_super_cls =
 			instantiate_inst_cls(&s.super_class, &Instantiator::of_inst_cls(actual));
 		if is_subclass(expected, &instantiated_super_cls) {
-			return true;
+			return true
 		}
 	}
 
@@ -102,9 +98,7 @@ pub fn instantiate_and_narrow_effects(
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
 		Ty::Plain(original_effect, ref inst_cls) => Ty::Plain(
-			original_effect.min_common_effect(
-				narrowed_effect,
-			),
+			original_effect.min_common_effect(narrowed_effect),
 			instantiate_inst_cls_and_forbid_effects(
 				narrowed_effect,
 				inst_cls,
@@ -135,20 +129,21 @@ fn instantiate_ty_and_forbid_effects(
 ) -> Ty {
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
-		Ty::Plain(effect, ref inst_cls) => if narrowed_effect.contains(effect) {
-			Ty::Plain(
-				effect,
-				instantiate_inst_cls_and_forbid_effects(
-					narrowed_effect,
-					inst_cls,
-					instantiator,
-					loc,
-					&mut diags,
-				),
-			)
-		} else {
-			todo!()
-		},
+		Ty::Plain(effect, ref inst_cls) =>
+			if narrowed_effect.contains(effect) {
+				Ty::Plain(
+					effect,
+					instantiate_inst_cls_and_forbid_effects(
+						narrowed_effect,
+						inst_cls,
+						instantiator,
+						loc,
+						&mut diags,
+					),
+				)
+			} else {
+				todo!()
+			},
 		Ty::Param(ref p) => instantiator.replace_or_same(p),
 	}
 }
@@ -160,10 +155,9 @@ fn instantiate_inst_cls_and_forbid_effects(
 	loc: Loc,
 	diags: &mut ArrBuilder<Diagnostic>,
 ) -> InstCls {
-	map_inst_cls(
-		inst_cls,
-		|arg| instantiate_ty_and_forbid_effects(narrowed_effect, arg, instantiator, loc, diags),
-	)
+	map_inst_cls(inst_cls, |arg| {
+		instantiate_ty_and_forbid_effects(narrowed_effect, arg, instantiator, loc, diags)
+	})
 }
 
 fn instantiate_inst_cls(inst_cls: &InstCls, instantiator: &Instantiator) -> InstCls {

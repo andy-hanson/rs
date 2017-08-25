@@ -93,11 +93,7 @@ fn try_parse_class_generic(l: &mut Lexer, start: Pos, kw: Token) -> Result<(Arr<
 	Ok((type_parameters.finish(), next_pos, next_tok))
 }
 
-fn parse_head(
-	l: &mut Lexer,
-	start: Pos,
-	kw: Token,
-) -> Result<(Option<ast::ClassHead>, Pos, MethodKw)> {
+fn parse_head(l: &mut Lexer, start: Pos, kw: Token) -> Result<(Option<ast::ClassHead>, Pos, MethodKw)> {
 	match kw {
 		Token::EOF => Ok((None, start, MethodKw::Eof)),
 		Token::Fun => Ok((None, start, MethodKw::Fun)),
@@ -199,8 +195,7 @@ fn parse_method_head(l: &mut Lexer) -> Result<(ast::Ty, Sym, Effect, Arr<ast::Pa
 			Either::Right(first_ty) => {
 				l.take_space()?;
 				let first_name = l.take_name()?;
-				let first =
-					ast::Parameter { loc: l.loc_from(first_start), ty: first_ty, name: first_name };
+				let first = ast::Parameter { loc: l.loc_from(first_start), ty: first_ty, name: first_name };
 				let parameters = parse_parameters(l, Some(first))?;
 				(Effect::Pure, parameters)
 			}

@@ -6,8 +6,8 @@ use util::loc::Pos;
 
 use super::ast;
 use super::lexer::{CatchOrFinally, Lexer, Next, Result};
-use super::parse_ty::{parse_ty, take_type_arguments_after_passing_bracketl,
-                      try_take_type_argument, try_take_type_arguments};
+use super::parse_ty::{parse_ty, take_type_arguments_after_passing_bracketl, try_take_type_argument,
+                      try_take_type_arguments};
 use super::token::Token;
 
 pub fn parse_block(l: &mut Lexer) -> Result<ast::Expr> {
@@ -69,12 +69,7 @@ fn parse_expr(l: &mut Lexer, ctx: Ctx) -> Result<(ast::Expr, Next)> {
 	parse_expr_2(l, ctx, start, first_token)
 }
 
-fn parse_expr_2(
-	l: &mut Lexer,
-	ctx: Ctx,
-	start: Pos,
-	first_token: Token,
-) -> Result<(ast::Expr, Next)> {
+fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Result<(ast::Expr, Next)> {
 	let (first, next) = parse_first_expr(l, start, first_token)?;
 	match next.token {
 		Token::Colon => {
@@ -318,11 +313,7 @@ fn parse_simple_expr(l: &mut Lexer, start: Pos, token: Token) -> Result<(ast::Ex
 	}
 }
 
-fn parse_simple_expr_without_suffixes(
-	l: &mut Lexer,
-	start: Pos,
-	token: Token,
-) -> Result<ast::Expr> {
+fn parse_simple_expr_without_suffixes(l: &mut Lexer, start: Pos, token: Token) -> Result<ast::Expr> {
 	let loc = l.loc_from(start);
 	match token {
 		Token::TyName => {
@@ -336,8 +327,7 @@ fn parse_simple_expr_without_suffixes(
 		Token::NatLiteral => Ok(ast::Expr::literal(loc, LiteralValue::Nat(l.token_nat()))),
 		Token::IntLiteral => Ok(ast::Expr::literal(loc, LiteralValue::Int(l.token_int()))),
 		Token::FloatLiteral => Ok(ast::Expr::literal(loc, LiteralValue::Float(l.token_float()))),
-		Token::StringLiteral =>
-			Ok(ast::Expr::literal(loc, LiteralValue::String(l.quote_part_value()))),
+		Token::StringLiteral => Ok(ast::Expr::literal(loc, LiteralValue::String(l.quote_part_value()))),
 		Token::Pass => Ok(ast::Expr::literal(loc, LiteralValue::Pass)),
 		Token::True => Ok(ast::Expr::literal(loc, LiteralValue::Bool(true))),
 		Token::False => Ok(ast::Expr::literal(loc, LiteralValue::Bool(false))),
@@ -360,13 +350,8 @@ fn parse_when(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
 	let mut case_start = start_pos;
 	let mut case_start_token = l.next_token();
 	loop {
-		let first_test = parse_expr_and_expect_next_2(
-			l,
-			Ctx::YesOperators,
-			Token::Indent,
-			case_start,
-			case_start_token,
-		)?;
+		let first_test =
+			parse_expr_and_expect_next_2(l, Ctx::YesOperators, Token::Indent, case_start, case_start_token)?;
 		let first_result = parse_block(l)?;
 		cases.add(ast::Case(l.loc_from(case_start), first_test, first_result));
 

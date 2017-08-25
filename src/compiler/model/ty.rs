@@ -6,12 +6,22 @@ use super::class::ClassDeclaration;
 use super::effect::Effect;
 use super::method::MethodWithBody;
 
+// Make a static version of Bogus so it can be used as a ref
+static BOGUS: UnsafeSync<Ty> = UnsafeSync(Ty::Bogus);
+struct UnsafeSync<T>(T);
+unsafe impl<T> Sync for UnsafeSync<T> {}
+
 pub enum Ty {
 	Bogus,
 	Plain(Effect, InstCls),
 	Param(Ptr<TypeParameter>),
 }
 impl Ty {
+	// Used for getting a *reference* to Ty::Bogus.
+	pub fn bogus_ref() -> &'static Ty {
+		&BOGUS.0
+	}
+
 	pub fn pure_ty(cls: InstCls) -> Ty {
 		Ty::Plain(Effect::Pure, cls)
 	}

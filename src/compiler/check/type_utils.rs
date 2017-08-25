@@ -34,8 +34,7 @@ pub fn is_assignable(expected: &Ty, actual: &Ty) -> bool {
 		Ty::Plain(effect_expected, ref inst_cls_expected) => match *actual {
 			Ty::Bogus => true,
 			Ty::Plain(effect_actual, ref inst_cls_actual) =>
-				effect_actual.contains(effect_expected) &&
-					is_subclass(inst_cls_expected, inst_cls_actual),
+				effect_actual.contains(effect_expected) && is_subclass(inst_cls_expected, inst_cls_actual),
 			Ty::Param(_) => todo!(),
 		},
 	}
@@ -53,8 +52,7 @@ fn is_subclass(expected: &InstCls, actual: &InstCls) -> bool {
 	}
 
 	for s in actual_cls.supers().iter() {
-		let instantiated_super_cls =
-			instantiate_inst_cls(&s.super_class, &Instantiator::of_inst_cls(actual));
+		let instantiated_super_cls = instantiate_inst_cls(&s.super_class, &Instantiator::of_inst_cls(actual));
 		if is_subclass(expected, &instantiated_super_cls) {
 			return true
 		}
@@ -99,24 +97,13 @@ pub fn instantiate_and_narrow_effects(
 		Ty::Bogus => Ty::Bogus,
 		Ty::Plain(original_effect, ref inst_cls) => Ty::Plain(
 			original_effect.min_common_effect(narrowed_effect),
-			instantiate_inst_cls_and_forbid_effects(
-				narrowed_effect,
-				inst_cls,
-				instantiator,
-				loc,
-				&mut diags,
-			),
+			instantiate_inst_cls_and_forbid_effects(narrowed_effect, inst_cls, instantiator, loc, &mut diags),
 		),
 		Ty::Param(ref p) => instantiator.replace_or_same(p),
 	}
 }
 
-pub fn narrow_effects(
-	narrowed_effect: Effect,
-	ty: &Ty,
-	loc: Loc,
-	diags: &mut ArrBuilder<Diagnostic>,
-) -> Ty {
+pub fn narrow_effects(narrowed_effect: Effect, ty: &Ty, loc: Loc, diags: &mut ArrBuilder<Diagnostic>) -> Ty {
 	instantiate_and_narrow_effects(narrowed_effect, ty, &Instantiator::nil(), loc, diags)
 }
 
@@ -155,9 +142,10 @@ fn instantiate_inst_cls_and_forbid_effects(
 	loc: Loc,
 	diags: &mut ArrBuilder<Diagnostic>,
 ) -> InstCls {
-	map_inst_cls(inst_cls, |arg| {
-		instantiate_ty_and_forbid_effects(narrowed_effect, arg, instantiator, loc, diags)
-	})
+	map_inst_cls(
+		inst_cls,
+		|arg| instantiate_ty_and_forbid_effects(narrowed_effect, arg, instantiator, loc, diags),
+	)
 }
 
 fn instantiate_inst_cls(inst_cls: &InstCls, instantiator: &Instantiator) -> InstCls {

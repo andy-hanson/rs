@@ -16,8 +16,7 @@ use super::super::parse::ast;
 use super::class_utils::{try_get_member_of_inst_cls, InstMember};
 use super::ctx::Ctx;
 use super::instantiator::Instantiator;
-use super::type_utils::{common_type, instantiate_and_narrow_effects, instantiate_type,
-                        is_assignable};
+use super::type_utils::{common_type, instantiate_and_narrow_effects, instantiate_type, is_assignable};
 
 pub fn check_method_body(
 	ctx: &Ctx,
@@ -81,11 +80,7 @@ impl<'a> CheckExprContext<'a> {
 		self.check_expr_worker(&mut e, a).0
 	}
 
-	fn check_expr_worker(
-		&self,
-		mut e: &mut Expected,
-		&ast::Expr(loc, ref ast_data): &ast::Expr,
-	) -> Handled {
+	fn check_expr_worker(&self, mut e: &mut Expected, &ast::Expr(loc, ref ast_data): &ast::Expr) -> Handled {
 		match *ast_data {
 			ast::ExprData::Access(name) => {
 				if let Some(local) = self.locals.borrow().iter().find(|l| l.name == name) {
@@ -97,21 +92,20 @@ impl<'a> CheckExprContext<'a> {
 					return self.handle(&mut e, loc, ExprData::AccessParameter(param.ptr(), ty))
 				}
 
-				match self.ctx.get_own_member_or_add_diagnostic(loc, name) {
-					Some(InstMember(member_decl, member_instantiator)) =>
-						match member_decl {
-							MemberDeclaration::Slot(slot) =>
-								self.get_own_slot(&mut e, loc, slot, member_instantiator),
-							MemberDeclaration::Method(_) | MemberDeclaration::AbstractMethod(_) =>
-								todo!(), //diagnostic
-						},
-					None =>
-						handle_bogus(&mut e, loc),
+				if let Some(InstMember(decl, instantiator)) = self.ctx.get_own_member_or_add_diagnostic(loc, name) {
+					return match decl {
+						MemberDeclaration::Slot(slot) =>
+							self.get_own_slot(&mut e, loc, slot, instantiator),
+						MemberDeclaration::Method(_) | MemberDeclaration::AbstractMethod(_) =>
+							todo!(), //diagnostic
+					}
 				}
+
+				bogus(loc)
 			}
 			ast::ExprData::StaticAccess(_, _) | ast::ExprData::TypeArguments(_, _) => {
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
-				handle_bogus(&mut e, loc)
+				bogus(loc)
 			}
 			ast::ExprData::OperatorCall(ref left, operator, ref right) => {
 				let ty_args = Arr::<ast::Ty>::empty(); // No way to provide these to an operator call.
@@ -127,10 +121,7 @@ impl<'a> CheckExprContext<'a> {
 				// implementing an abstract method where the superclass took type arguments.
 				let moa = &self.method_or_impl.method_or_abstract();
 				let inst = self.method_instantiator;
-				let args = match self.check_arguments(loc, moa, inst, ArgAsts::Many(arg_asts)) {
-					Some(a) => a,
-					None => return handle_bogus(&mut e, loc)
-				};
+				let args = unwrap_or_return!(self.check_arguments(loc, moa, inst, ArgAsts::Many(arg_asts)), bogus(loc));
 				self.handle(&mut e, loc, ExprData::Recur(self.method_or_impl.copy(), args))
 			}
 			ast::ExprData::New(ref ty_arg_asts, ref arg_asts) => {
@@ -138,12 +129,12 @@ impl<'a> CheckExprContext<'a> {
 					ClassHead::Slots(_, ref slots) => slots,
 					_ => {
 						self.add_diagnostic(loc, Diag::NewInvalid(self.ctx.current_class.ptr()));
-						return handle_bogus(&mut e, loc)
+						return bogus(loc)
 					}
 				};
 				if arg_asts.len() != slots.len() {
 					self.add_diagnostic(loc, Diag::NewArgumentCountMismatch(slots.len(), arg_asts.len()));
-					return handle_bogus(&mut e, loc)
+					return bogus(loc)
 				}
 
 				if self.ctx.current_class.type_parameters.len() != ty_arg_asts.len() {
@@ -166,19 +157,16 @@ impl<'a> CheckExprContext<'a> {
 				let target = self.check_infer(target_ast);
 				let (slot, slot_ty) = match *target.ty() {
 					Ty::Bogus =>
-						return handle_bogus(&mut e, loc),
+						return bogus(loc),
 					Ty::Plain(target_effect, ref target_class) => {
 						let InstMember(member_decl, instantiator) =
-							//TODO: just get_slot_of_inst_cls_or_add_diagnostic
-							match self.get_member_of_inst_cls(target.loc(), target_class, property_name) {
-								Some(m) => m,
-								None => return handle_bogus(&mut e, loc),
-							};
+							//TODO: just get_slot_of_inst_cls
+							unwrap_or_return!(self.get_member_of_inst_cls(target.loc(), target_class, property_name), bogus(loc));
 						let slot = match member_decl {
 							MemberDeclaration::Slot(s) => s,
 							_ => {
 								self.add_diagnostic(target.loc(), Diag::DelegatesNotYetSupported);
-								return handle_bogus(&mut e, loc)
+								return bogus(loc)
 							}
 						};
 						if slot.mutable && !target_effect.can_get() {
@@ -195,15 +183,12 @@ impl<'a> CheckExprContext<'a> {
 			}
 			ast::ExprData::SetProperty(property_name, ref value_ast) => {
 				let InstMember(member_decl, instantiator) =
-					match self.ctx.get_own_member_or_add_diagnostic(loc, property_name) {
-						Some(m) => m,
-						None => return handle_bogus(&mut e, loc)
-					};
+					unwrap_or_return!(self.ctx.get_own_member_or_add_diagnostic(loc, property_name), bogus(loc));
 				let slot = match member_decl {
 					MemberDeclaration::Slot(s) => s,
 					_ => {
 						self.add_diagnostic(loc, Diag::CantSetNonSlot(member_decl));
-						return handle_bogus(&mut e, loc)
+						return bogus(loc)
 					}
 				};
 				if !slot.mutable {
@@ -357,19 +342,14 @@ impl<'a> CheckExprContext<'a> {
 			_ => (target, &arr_empty),
 		};
 		match *real_target_data {
-			ast::ExprData::StaticAccess(class_name, static_method_name) => match self.ctx
-				.access_class_declaration_or_add_diagnostic(real_target_loc, class_name)
-			{
-				Some(cls) => self.call_static_method(
-					&mut expected,
-					loc,
-					cls,
-					static_method_name,
-					ty_arg_asts,
-					args,
-				),
-				None => handle_bogus(&mut expected, target_loc),
-			},
+			ast::ExprData::StaticAccess(class_name, static_method_name) => {
+				let cls = unwrap_or_return!(
+					self.ctx
+						.access_class_declaration_or_add_diagnostic(real_target_loc, class_name),
+					bogus(target_loc)
+				);
+				self.call_static_method(&mut expected, loc, cls, static_method_name, ty_arg_asts, args)
+			}
 			ast::ExprData::GetProperty(ref property_target, property_name) => self.call_method(
 				&mut expected,
 				loc,
@@ -378,11 +358,10 @@ impl<'a> CheckExprContext<'a> {
 				ty_arg_asts,
 				ArgAsts::Many(args),
 			),
-			ast::ExprData::Access(name) =>
-				self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
+			ast::ExprData::Access(name) => self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
 			_ => {
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
-				handle_bogus(&mut expected, target_loc)
+				bogus(target_loc)
 			}
 		}
 	}
@@ -396,36 +375,25 @@ impl<'a> CheckExprContext<'a> {
 		ty_arg_asts: &Arr<ast::Ty>,
 		arg_asts: &Arr<ast::Expr>,
 	) -> Handled {
-		let method_decl = match cls.find_static_method(method_name) {
-			Some(m) => m,
-			None => {
-				self.add_diagnostic(loc, Diag::StaticMethodNotFound(cls.clone_ptr(), method_name));
-				return handle_bogus(&mut expected, loc)
-			}
-		};
+		let method_decl = unwrap_or_return!(cls.find_static_method(method_name), {
+			self.add_diagnostic(loc, Diag::StaticMethodNotFound(cls.clone_ptr(), method_name));
+			bogus(loc)
+		});
 
-		let method_inst = match self.instantiate_method_or_add_diagnostic(
-			&MethodOrAbstract::Method(method_decl.ptr()),
-			ty_arg_asts,
-		) {
-			Some(m) => m,
-			None => return handle_bogus(&mut expected, loc),
-		};
+		let inst_method = unwrap_or_return!(
+			self.instantiate_method(&MethodOrAbstract::Method(method_decl.ptr()), ty_arg_asts),
+			bogus(loc)
+		);
 
 		// No need to check selfEffect, because this is a static method.
 		// Static methods can't look at their class' type arguments
-		let args = match self.check_call_arguments(
-			loc,
-			&method_inst,
-			&Instantiator::nil(),
-			ArgAsts::Many(arg_asts),
-		) {
-			Some(a) => a,
-			None => return handle_bogus(&mut expected, loc),
-		};
+		let args = unwrap_or_return!(
+			self.check_call_arguments(loc, &inst_method, &Instantiator::nil(), ArgAsts::Many(arg_asts)),
+			bogus(loc)
+		);
 
-		let ty = instantiate_return_type(&method_inst);
-		self.handle(&mut expected, loc, ExprData::StaticMethodCall(method_inst, args, ty))
+		let ty = instantiate_return_type(&inst_method);
+		self.handle(&mut expected, loc, ExprData::StaticMethodCall(inst_method, args, ty))
 	}
 
 	//mv
@@ -443,11 +411,10 @@ impl<'a> CheckExprContext<'a> {
 	) -> Handled {
 		// Note: InstCls is still relevent here:
 		// Even if 'self' is not an inst, in a superclass we will fill in type parameters.
-		let InstMember(member_decl, member_instantiator) =
-			match self.get_member_of_inst_cls(loc, &self.current_inst_cls(), method_name) {
-				Some(m) => m,
-				None => return handle_bogus(&mut expected, loc),
-			};
+		let InstMember(member_decl, member_instantiator) = unwrap_or_return!(
+			self.get_member_of_inst_cls(loc, &self.current_inst_cls(), method_name),
+			bogus(loc)
+		);
 
 		//TODO: helper fn for converting member -> method
 		let method_decl = match member_decl {
@@ -455,45 +422,33 @@ impl<'a> CheckExprContext<'a> {
 			MemberDeclaration::AbstractMethod(a) => MethodOrAbstract::Abstract(a),
 			_ => {
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
-				return handle_bogus(&mut expected, loc)
+				return bogus(loc)
 			}
 		};
 
-		let method_inst = match self.instantiate_method_or_add_diagnostic(&method_decl, ty_arg_asts)
-		{
-			Some(m) => m,
-			None => return handle_bogus(&mut expected, loc),
-		};
+		let inst_method = unwrap_or_return!(self.instantiate_method(&method_decl, ty_arg_asts), bogus(loc));
 
-		let args = match self.check_call_arguments(
-			loc,
-			&method_inst,
-			&member_instantiator,
-			ArgAsts::Many(arg_asts),
-		) {
-			Some(a) => a,
-			None => return handle_bogus(&mut expected, loc),
-		};
+		let args = unwrap_or_return!(
+			self.check_call_arguments(loc, &inst_method, &member_instantiator, ArgAsts::Many(arg_asts)),
+			bogus(loc)
+		);
 
-		let ty = instantiate_return_type(&method_inst);
+		let ty = instantiate_return_type(&inst_method);
 
 		let expr = if method_decl.is_static() {
 			// Calling own static method is OK.
-			ExprData::StaticMethodCall(method_inst, args, ty)
+			ExprData::StaticMethodCall(inst_method, args, ty)
 		} else {
 			if self.is_static {
 				self.add_diagnostic(loc, Diag::CantCallInstanceMethodFromStaticMethod(method_decl));
-				return handle_bogus(&mut expected, loc)
+				return bogus(loc)
 			}
 
 			if !self.self_effect.contains(method_decl.self_effect()) {
-				self.add_diagnostic(
-					loc,
-					Diag::IllegalEffect(self.self_effect, method_decl.self_effect()),
-				)
+				self.add_diagnostic(loc, Diag::IllegalEffect(self.self_effect, method_decl.self_effect()))
 			}
 
-			ExprData::MyInstanceMethodCall(method_inst, args, ty)
+			ExprData::MyInstanceMethodCall(inst_method, args, ty)
 		};
 
 		self.handle(&mut expected, loc, expr)
@@ -509,30 +464,28 @@ impl<'a> CheckExprContext<'a> {
 		arg_asts: ArgAsts,
 	) -> Handled {
 		let target = self.check_infer(target_ast);
-		let (method_inst, args, ty) = match *target.ty() {
+		let (inst_method, args, ty) = match *target.ty() {
 			Ty::Bogus =>
 				// Already issued an error, don't need another.
-				return handle_bogus(&mut expected, loc),
+				return bogus(loc),
 			Ty::Plain(target_effect, ref target_inst_cls) => {
-				let InstMember(member_decl, member_instantiator) =
-					match self.get_member_of_inst_cls(loc, target_inst_cls, method_name) {
-						Some(member) => member,
-						None => return handle_bogus(&mut expected, loc)
-					};
+				let InstMember(member_decl, member_instantiator) = unwrap_or_return!(
+					self.get_member_of_inst_cls(loc, target_inst_cls, method_name),
+					bogus(loc));
 
 				let method = match member_decl {
 					MemberDeclaration::Method(m) => MethodOrAbstract::Method(m),
 					MemberDeclaration::AbstractMethod(a) => MethodOrAbstract::Abstract(a),
 					_ => {
 						self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
-						return handle_bogus(&mut expected, loc)
+						return bogus(loc)
 					}
 				};
 
 				if let MethodOrAbstract::Method(ref m) = method {
 					if m.is_static {
 						self.add_diagnostic(loc, Diag::CantAccessStaticMethodThroughInstance(m.clone_ptr()));
-						return handle_bogus(&mut expected, loc)
+						return bogus(loc)
 					}
 
 					if !target_effect.contains(m.self_effect()) {
@@ -542,36 +495,31 @@ impl<'a> CheckExprContext<'a> {
 
 				// Note: member is instantiated based on the *class* type arguments,
                 // but there may sill be *method* type arguments.
-				let method_inst = match self.instantiate_method_or_add_diagnostic(&method, ty_arg_asts) {
-					Some(i) => i,
-					None => return handle_bogus(&mut expected, loc)
-				};
+				let inst_method = unwrap_or_return!(self.instantiate_method(&method, ty_arg_asts), bogus(loc));
 
-				let args = match self.check_call_arguments(loc, &method_inst, &member_instantiator, arg_asts) {
-					Some(a) => a,
-					None => return handle_bogus(&mut expected, loc)
-				};
+				let args = unwrap_or_return!(
+					self.check_call_arguments(loc, &inst_method, &member_instantiator, arg_asts),
+					bogus(loc));
 
-				let ty = instantiate_return_type_with_extra_instantiator(&method_inst, &member_instantiator);
-				(method_inst, args, ty)
+				let ty = instantiate_return_type_with_extra_instantiator(&inst_method, &member_instantiator);
+				(inst_method, args, ty)
 			}
 			Ty::Param(_) =>
 				todo!()
 		};
-		let e = ExprData::InstanceMethodCall(Box::new(target), method_inst, args, ty);
+		let e = ExprData::InstanceMethodCall(Box::new(target), inst_method, args, ty);
 		self.handle(&mut expected, loc, e)
 	}
 
 	fn check_call_arguments(
 		&self,
 		loc: Loc,
-		method_inst: &InstMethod,
+		inst_method: &InstMethod,
 		extra_instantiator: &Instantiator,
 		arg_asts: ArgAsts,
 	) -> Option<Arr<Expr>> {
-		let method_decl = &method_inst.0;
-		let instantiator = Instantiator::of_inst_method(method_inst).combine(extra_instantiator);
-		self.check_arguments(loc, method_decl, &instantiator, arg_asts)
+		let instantiator = Instantiator::of_inst_method(inst_method).combine(extra_instantiator);
+		self.check_arguments(loc, &inst_method.0, &instantiator, arg_asts)
 	}
 
 	fn check_arguments(
@@ -613,7 +561,7 @@ impl<'a> CheckExprContext<'a> {
 		ty_arg_asts.map(|ty_ast| self.ctx.get_ty(ty_ast))
 	}
 
-	fn instantiate_method_or_add_diagnostic(
+	fn instantiate_method(
 		&self,
 		method_decl: &MethodOrAbstract,
 		ty_arg_asts: &Arr<ast::Ty>,
@@ -628,12 +576,7 @@ impl<'a> CheckExprContext<'a> {
 	NOTE: Caller is responsible for checking that we can access this member's effect!
 	If this returns None, we've already handled the error reporting, so just call handleBogus.
 	*/
-	fn get_member_of_inst_cls(
-		&self,
-		loc: Loc,
-		inst_cls: &InstCls,
-		member_name: Sym,
-	) -> Option<InstMember> {
+	fn get_member_of_inst_cls(&self, loc: Loc, inst_cls: &InstCls, member_name: Sym) -> Option<InstMember> {
 		let res = try_get_member_of_inst_cls(inst_cls, member_name);
 		if res.is_none() {
 			self.add_diagnostic(loc, Diag::MemberNotFound(inst_cls.0.clone_ptr(), member_name))
@@ -651,7 +594,7 @@ impl<'a> CheckExprContext<'a> {
 	) -> Handled {
 		if self.is_static {
 			self.add_diagnostic(loc, Diag::CantAccessSlotFromStaticMethod(slot));
-			return handle_bogus(&mut expected, loc)
+			return bogus(loc)
 		}
 
 		if slot.mutable && !self.self_effect.can_get() {
@@ -673,8 +616,7 @@ impl<'a> CheckExprContext<'a> {
 			Expected::Return(ref ty) | Expected::SubTypeOf(ref ty) => self.check_ty(ty, loc, e),
 			Expected::Infer(ref mut inferred_ty) => {
 				let new_inferred_ty = match *inferred_ty {
-					Some(ref mut last_inferred_ty) =>
-						self.get_compatible_type(loc, last_inferred_ty, e.ty()),
+					Some(ref mut last_inferred_ty) => self.get_compatible_type(loc, last_inferred_ty, e.ty()),
 					None => e.ty().clone(),
 				};
 				*inferred_ty = Some(new_inferred_ty);
@@ -700,12 +642,8 @@ impl<'a> CheckExprContext<'a> {
 	}
 }
 
-fn handle_bogus(expected: &mut Expected, loc: Loc) -> Handled {
-	let ty = match expected.current_expected_ty() {
-		Some(t) => t.clone(),
-		None => Ty::Bogus,
-	};
-	Handled(Expr(loc, ExprData::Bogus(ty)))
+fn bogus(loc: Loc) -> Handled {
+	Handled(Expr(loc, ExprData::Bogus))
 }
 
 struct Handled(Expr);

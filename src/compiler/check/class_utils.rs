@@ -6,10 +6,7 @@ use util::sym::Sym;
 use super::instantiator::Instantiator;
 
 
-pub fn try_get_member_from_class_declaration(
-	cls: &ClassDeclaration,
-	member_name: Sym,
-) -> Option<InstMember> {
+pub fn try_get_member_from_class_declaration(cls: &ClassDeclaration, member_name: Sym) -> Option<InstMember> {
 	get_member_worker(cls, Instantiator::nil(), member_name)
 }
 
@@ -39,16 +36,13 @@ fn get_member_worker(
 		ClassHead::Abstract(_, ref methods) =>
 			for method in methods.iter() {
 				if method.name() == member_name {
-					return Some(
-						InstMember(MemberDeclaration::AbstractMethod(method.ptr()), instantiator),
-					)
+					return Some(InstMember(MemberDeclaration::AbstractMethod(method.ptr()), instantiator))
 				}
 			},
 	}
 
 	for zuper in cls.supers().iter() {
-		let super_instantiator =
-			instantiator.combine(&Instantiator::of_inst_cls(&zuper.super_class));
+		let super_instantiator = instantiator.combine(&Instantiator::of_inst_cls(&zuper.super_class));
 		let got = get_member_worker(zuper.super_class.class(), super_instantiator, member_name);
 		if got.is_some() {
 			return got

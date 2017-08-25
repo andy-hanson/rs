@@ -33,10 +33,7 @@ pub fn check_class(
 fn do_check(ctx: &mut Ctx, ast: &ast::ClassDeclaration) {
 	// type parameters already handled before calling this.
 	let &ast::ClassDeclaration {
-		head: ref head_ast,
-		supers: ref super_asts,
-		methods: ref method_asts,
-		..
+		head: ref head_ast, supers: ref super_asts, methods: ref method_asts, ..
 	} = ast;
 
 	let methods = method_asts.map(|m| check_method_initial(ctx, m));
@@ -121,15 +118,12 @@ fn check_parameters(
 }
 
 fn check_head(ctx: &mut Ctx, ast: Option<&ast::ClassHead>) -> ClassHead {
-	let &ast::ClassHead(loc, ref head_data) = match ast {
-		Some(h) => h,
-		None => {
-			if ctx.current_class.type_parameters.any() {
-				todo!() // Error: static class can't have type parameters
-			}
-			return ClassHead::Static
+	let &ast::ClassHead(loc, ref head_data) = unwrap_or_return!(ast, {
+		if ctx.current_class.type_parameters.any() {
+			todo!() // Error: static class can't have type parameters
 		}
-	};
+		ClassHead::Static
+	});
 	match *head_data {
 		ast::ClassHeadData::Abstract(_) => {
 			unused!(loc);

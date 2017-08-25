@@ -1,11 +1,11 @@
 hard_tabs = true
 
-array_width = 100
-comment_width = 100
-max_width = 100
-struct_lit_width = 100
-struct_variant_width = 100
-fn_call_width = 100
+array_width = 110
+comment_width = 110
+max_width = 110
+struct_lit_width = 110
+struct_variant_width = 110
+fn_call_width = 110
 
 attributes_on_same_line_as_field = false
 attributes_on_same_line_as_variant = false

@@ -5,6 +5,15 @@ macro_rules! todo {
 	};
 }
 
+macro_rules! unwrap_or_return {
+	($option: expr, $or: expr) => {
+		match $option {
+			Some(x) => x,
+			None => return $or
+		}
+	};
+}
+
 #[macro_export]
 macro_rules! unused {
 	($a: ident) => {

@@ -297,9 +297,8 @@ impl<'a> Lexer<'a> {
 			}
 
 			ch => {
-				self.diagnostic = Some(
-					Diagnostic(self.single_char_loc(), Diag::UnrecognizedCharacter(ch as char)),
-				);
+				self.diagnostic =
+					Some(Diagnostic(self.single_char_loc(), Diag::UnrecognizedCharacter(ch as char)));
 				Token::Diagnostic
 			}
 		}
@@ -576,12 +575,7 @@ impl<'a> Lexer<'a> {
 		Ok(Sym::from_slice(v))
 	}
 
-	pub fn unexpected_token(
-		&self,
-		start_pos: Pos,
-		actual: Token,
-		expected_desc: &'static str,
-	) -> Diagnostic {
+	pub fn unexpected_token(&self, start_pos: Pos, actual: Token, expected_desc: &'static str) -> Diagnostic {
 		self.unexpected(start_pos, expected_desc, actual.token_name())
 	}
 
@@ -656,10 +650,7 @@ impl<'a> Lexer<'a> {
 	}
 
 	fn unexpected_char(&self, actual: u8, expected_desc: &'static str) -> Diagnostic {
-		Diagnostic(
-			self.single_char_loc(),
-			Diag::UnexpectedCharacter(char::from(actual), expected_desc),
-		)
+		Diagnostic(self.single_char_loc(), Diag::UnexpectedCharacter(char::from(actual), expected_desc))
 	}
 }
 

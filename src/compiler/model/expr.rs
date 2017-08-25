@@ -82,7 +82,7 @@ impl Expr {
 
 pub enum ExprData {
 	BogusCast(Ty, Box<Expr>),
-	Bogus(Ty),
+	Bogus,
 	AccessParameter(Ptr<Parameter>, Ty),
 	AccessLocal(Ptr<Local>),
 	Let(Pattern, Box<Expr>, Box<Expr>),
@@ -112,7 +112,6 @@ impl ExprData {
 	pub fn ty(&self) -> &Ty {
 		match *self {
 			ExprData::BogusCast(ref ty, _)
-			| ExprData::Bogus(ref ty)
 			| ExprData::AccessParameter(_, ref ty)
 			| ExprData::IfElse { ref ty, .. }
 			| ExprData::WhenTest(_, _, ref ty)
@@ -124,6 +123,7 @@ impl ExprData {
 			| ExprData::GetMySlot(_, ref ty)
 			| ExprData::GetSlot(_, _, ref ty)
 			| ExprData::SelfExpr(ref ty) => ty,
+			ExprData::Bogus => Ty::bogus_ref(),
 			ExprData::AccessLocal(ref local) => &local.ty,
 			ExprData::Let(_, _, ref then) | ExprData::Seq(_, ref then) => then.ty(),
 			ExprData::Literal(ref v) => v.ty(),
@@ -183,7 +183,7 @@ impl ExprData {
 				//| &ExprData::RecurImpl(_, ref args)
 				| ExprData::Recur(_, ref args)
 				=> make_refs(args),
-			ExprData::Bogus(_)
+			ExprData::Bogus
 				| ExprData::AccessParameter(_, _)
 				| ExprData::AccessLocal(_)
 				| ExprData::Literal(_)

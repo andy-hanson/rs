@@ -5,4 +5,4 @@ mod ctx;
 mod instantiator;
 mod type_utils;
 
-pub use self::check_class::check_class;
+pub use self::check_class::check_module;

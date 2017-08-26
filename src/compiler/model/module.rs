@@ -1,20 +1,20 @@
-use compiler::diag::Diagnostic;
-use compiler::module_resolver::full_path;
-
 use util::arr::Arr;
 use util::path::Path;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
+use super::super::compile::full_path;
+use super::super::diag::Diagnostic;
+
 use super::class::ClassDeclaration;
 
-pub struct ModuleCommon {
+pub struct ModuleSource {
 	pub logical_path: Ptr<Path>,
 	pub is_index: bool,
 	pub document_version: u32,
 	//pub document: DocumentInfo,
 }
-impl ModuleCommon {
+impl ModuleSource {
 	pub fn full_path(&self) -> Path {
 		full_path(&self.logical_path, self.is_index)
 	}
@@ -32,10 +32,10 @@ impl OwnModuleOrFail {
 		}
 	}
 
-	pub fn common(&self) -> &ModuleCommon {
+	pub fn source(&self) -> Option<&ModuleSource> {
 		match *self {
-			OwnModuleOrFail::Module(ref m) => &m.common,
-			OwnModuleOrFail::Fail(ref f) => &f.common,
+			OwnModuleOrFail::Module(ref m) => m.source.as_ref(),
+			OwnModuleOrFail::Fail(ref f) => f.source.as_ref(),
 		}
 	}
 }
@@ -46,13 +46,13 @@ pub enum PtrModuleOrFail {
 }
 
 pub struct FailModule {
-	pub common: ModuleCommon,
+	pub source: Option<ModuleSource>,
 	pub imports: Arr<PtrModuleOrFail>,
 	pub diagnostics: Arr<Diagnostic>,
 }
 
 pub struct Module {
-	pub common: ModuleCommon,
+	pub source: Option<ModuleSource>,
 	pub imports: Arr<Ptr<Module>>,
 	pub class: LateOwn<ClassDeclaration>,
 	pub diagnostics: LateOwn<Arr<Diagnostic>>,

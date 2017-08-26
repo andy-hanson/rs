@@ -1,8 +1,7 @@
 use util::arr::Arr;
-use util::ptr::{LateOwn, Own, Ptr};
+use util::ptr::{LateOwn, Own};
 use util::sym::Sym;
 
-use super::super::diag::Diagnostic;
 use super::super::model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
 use super::super::model::expr::Expr;
 use super::super::model::method::{MethodOrImpl, MethodSignature, MethodWithBody, Parameter};
@@ -14,21 +13,17 @@ use super::check_expr::check_method_body;
 use super::ctx::Ctx;
 use super::instantiator::Instantiator;
 
-pub fn check_class(
-	class: &LateOwn<ClassDeclaration>,
-	imports: &Arr<Ptr<Module>>,
-	ast: &ast::Class,
-	name: Sym,
-) -> Arr<Diagnostic> {
+pub fn check_module(module: &Module, builtins: &[Own<Module>], ast: &ast::Class, name: Sym) {
 	let type_parameters = ast.type_parameters.map_on_copies(TypeParameter::create);
+	let class = &module.class;
 	// Create the class early and assign its properties later.
 	// This allows us to access the class' type when checking type annotations.
 	class.init(ClassDeclaration::new(name, type_parameters));
 	let origin = TypeParameterOrigin::Class(class.ptr());
 	TypeParameter::set_origins(&class.type_parameters, origin);
-	let mut ctx = Ctx::new(class, imports);
+	let mut ctx = Ctx::new(class, builtins, &module.imports);
 	do_check(&mut ctx, ast);
-	ctx.finish()
+	module.diagnostics.init(ctx.finish())
 }
 
 fn do_check(ctx: &mut Ctx, ast: &ast::Class) {

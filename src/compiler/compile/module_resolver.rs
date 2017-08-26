@@ -1,9 +1,9 @@
 use util::arr::Arr;
 use util::path::{Path, RelPath};
 
-use super::host::document_info::DocumentInfo;
-use super::host::document_provider::DocumentProvider;
-use super::host::file_input::Result;
+use super::super::host::document_info::DocumentInfo;
+use super::super::host::document_provider::DocumentProvider;
+use super::super::host::file_input::Result;
 
 pub fn get_document_from_logical_path(
 	document_provider: &DocumentProvider,

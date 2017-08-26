@@ -15,12 +15,17 @@ use super::class_utils::{try_get_member_from_class_declaration, InstMember};
 
 pub struct Ctx<'a> {
 	pub current_class: &'a LateOwn<ClassDeclaration>,
+	builtins: &'a [Own<Module>],
 	imports: &'a Arr<Ptr<Module>>,
 	pub diags: RefCell<ArrBuilder<Diagnostic>>, //TODO: unsafecell
 }
 impl<'a> Ctx<'a> {
-	pub fn new(current_class: &'a LateOwn<ClassDeclaration>, imports: &'a Arr<Ptr<Module>>) -> Ctx<'a> {
-		Ctx { current_class, imports, diags: RefCell::new(ArrBuilder::new()) }
+	pub fn new(
+		current_class: &'a LateOwn<ClassDeclaration>,
+		builtins: &'a [Own<Module>],
+		imports: &'a Arr<Ptr<Module>>,
+	) -> Ctx<'a> {
+		Ctx { current_class, builtins, imports, diags: RefCell::new(ArrBuilder::new()) }
 	}
 
 	pub fn finish(self) -> Arr<Diagnostic> {
@@ -64,7 +69,13 @@ impl<'a> Ctx<'a> {
 			}
 		}
 
-		todo!() //TODO: handle builtins!
+		for b in self.builtins.iter() {
+			if b.name() == name {
+				return Some(b.class())
+			}
+		}
+
+		todo!() //Diagnostic: class not found
 	}
 
 	pub fn add_diagnostic(&self, loc: Loc, data: Diag) {

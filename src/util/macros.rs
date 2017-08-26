@@ -5,6 +5,12 @@ macro_rules! todo {
 	};
 }
 
+macro_rules! arr {
+	($($e:expr),*) => {
+		Arr::from_vec(vec!($($e),*))
+	}
+}
+
 macro_rules! unwrap_or_return {
 	($option: expr, $or: expr) => {
 		match $option {

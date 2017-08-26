@@ -1,0 +1,23 @@
+builtin
+
+def Bool ==(n: Int)
+
+def Bool <(n: Int)
+
+def Bool >(n: Int)
+
+def Bool <=(n: Int)
+
+def Bool >=(n: Int)
+
+def Int +(n: Int)
+
+def Int -(n: Int)
+
+def Int *(n: Int)
+
+def Int /(n: Int)
+
+def Int decr()
+
+def Int incr()

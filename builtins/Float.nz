@@ -1,0 +1,19 @@
+builtin
+
+def Bool ==(n: Float)
+
+def Bool <(n: Float)
+
+def Bool >(n: Float)
+
+def Bool <=(n: Float)
+
+def Bool >=(n: Float)
+
+def Float +(n: Float)
+
+def Float -(n: Float)
+
+def Float *(n: Float)
+
+def Float /(n: Float)

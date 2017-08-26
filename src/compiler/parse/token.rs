@@ -1,8 +1,5 @@
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::iter::FromIterator;
-
 use util::arr::Arr;
+use util::dict::Dict;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum Token {
@@ -111,59 +108,55 @@ impl Token {
 	}
 }
 
-fn must_add<K: Hash + Eq, V>(h: &mut HashMap<K, V>, k: K, v: V) {
-	if let Some(_old) = h.insert(k, v) {
-		panic!()
-	}
-}
-
 lazy_static! {
-    static ref NAME_TO_TOKEN: HashMap<Box<[u8]>, Token> = {
-let mut h = HashMap::<Box<[u8]>, Token>::new();
-assoc(&mut h, "abstract", Token::Abstract);
-assoc(&mut h, "array", Token::Array);
-assoc(&mut h, "assert", Token::Assert);
-assoc(&mut h, "builtin", Token::Builtin);
-assoc(&mut h, "catch", Token::Catch);
-assoc(&mut h, "def", Token::Def);
-assoc(&mut h, "do", Token::Do);
-assoc(&mut h, "enum", Token::Enum);
-assoc(&mut h, "else", Token::Else);
-assoc(&mut h, "false", Token::False);
-assoc(&mut h, "finally", Token::Finally);
-assoc(&mut h, "for", Token::For);
-assoc(&mut h, "fun", Token::Fun);
-assoc(&mut h, "generic", Token::Generic);
-assoc(&mut h, "get", Token::Get);
-assoc(&mut h, "if", Token::If);
-assoc(&mut h, "io", Token::Io);
-assoc(&mut h, "import", Token::Import);
-assoc(&mut h, "in", Token::In);
-assoc(&mut h, "is", Token::Is);
-assoc(&mut h, "new", Token::New);
-assoc(&mut h, "pass", Token::Pass);
-assoc(&mut h, "recur", Token::Recur);
-assoc(&mut h, "self", Token::SelfKw);
-assoc(&mut h, "set", Token::Set);
-assoc(&mut h, "slots", Token::Slots);
-assoc(&mut h, "then", Token::Then);
-assoc(&mut h, "true", Token::True);
-assoc(&mut h, "try", Token::Try);
-assoc(&mut h, "val", Token::Val);
-assoc(&mut h, "var", Token::Var);
-assoc(&mut h, "when", Token::When);
-h
+// TODO: use a static map? https://github.com/cbreeden/static-map
+    static ref NAME_TO_TOKEN: Dict<Box<[u8]>, Token> = {
+Dict::of(vec![
+(a("abstract"), Token::Abstract),
+(a("array"), Token::Array),
+(a("assert"), Token::Assert),
+(a("builtin"), Token::Builtin),
+(a("catch"), Token::Catch),
+(a("def"), Token::Def),
+(a("do"), Token::Do),
+(a("enum"), Token::Enum),
+(a("else"), Token::Else),
+(a("false"), Token::False),
+(a("finally"), Token::Finally),
+(a("for"), Token::For),
+(a("fun"), Token::Fun),
+(a("generic"), Token::Generic),
+(a("get"), Token::Get),
+(a("if"), Token::If),
+(a("io"), Token::Io),
+(a("import"), Token::Import),
+(a("in"), Token::In),
+(a("is"), Token::Is),
+(a("new"), Token::New),
+(a("pass"), Token::Pass),
+(a("recur"), Token::Recur),
+(a("self"), Token::SelfKw),
+(a("set"), Token::Set),
+(a("slots"), Token::Slots),
+(a("then"), Token::Then),
+(a("true"), Token::True),
+(a("try"), Token::Try),
+(a("val"), Token::Val),
+(a("var"), Token::Var),
+(a("when"), Token::When),
+])
 };
-static ref TOKEN_TO_NAME: HashMap<Token, String> = {
-let i = NAME_TO_TOKEN.iter().map(|(k, v)|
-(*v, String::from_utf8(k.clone().into_vec()).unwrap()));
-HashMap::<Token, String>::from_iter(i)
+
+static ref TOKEN_TO_NAME: Dict<Token, String> = {
+Dict::from_iterator(NAME_TO_TOKEN.iter().map(|(k, v)|
+(*v, String::from_utf8(k.clone().into_vec()).unwrap())))
 };
 }
 
-fn assoc(h: &mut HashMap<Box<[u8]>, Token>, s: &str, t: Token) {
-	must_add(h, Arr::copy_from_str(s).into_box(), t)
+fn a(k: &'static str) -> Box<[u8]> {
+	Arr::copy_from_str(k).into_box()
 }
+
 
 impl Token {
 	pub fn keyword_from_name(name: &[u8]) -> Option<Token> {

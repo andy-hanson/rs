@@ -40,7 +40,7 @@ pub fn check_method_body(
 }
 
 struct CheckExprContext<'a> {
-	ctx: &'a Ctx,
+	ctx: &'a Ctx<'a>,
 	method_or_impl: &'a MethodOrImpl,
 	method_instantiator: &'a Instantiator,
 	is_static: bool,

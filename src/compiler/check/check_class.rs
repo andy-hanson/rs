@@ -1,12 +1,12 @@
 use util::arr::Arr;
-use util::ptr::{LateOwn, Own};
+use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
 use super::super::diag::Diagnostic;
 use super::super::model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
 use super::super::model::expr::Expr;
 use super::super::model::method::{MethodOrImpl, MethodSignature, MethodWithBody, Parameter};
-use super::super::model::module::Imported;
+use super::super::model::module::Module;
 use super::super::model::ty::{TypeParameter, TypeParameterOrigin};
 use super::super::parse::ast;
 
@@ -15,26 +15,25 @@ use super::ctx::Ctx;
 use super::instantiator::Instantiator;
 
 pub fn check_class(
-	imports: Arr<Imported>,
-	ast: &ast::ClassDeclaration,
+	class: &LateOwn<ClassDeclaration>,
+	imports: &Arr<Ptr<Module>>,
+	ast: &ast::Class,
 	name: Sym,
-) -> (Own<ClassDeclaration>, Arr<Diagnostic>) {
+) -> Arr<Diagnostic> {
 	let type_parameters = ast.type_parameters.map_on_copies(TypeParameter::create);
 	// Create the class early and assign its properties later.
 	// This allows us to access the class' type when checking type annotations.
-	let current_class = Own::new(ClassDeclaration::new(name, type_parameters));
-	let origin = TypeParameterOrigin::Class(current_class.ptr());
-	TypeParameter::set_origins(&current_class.type_parameters, origin);
-	let mut ctx = Ctx::new(current_class, imports);
+	class.init(ClassDeclaration::new(name, type_parameters));
+	let origin = TypeParameterOrigin::Class(class.ptr());
+	TypeParameter::set_origins(&class.type_parameters, origin);
+	let mut ctx = Ctx::new(class, imports);
 	do_check(&mut ctx, ast);
 	ctx.finish()
 }
 
-fn do_check(ctx: &mut Ctx, ast: &ast::ClassDeclaration) {
+fn do_check(ctx: &mut Ctx, ast: &ast::Class) {
 	// type parameters already handled before calling this.
-	let &ast::ClassDeclaration {
-		head: ref head_ast, supers: ref super_asts, methods: ref method_asts, ..
-	} = ast;
+	let &ast::Class { head: ref head_ast, supers: ref super_asts, methods: ref method_asts, .. } = ast;
 
 	let methods = method_asts.map(|m| check_method_initial(ctx, m));
 	ctx.current_class.set_methods(methods);

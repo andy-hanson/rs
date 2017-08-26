@@ -1,7 +1,31 @@
 use util::arr::Arr;
 use util::path::{Path, RelPath};
 
-//pub fn get_document_from_logical_path() {...}
+use super::host::document_info::DocumentInfo;
+use super::host::document_provider::DocumentProvider;
+use super::host::file_input::Result;
+
+pub fn get_document_from_logical_path(
+	document_provider: &DocumentProvider,
+	logical_path: &Path,
+) -> Result<GetDocumentResult> {
+	let regular = regular_path(logical_path);
+	if let Some(document) = document_provider.get_document(&regular)? {
+		return Ok(GetDocumentResult::Found { full_path: regular, is_index: false, document })
+	};
+
+	let index = index_path(logical_path);
+	if let Some(document) = document_provider.get_document(&index)? {
+		return Ok(GetDocumentResult::Found { full_path: index, is_index: true, document })
+	};
+
+	Ok(GetDocumentResult::NotFound)
+}
+
+pub enum GetDocumentResult {
+	Found { full_path: Path, is_index: bool, document: DocumentInfo },
+	NotFound,
+}
 
 pub fn attempted_paths(importer_path: &Path, imported_path: &RelPath) -> Arr<Path> {
 	let logical_path = importer_path.resolve(imported_path);

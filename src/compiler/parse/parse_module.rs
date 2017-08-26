@@ -62,12 +62,12 @@ fn parse_imports(l: &mut Lexer) -> Result<Arr<ast::Import>> {
 	}
 }
 
-fn parse_class(l: &mut Lexer, start: Pos, kw: Token) -> Result<ast::ClassDeclaration> {
+fn parse_class(l: &mut Lexer, start: Pos, kw: Token) -> Result<ast::Class> {
 	let (type_parameters, start_2, kw_2) = try_parse_class_generic(l, start, kw)?;
 	let (head, start_3, kw_3) = parse_head(l, start_2, kw_2)?;
 	let (supers, start_4, kw_4) = parse_supers(l, start_3, kw_3)?;
 	let methods = parse_methods(l, start_4, kw_4)?;
-	Ok(ast::ClassDeclaration::of(l.loc_from(start), type_parameters, head, supers, methods))
+	Ok(ast::Class { loc: l.loc_from(start), type_parameters, head, supers, methods })
 }
 
 fn try_parse_class_generic(l: &mut Lexer, start: Pos, kw: Token) -> Result<(Arr<Sym>, Pos, Token)> {

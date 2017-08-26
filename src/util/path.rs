@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::hash::{Hash, Hasher};
 
 use util::arr::{Arr, ArrBuilder};
 use util::string_maker::{Show, Shower, StringMaker};
@@ -7,6 +8,14 @@ pub struct Path(pub Arr<Arr<u8>>);
 impl Path {
 	pub fn empty() -> Path {
 		Path(Arr::empty())
+	}
+
+	pub fn clone_path(&self) -> Path {
+		Path(self.0.clone())
+	}
+
+	pub fn from_string(s: Arr<u8>) -> Path {
+		Path(s.split(|ch| ch == b'/' || ch == b'\\'))
 	}
 
 	pub fn to_string(&self) -> String {
@@ -96,6 +105,18 @@ impl Show for Path {
 		s.join_arrs(&self.0);
 	}
 }
+impl Hash for Path {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.0.hash(state);
+	}
+}
+impl PartialEq for Path {
+	fn eq(&self, other: &Path) -> bool {
+		self.0
+			.each_equals(&other.0, |a, b| a.each_equals(b, |x, y| x == y))
+	}
+}
+impl Eq for Path {}
 
 fn is_path_part(s: &Arr<u8>) -> bool {
 	s.iter().all(|ch| match *ch {

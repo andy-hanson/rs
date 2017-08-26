@@ -1,4 +1,5 @@
 use util::loc::Loc;
+use util::path::{Path, RelPath};
 use util::ptr::Ptr;
 use util::sym::Sym;
 
@@ -11,6 +12,9 @@ use super::model::ty::Ty;
 pub struct Diagnostic(pub Loc, pub Diag);
 
 pub enum Diag {
+	CircularDependency(Path, RelPath),
+	CantFindLocalModule(Path, RelPath),
+
 	TooMuchIndent(
 		/*expected*/
 		u32,

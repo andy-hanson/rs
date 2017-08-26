@@ -1,5 +1,7 @@
+use std::mem::replace;
 use std::ops::{Index, Range};
 use std::slice::Iter;
+use std::vec::IntoIter as VecIntoIter;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Arr<T>(Box<[T]>);
@@ -56,6 +58,10 @@ impl<T> Arr<T> {
 
 	pub fn len(&self) -> usize {
 		self.0.len()
+	}
+
+	pub fn move_into_iter(self) -> VecIntoIter<T> {
+		self.0.into_vec().into_iter()
 	}
 
 	pub fn iter(&self) -> Iter<T> {
@@ -229,6 +235,34 @@ impl Arr<u8> {
 	pub fn clone_to_utf8_string(&self) -> String {
 		String::from_utf8(self.clone().into_vec()).unwrap()
 	}
+
+	pub fn equals_str(&self, s: &str) -> bool {
+		//TODO:PERF
+		self.each_equals(&Arr::copy_from_str(s), |a, b| a == b)
+	}
+
+	pub fn split<F: Fn(u8) -> bool>(&self, f: F) -> Arr<Arr<u8>> {
+		let mut parts = ArrBuilder::<Arr<u8>>::new();
+		let mut b = ArrBuilder::<u8>::new();
+		for ch in self.iter() {
+			if f(*ch) {
+				let old_b = replace(&mut b, ArrBuilder::new());
+				parts.add(old_b.finish())
+			} else {
+				b.add(*ch)
+			}
+		}
+		parts.add(b.finish());
+		parts.finish()
+	}
+
+	pub fn without_end_if_ends_with(&self, s: &str) -> Arr<u8> {
+		if self.len() < s.len() {
+			return self.clone()
+		}
+		let _ = Arr::copy_from_str(s);
+		panic!()
+	}
 }
 
 
@@ -245,6 +279,10 @@ pub struct ArrBuilder<T>(Vec<T>);
 impl<T> ArrBuilder<T> {
 	pub fn new() -> ArrBuilder<T> {
 		ArrBuilder(Vec::new())
+	}
+
+	pub fn len(&self) -> usize {
+		self.0.len()
 	}
 
 	pub fn new_with_first(first: T) -> ArrBuilder<T> {

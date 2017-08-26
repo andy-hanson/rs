@@ -13,7 +13,7 @@ pub trait DocumentProvider {
 	fn get_document(&self, path: &Path) -> Result<Option<DocumentInfo>>;
 }
 impl DocumentProvider {
-	fn file_system(root_dir: Path) -> FileLoadingDocumentProvider<NativeFileInput> {
+	pub fn file_system(root_dir: Path) -> FileLoadingDocumentProvider<NativeFileInput> {
 		FileLoadingDocumentProvider { file_input: NativeFileInput::new(root_dir) }
 	}
 }

@@ -1,4 +1,5 @@
 pub mod arr;
+pub mod dict;
 pub mod either;
 pub mod path;
 pub mod loc;

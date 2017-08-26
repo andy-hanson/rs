@@ -1,4 +1,6 @@
+use std::borrow::Borrow;
 use std::cell::UnsafeCell;
+use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
 pub struct Own<T> {
@@ -32,6 +34,25 @@ impl<T> Drop for Own<T> {
 				panic!("Ptr points to Own which has been dropped")
 			}
 		}
+	}
+}
+impl<T> Borrow<T> for Own<T> {
+	fn borrow(&self) -> &T {
+		&*self
+	}
+}
+impl<T: PartialEq> PartialEq for Own<T> {
+	fn eq(&self, other: &Own<T>) -> bool {
+		let self_inner: &T = self.borrow();
+		let other_inner: &T = other.borrow();
+		self_inner == other_inner
+	}
+}
+impl<T: Eq> Eq for Own<T> {}
+impl<T: Hash> Hash for Own<T> {
+	fn hash<H: Hasher>(&self, hasher: &mut H) {
+		let inner: &T = self.borrow();
+		inner.hash(hasher)
 	}
 }
 

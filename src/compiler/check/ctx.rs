@@ -2,29 +2,29 @@ use std::cell::{RefCell, RefMut};
 
 use util::arr::{Arr, ArrBuilder};
 use util::loc::Loc;
-use util::ptr::{Own, Ptr};
+use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
 use super::super::diag::{Diag, Diagnostic};
 use super::super::model::class::ClassDeclaration;
-use super::super::model::module::Imported;
+use super::super::model::module::Module;
 use super::super::model::ty::{Ty, TypeParameter};
 use super::super::parse::ast;
 
 use super::class_utils::{try_get_member_from_class_declaration, InstMember};
 
-pub struct Ctx {
-	pub current_class: Own<ClassDeclaration>,
-	imports: Arr<Imported>,
+pub struct Ctx<'a> {
+	pub current_class: &'a LateOwn<ClassDeclaration>,
+	imports: &'a Arr<Ptr<Module>>,
 	pub diags: RefCell<ArrBuilder<Diagnostic>>, //TODO: unsafecell
 }
-impl Ctx {
-	pub fn new(current_class: Own<ClassDeclaration>, imports: Arr<Imported>) -> Ctx {
+impl<'a> Ctx<'a> {
+	pub fn new(current_class: &'a LateOwn<ClassDeclaration>, imports: &'a Arr<Ptr<Module>>) -> Ctx<'a> {
 		Ctx { current_class, imports, diags: RefCell::new(ArrBuilder::new()) }
 	}
 
-	pub fn finish(self) -> (Own<ClassDeclaration>, Arr<Diagnostic>) {
-		(self.current_class, self.diags.into_inner().finish())
+	pub fn finish(self) -> Arr<Diagnostic> {
+		self.diags.into_inner().finish()
 	}
 
 	pub fn get_ty(&self, ty_ast: &ast::Ty) -> Ty {
@@ -60,7 +60,7 @@ impl Ctx {
 
 		for i in self.imports.iter() {
 			if i.name() == name {
-				return Some(i.imported_class())
+				return Some(i.class())
 			}
 		}
 
@@ -74,7 +74,7 @@ impl Ctx {
 	//mv?
 	pub fn get_own_member_or_add_diagnostic(&self, loc: Loc, name: Sym) -> Option<InstMember> {
 		//TODO:neater
-		let res = try_get_member_from_class_declaration(&self.current_class, name);
+		let res = try_get_member_from_class_declaration(self.current_class, name);
 		if res.is_none() {
 			self.add_diagnostic(loc, Diag::MemberNotFound(self.current_class.ptr(), name))
 		}

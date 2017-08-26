@@ -4,9 +4,9 @@ use compiler::parse::{parse, Result};
 use compiler::parse::ast::Module;
 
 pub struct DocumentInfo {
-	source: Arr<u8>,
-	version: u32,
-	parse_result: Result<Module>,
+	pub source: Arr<u8>,
+	pub version: u32,
+	pub parse_result: Result<Module>,
 }
 impl DocumentInfo {
 	pub fn parse(source: Arr<u8>, version: u32) -> DocumentInfo {

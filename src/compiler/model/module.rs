@@ -1,5 +1,4 @@
 use compiler::diag::Diagnostic;
-use compiler::host::document_info::DocumentInfo;
 use compiler::module_resolver::full_path;
 
 use util::arr::Arr;
@@ -9,6 +8,66 @@ use util::sym::Sym;
 
 use super::class::ClassDeclaration;
 
+pub struct ModuleCommon {
+	pub logical_path: Ptr<Path>,
+	pub is_index: bool,
+	pub document_version: u32,
+	//pub document: DocumentInfo,
+}
+impl ModuleCommon {
+	pub fn full_path(&self) -> Path {
+		full_path(&self.logical_path, self.is_index)
+	}
+}
+
+pub enum OwnModuleOrFail {
+	Module(Own<Module>),
+	Fail(Own<FailModule>),
+}
+impl OwnModuleOrFail {
+	pub fn to_ptr(&self) -> PtrModuleOrFail {
+		match *self {
+			OwnModuleOrFail::Module(ref m) => PtrModuleOrFail::Module(m.ptr()),
+			OwnModuleOrFail::Fail(ref f) => PtrModuleOrFail::Fail(f.ptr()),
+		}
+	}
+
+	pub fn common(&self) -> &ModuleCommon {
+		match *self {
+			OwnModuleOrFail::Module(ref m) => &m.common,
+			OwnModuleOrFail::Fail(ref f) => &f.common,
+		}
+	}
+}
+
+pub enum PtrModuleOrFail {
+	Module(Ptr<Module>),
+	Fail(Ptr<FailModule>),
+}
+
+pub struct FailModule {
+	pub common: ModuleCommon,
+	pub imports: Arr<PtrModuleOrFail>,
+	pub diagnostics: Arr<Diagnostic>,
+}
+
+pub struct Module {
+	pub common: ModuleCommon,
+	pub imports: Arr<Ptr<Module>>,
+	pub class: LateOwn<ClassDeclaration>,
+	pub diagnostics: LateOwn<Arr<Diagnostic>>,
+}
+impl Module {
+	pub fn name(&self) -> Sym {
+		self.class.name
+	}
+
+	pub fn class(&self) -> Ptr<ClassDeclaration> {
+		self.class.ptr()
+	}
+}
+
+/*
 pub enum Imported {
 	// Not Weak because we want our dependencies to be kept alive.
 	// They can't have pointers back to us.
@@ -30,37 +89,4 @@ impl Imported {
 		}
 	}
 }
-
-pub struct Module {
-	logical_path: Path,
-	is_index: bool,
-	document: Own<DocumentInfo>, //TODO: should own this?
-	imports: Arr<Imported>,
-	class: LateOwn<ClassDeclaration>,
-	diagnostics: LateOwn<Arr<Diagnostic>>,
-}
-impl Module {
-	pub fn new(
-		logical_path: Path,
-		is_index: bool,
-		document: Own<DocumentInfo>,
-		imports: Arr<Imported>,
-	) -> Module {
-		Module {
-			logical_path,
-			is_index,
-			document,
-			imports,
-			class: LateOwn::new(),
-			diagnostics: LateOwn::new(),
-		}
-	}
-
-	pub fn full_path(&self) -> Path {
-		full_path(&self.logical_path, self.is_index)
-	}
-
-	pub fn name(&self) -> Sym {
-		self.class.name
-	}
-}
+*/

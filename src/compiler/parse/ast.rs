@@ -7,10 +7,10 @@ use util::sym::Sym;
 
 pub struct Module {
 	pub imports: Arr<Import>,
-	pub class: Box<ClassDeclaration>,
+	pub class: Box<Class>,
 }
 impl Module {
-	pub fn of(imports: Arr<Import>, class: ClassDeclaration) -> Module {
+	pub fn of(imports: Arr<Import>, class: Class) -> Module {
 		Module { imports, class: bx(class) }
 	}
 }
@@ -20,23 +20,12 @@ pub enum Import {
 	Local(Loc, RelPath),
 }
 
-pub struct ClassDeclaration {
+pub struct Class {
 	pub loc: Loc,
 	pub type_parameters: Arr<Sym>,
 	pub head: Option<ClassHead>,
 	pub supers: Arr<Super>,
 	pub methods: Arr<Method>,
-}
-impl ClassDeclaration {
-	pub fn of(
-		loc: Loc,
-		type_parameters: Arr<Sym>,
-		head: Option<ClassHead>,
-		supers: Arr<Super>,
-		methods: Arr<Method>,
-	) -> ClassDeclaration {
-		ClassDeclaration { loc, type_parameters, head, supers, methods }
-	}
 }
 
 pub struct ClassHead(pub Loc, pub ClassHeadData);

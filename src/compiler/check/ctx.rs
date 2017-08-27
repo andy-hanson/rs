@@ -5,6 +5,7 @@ use util::loc::Loc;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
+use super::super::compile::builtins::BuiltinsCtx;
 use super::super::diag::{Diag, Diagnostic};
 use super::super::model::class::ClassDeclaration;
 use super::super::model::module::Module;
@@ -15,14 +16,14 @@ use super::class_utils::{try_get_member_from_class_declaration, InstMember};
 
 pub struct Ctx<'a> {
 	pub current_class: &'a LateOwn<ClassDeclaration>,
-	builtins: &'a [Own<Module>],
+	builtins: &'a BuiltinsCtx<'a>,
 	imports: &'a Arr<Ptr<Module>>,
 	pub diags: RefCell<ArrBuilder<Diagnostic>>, //TODO: unsafecell
 }
 impl<'a> Ctx<'a> {
 	pub fn new(
 		current_class: &'a LateOwn<ClassDeclaration>,
-		builtins: &'a [Own<Module>],
+		builtins: &'a BuiltinsCtx<'a>,
 		imports: &'a Arr<Ptr<Module>>,
 	) -> Ctx<'a> {
 		Ctx { current_class, builtins, imports, diags: RefCell::new(ArrBuilder::new()) }
@@ -30,6 +31,14 @@ impl<'a> Ctx<'a> {
 
 	pub fn finish(self) -> Arr<Diagnostic> {
 		self.diags.into_inner().finish()
+	}
+
+	pub fn void(&self) -> Ty {
+		self.builtins.void.unwrap().clone()
+	}
+
+	pub fn bool(&self) -> Ty {
+		self.builtins.bool.unwrap().clone()
 	}
 
 	pub fn get_ty(&self, ty_ast: &ast::Ty) -> Ty {
@@ -69,7 +78,7 @@ impl<'a> Ctx<'a> {
 			}
 		}
 
-		for b in self.builtins.iter() {
+		for b in self.builtins.all.iter() {
 			if b.name() == name {
 				return Some(b.class())
 			}

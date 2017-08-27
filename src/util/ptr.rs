@@ -81,20 +81,30 @@ impl<T> Drop for Ptr<T> {
 	}
 }
 
-struct Late<T>(UnsafeCell<Option<T>>);
+pub struct Late<T>(UnsafeCell<Option<T>>);
 impl<T> Late<T> {
 	pub fn new() -> Late<T> {
 		Late(UnsafeCell::new(None))
 	}
 
 	pub fn get(&self) -> &T {
+		self.try_get().unwrap()
+	}
+
+	pub fn try_get(&self) -> Option<&T> {
 		unsafe {
 			let data_ptr = self.0.get();
-			(*data_ptr).as_ref().unwrap()
+			(*data_ptr).as_ref()
 		}
 	}
 
-	pub fn set(&self, value: T) {
+	pub fn into_value(self) -> T {
+		unsafe {
+			self.0.into_inner().unwrap()
+		}
+	}
+
+	pub fn init(&self, value: T) {
 		unsafe {
 			let data_ptr = self.0.get();
 			assert!((*data_ptr).is_none());
@@ -114,7 +124,7 @@ impl<T> LateOwn<T> {
 	}
 
 	pub fn init(&self, value: T) {
-		self.0.set(Own::new(value))
+		self.0.init(Own::new(value))
 	}
 }
 impl<T> Deref for LateOwn<T> {
@@ -130,8 +140,20 @@ impl<T> LatePtr<T> {
 		LatePtr(Late::new())
 	}
 
-	pub fn init(&self, value: &Own<T>) {
-		self.0.set(value.ptr())
+	pub fn init(&self, value: Ptr<T>) {
+		self.0.init(value)
+	}
+
+	pub fn into_ptr(self) -> Ptr<T> {
+		self.0.into_value()
+	}
+
+	pub fn try_get(&self) -> Option<&T> {
+		self.0.try_get().map(|ptr| &**ptr)
+	}
+
+	pub fn try_get_ptr(&self) -> Option<Ptr<T>> {
+		self.0.try_get().map(|ptr| ptr.clone_ptr())
 	}
 }
 impl<T> Deref for LatePtr<T> {

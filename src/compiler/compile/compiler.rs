@@ -13,7 +13,7 @@ use super::super::model::module::{FailModule, Module, ModuleSource, OwnModuleOrF
 use super::super::parse::ast::{Class as ClassAst, Import as ImportAst, Module as ModuleAst};
 
 use super::{CompileResult, CompiledProgram};
-use super::builtins::get_builtins;
+use super::builtins::{get_builtins, BuiltinsOwn};
 use super::module_resolver::{get_document_from_logical_path, GetDocumentResult};
 
 /*
@@ -25,7 +25,7 @@ The CompilerHost may implement caching. (In a command-line scenario this should 
 Whether a document may be reused is indicated by its version vs the version the compiler used.
 */
 struct Compiler<'a> {
-	builtins: &'a [Own<Module>],
+	builtins: &'a BuiltinsOwn,
 	document_provider: &'a DocumentProvider,
 	// We consume the old program, so we module values out of its map when we reuse them.
 	old_modules: MutDict<Own<Path>, OwnModuleOrFail>,
@@ -135,7 +135,7 @@ impl<'a> Compiler<'a> {
 				};
 				// Initializes module.class and module.diagnostics.
 				// (There are no parse/import diagnostics or we wouldn't have gotten here.)
-				check_module(&module, self.builtins, &class_ast, name);
+				check_module(&module, &self.builtins.as_ctx(), &class_ast, name);
 				OwnModuleOrFail::Module(module)
 			}
 			ResolvedImports::Failure(imports, diagnostics) => {
@@ -238,7 +238,7 @@ pub fn compile(
 	// Don't care about isReused for top level
 	let (result, modules_states) = {
 		let mut compiler = Compiler {
-			builtins: builtins.as_slice(),
+			builtins: &builtins,
 			document_provider,
 			old_modules,
 			modules: MutDict::new(),

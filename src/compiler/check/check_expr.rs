@@ -63,13 +63,11 @@ impl<'a> CheckExprContext<'a> {
 
 	fn check_void(&self, a: &ast::Expr) -> Expr {
 		// Need to access builtins::void
-		unused!(a);
-		todo!()
+		self.check_subtype(self.ctx.void(), a)
 	}
 
 	fn check_bool(&self, a: &ast::Expr) -> Expr {
-		unused!(a);
-		todo!()
+		self.check_subtype(self.ctx.bool(), a)
 	}
 
 	fn check_infer(&self, a: &ast::Expr) -> Expr {

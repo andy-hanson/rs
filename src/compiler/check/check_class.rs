@@ -2,6 +2,7 @@ use util::arr::Arr;
 use util::ptr::{LateOwn, Own};
 use util::sym::Sym;
 
+use super::super::compile::builtins::BuiltinsCtx;
 use super::super::model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
 use super::super::model::expr::Expr;
 use super::super::model::method::{MethodOrImpl, MethodSignature, MethodWithBody, Parameter};
@@ -13,7 +14,7 @@ use super::check_expr::check_method_body;
 use super::ctx::Ctx;
 use super::instantiator::Instantiator;
 
-pub fn check_module(module: &Module, builtins: &[Own<Module>], ast: &ast::Class, name: Sym) {
+pub fn check_module(module: &Module, builtins: &BuiltinsCtx, ast: &ast::Class, name: Sym) {
 	let type_parameters = ast.type_parameters.map_on_copies(TypeParameter::create);
 	let class = &module.class;
 	// Create the class early and assign its properties later.

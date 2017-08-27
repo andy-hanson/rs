@@ -1,20 +1,20 @@
-use util::arr::Arr;
 use util::dict::MutDict;
 use util::path::Path;
 use util::ptr::Own;
 
 use super::host::document_provider::DocumentProvider;
 use super::host::file_input::Result;
-use super::model::module::{Module, OwnModuleOrFail, PtrModuleOrFail};
+use super::model::module::{OwnModuleOrFail, PtrModuleOrFail};
 
-mod builtins;
+pub mod builtins;
 mod compiler;
 mod module_resolver;
+use self::builtins::BuiltinsOwn;
 use self::compiler::compile;
 pub use self::module_resolver::full_path;
 
 pub struct CompiledProgram {
-	builtins: Arr<Own<Module>>,
+	builtins: BuiltinsOwn,
 	modules: MutDict<Own<Path>, OwnModuleOrFail>,
 }
 

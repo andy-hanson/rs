@@ -108,6 +108,15 @@ impl<T> Arr<T> {
 		None
 	}
 
+	pub fn find_index<F: Fn(&T) -> bool>(&self, f: F) -> Option<usize> {
+		for i in self.range() {
+			if f(&self[i]) {
+				return Some(i)
+			}
+		}
+		None
+	}
+
 	pub fn last(&self) -> Option<&T> {
 		if self.any() {
 			Some(&self[self.len() - 1])

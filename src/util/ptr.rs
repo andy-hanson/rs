@@ -99,9 +99,7 @@ impl<T> Late<T> {
 	}
 
 	pub fn into_value(self) -> T {
-		unsafe {
-			self.0.into_inner().unwrap()
-		}
+		unsafe { self.0.into_inner().unwrap() }
 	}
 
 	pub fn init(&self, value: T) {

@@ -1,3 +1,4 @@
+pub mod arith;
 pub mod arr;
 pub mod dict;
 pub mod either;
@@ -8,3 +9,4 @@ pub mod macros;
 pub mod ptr;
 pub mod string_maker;
 pub mod sym;
+pub mod vec;

@@ -237,12 +237,8 @@ pub fn compile(
 	};
 	// Don't care about isReused for top level
 	let (result, modules_states) = {
-		let mut compiler = Compiler {
-			builtins: &builtins,
-			document_provider,
-			old_modules,
-			modules: MutDict::new(),
-		};
+		let mut compiler =
+			Compiler { builtins: &builtins, document_provider, old_modules, modules: MutDict::new() };
 		let res = compiler.compile_single(path)?.0;
 		(res, compiler.modules)
 	};

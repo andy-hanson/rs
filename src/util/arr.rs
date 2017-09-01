@@ -3,6 +3,8 @@ use std::ops::{Index, Range};
 use std::slice::Iter;
 use std::vec::IntoIter as VecIntoIter;
 
+use super::slice::find_index;
+
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Arr<T>(Box<[T]>);
 
@@ -109,12 +111,7 @@ impl<T> Arr<T> {
 	}
 
 	pub fn find_index<F: Fn(&T) -> bool>(&self, f: F) -> Option<usize> {
-		for i in self.range() {
-			if f(&self[i]) {
-				return Some(i)
-			}
-		}
-		None
+		find_index(self.as_slice(), f)
 	}
 
 	pub fn last(&self) -> Option<&T> {

@@ -2,7 +2,7 @@ use util::arith::{to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
 use util::arr::{Arr, ArrBuilder};
 use util::loc::Loc;
 use util::ptr::{Own, Ptr};
-use util::vec::find_index;
+use util::slice::find_index;
 
 use super::super::super::compiler::model::expr::{Expr, ExprData, LiteralValue, Local, Pattern};
 use super::super::super::compiler::model::method::Parameter;
@@ -103,10 +103,10 @@ impl ExprEmitter {
 				self.stack_depth -= n_pushed
 			}
 			ExprData::Seq(ref first, ref then) => {
-				self.emit_expr(&first);
+				self.emit_expr(first);
 				self.write(loc, Instruction::PopVoid);
 				self.pops(1);
-				self.emit_expr(&then)
+				self.emit_expr(then)
 			}
 			ExprData::Literal(ref value) => {
 				self.pushes(1);
@@ -119,15 +119,15 @@ impl ExprEmitter {
 					LiteralValue::String(ref s) => Instruction::LiteralString(s.clone()),
 				})
 			},
-			ExprData::IfElse { test: _, then: _, elze: _, ty: _ } => todo!(),
+			ExprData::IfElse { .. } => todo!(),
 			ExprData::WhenTest(_, _, _) => todo!(),
-			ExprData::Try { body: _, catch: _, finally: _, ty: _ } => todo!(),
+			ExprData::Try { .. } => todo!(),
 			ExprData::For(_) => todo!(),
 			ExprData::StaticMethodCall(_, _, _) => todo!(),
 			ExprData::InstanceMethodCall(_, _, _, _) => todo!(),
 			ExprData::MyInstanceMethodCall(_, _, _) => todo!(),
 			ExprData::New(_, _) => todo!(),
-			ExprData::ArrayLiteral { element_ty: _, elements: _ } => todo!(),
+			ExprData::ArrayLiteral { .. } => todo!(),
 			ExprData::GetMySlot(_, _) => todo!(),
 			ExprData::GetSlot(_, _, _) => todo!(),
 			ExprData::SetSlot(_, _) => todo!(),

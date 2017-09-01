@@ -128,20 +128,17 @@ fn check_super_initial(
 			);
 			return None
 		}
-		abstract_methods.zip(
-			impl_asts,
-			|implemented, &ast::Impl { loc, name: _, ref parameter_names, body: _ }| {
-				if !implemented
-					.parameters()
-					.each_corresponds(parameter_names, |p, pn| p.name == *pn)
-				{
-					ctx.add_diagnostic(loc, Diag::WrongImplParameters(implemented.ptr()));
-					todo!() // Should we continue or what?
-				}
+		abstract_methods.zip(impl_asts, |implemented, &ast::Impl { loc, ref parameter_names, .. }| {
+			if !implemented
+				.parameters()
+				.each_corresponds(parameter_names, |p, pn| p.name == *pn)
+			{
+				ctx.add_diagnostic(loc, Diag::WrongImplParameters(implemented.ptr()));
+				todo!() // Should we continue or what?
+			}
 
-				Own::new(Impl { loc, implemented: implemented.ptr(), body: LateOwn::new() })
-			},
-		)
+			Own::new(Impl { loc, implemented: implemented.ptr(), body: LateOwn::new() })
+		})
 	};
 
 	let super_inst_cls = unwrap_or_return!(ctx.instantiate_class(super_class_declaration, ty_args), None);

@@ -32,8 +32,8 @@ pub struct Instructions(pub Arr<Instruction>);
 #[derive(Clone)]
 pub enum BuiltinCode {
 	Fn0(fn() -> Value),
-	Fn1(fn(Value) -> Value),
-	Fn2(fn(Value, Value) -> Value),
+	Fn1(fn(&Value) -> Value),
+	Fn2(fn(&Value, &Value) -> Value),
 }
 
 

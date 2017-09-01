@@ -7,6 +7,6 @@ pub mod loc;
 #[macro_use]
 pub mod macros;
 pub mod ptr;
+pub mod slice;
 pub mod string_maker;
 pub mod sym;
-pub mod vec;

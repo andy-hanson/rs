@@ -26,6 +26,6 @@ fn get_bool_impls() -> Dict<Sym, BuiltinCode> {
 	Dict::of(vec![(Sym::of("=="), BuiltinCode::Fn2(bool_eq))])
 }
 
-fn bool_eq(a: Value, b: Value) -> Value {
+fn bool_eq(a: &Value, b: &Value) -> Value {
 	Value::Bool(a.as_bool() == b.as_bool())
 }

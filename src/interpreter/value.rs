@@ -14,3 +14,12 @@ pub enum Value {
 	Float(f64),
 	String(Arr<u8>),
 }
+impl Value {
+	pub fn as_bool(&self) -> bool {
+		if let Value::Bool(b) = *self {
+			b
+		} else {
+			todo!()
+		}
+	}
+}

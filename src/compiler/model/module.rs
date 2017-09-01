@@ -52,7 +52,7 @@ pub struct FailModule {
 }
 
 pub struct Module {
-	pub source: Option<ModuleSource>,
+	pub source: Option<ModuleSource>, // missing for builtins
 	pub imports: Arr<Ptr<Module>>,
 	pub class: LateOwn<ClassDeclaration>,
 	pub diagnostics: LateOwn<Arr<Diagnostic>>,

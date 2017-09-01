@@ -1,3 +1,4 @@
+use util::arr::Arr;
 use util::loc::Loc;
 use util::path::{Path, RelPath};
 use util::ptr::Ptr;
@@ -6,7 +7,7 @@ use util::sym::Sym;
 use super::model::class::{ClassDeclaration, MemberDeclaration, SlotDeclaration};
 use super::model::effect::Effect;
 use super::model::expr::Local;
-use super::model::method::{MethodOrAbstract, MethodWithBody, Parameter};
+use super::model::method::{AbstractMethod, MethodOrAbstract, MethodWithBody, Parameter};
 use super::model::ty::Ty;
 
 pub struct Diagnostic(pub Loc, pub Diag);
@@ -69,4 +70,11 @@ pub enum Diag {
 	SlotNotMutable(Ptr<SlotDeclaration>),
 	CantReassignParameter(Ptr<Parameter>),
 	CantReassignLocal(Ptr<Local>),
+
+	//mv
+	NotAnAbstractClass(Ptr<ClassDeclaration>),
+	ImplsMismatch {
+		expected_names: Arr<Sym>,
+	},
+	WrongImplParameters(Ptr<AbstractMethod>),
 }

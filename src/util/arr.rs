@@ -142,6 +142,10 @@ impl<T> Arr<T> {
 	}
 
 	pub fn each_equals<F: Fn(&T, &T) -> bool>(&self, other: &Arr<T>, f: F) -> bool {
+		self.each_corresponds(other, f)
+	}
+
+	pub fn each_corresponds<U, F: Fn(&T, &U) -> bool>(&self, other: &Arr<U>, f: F) -> bool {
 		if self.len() != other.len() {
 			return false
 		}

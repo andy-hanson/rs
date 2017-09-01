@@ -1,48 +1,75 @@
-use util::arith::usub;
+use util::arith::{u8_add_mut, u8_sub_mut, u8_add, u8_sub, to_u8};
+use util::arr::{Arr, ArrBuilder};
 use util::loc::Loc;
-use util::ptr::Ptr;
+use util::ptr::{Own, Ptr};
 use util::vec::find_index;
 
 use super::super::super::compiler::model::expr::{Expr, ExprData, LiteralValue, Local, Pattern};
+use super::super::super::compiler::model::method::Parameter;
 
-use super::super::instruction::Instruction;
-use super::super::value::Value;
+use super::super::emitted_model::{Instructions, Instruction};
 
-pub trait InstructionWriter {
-	fn write(&mut self, loc: Loc, i: Instruction) -> ();
+pub fn emit_method(parameters: &Arr<Own<Parameter>>, body: &Expr) -> Instructions {
+	let n_parameters = to_u8(parameters.len());
+	let mut emitter = ExprEmitter {
+		w: InstructionWriter::new(),
+		n_parameters,
+		locals: Vec::new(),
+		stack_depth: n_parameters,
+	};
+	emitter.emit_expr(body);
+	emitter.w.finish()
 }
 
-struct ExprEmitter<'a, W : 'a + InstructionWriter> {
-	w: &'a mut W,
+struct InstructionWriter {
+	instructions: ArrBuilder<Instruction>,
+}
+impl InstructionWriter {
+	fn new() -> InstructionWriter {
+		InstructionWriter { instructions: ArrBuilder::new() }
+	}
+
+	fn write(&mut self, loc: Loc, instruction: Instruction) {
+		unused!(loc);
+		self.instructions.add(instruction)
+	}
+
+	fn finish(self) -> Instructions {
+		Instructions(self.instructions.finish())
+	}
+}
+
+struct ExprEmitter {
+	w: InstructionWriter,
 	// Number of parameters the current function has.
-	n_parameters: u32,
+	n_parameters: u8,
 	// Stack of all current locals.
 	locals: Vec<Ptr<Local>>,
 	// Current stack depth relative to the start of this function (first parameter is 0).
 	// This has a minimum of # parameters + # locals, but may be greater if
 	// there are currently temporary values on the stack.
-	stack_depth: u32,
+	stack_depth: u8,
 }
-impl<'a, W : InstructionWriter> ExprEmitter<'a, W> {
+impl ExprEmitter {
 	fn write(&mut self, loc: Loc, instruction: Instruction) {
 		self.w.write(loc, instruction)
 	}
 
-	fn fetch(&mut self, loc: Loc, by: u32) {
+	fn fetch(&mut self, loc: Loc, from_stack_depth: u8) {
 		self.pushes(1);
-		let depth_above_current = usub(self.stack_depth, by);
+		let depth_above_current = u8_sub(self.stack_depth, from_stack_depth);
 		self.write(loc, Instruction::Fetch(depth_above_current))
 	}
 
-	fn pushes(&mut self, amount: u32) {
-		self.stack_depth += amount
+	fn pushes(&mut self, amount: u8) {
+		u8_add_mut(&mut self.stack_depth, amount)
 	}
 
-	fn pops(&mut self, amount: u32) {
-		self.stack_depth -= amount
+	fn pops(&mut self, amount: u8) {
+		u8_sub_mut(&mut self.stack_depth, amount)
 	}
 
-	fn emit_expr(&mut self, expr: &'a Expr) {
+	fn emit_expr(&mut self, expr: &Expr) {
 		let &Expr(loc, ref data) = expr;
 		match *data {
 			ExprData::Bogus | ExprData::BogusCast(_, _) =>
@@ -53,7 +80,7 @@ impl<'a, W : InstructionWriter> ExprEmitter<'a, W> {
 			ExprData::AccessLocal(ref local) => {
 				// Get the index of the local
 				let index = find_index(&self.locals, |l| l.ptr_equals(local)).unwrap();
-				let local_depth = self.n_parameters + index as u32;
+				let local_depth = u8_add(self.n_parameters, to_u8(index));
 				self.fetch(loc, local_depth)
 			}
 			ExprData::Let(ref pattern, ref value, ref then) => {
@@ -82,16 +109,15 @@ impl<'a, W : InstructionWriter> ExprEmitter<'a, W> {
 				self.emit_expr(&then)
 			}
 			ExprData::Literal(ref value) => {
-				let v = match *value {
-					LiteralValue::Pass => Value::Void,
-					LiteralValue::Bool(b) => Value::Bool(b),
-					LiteralValue::Nat(n) => Value::Nat(n),
-					LiteralValue::Int(i) => Value::Int(i),
-					LiteralValue::Float(f) => Value::Float(f),
-					LiteralValue::String(ref s) => Value::String(s.clone()),
-				};
 				self.pushes(1);
-				self.write(loc, Instruction::Literal(v))
+				self.write(loc, match *value {
+					LiteralValue::Pass => Instruction::LiteralVoid,
+					LiteralValue::Bool(b) => Instruction::LiteralBool(b),
+					LiteralValue::Nat(n) => Instruction::LiteralNat(n),
+					LiteralValue::Int(i) => Instruction::LiteralInt(i),
+					LiteralValue::Float(f) => Instruction::LiteralFloat(f),
+					LiteralValue::String(ref s) => Instruction::LiteralString(s.clone()),
+				})
 			},
 			ExprData::IfElse { test: _, then: _, elze: _, ty: _ } => todo!(),
 			ExprData::WhenTest(_, _, _) => todo!(),

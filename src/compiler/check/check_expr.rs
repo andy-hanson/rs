@@ -139,8 +139,9 @@ impl<'a> CheckExprContext<'a> {
 					todo!()
 				}
 
-				let ty_args = self.get_ty_args(ty_arg_asts);
-				let inst_cls = InstCls(self.ctx.current_class.ptr(), ty_args);
+				let inst_cls = unwrap_or_return!(
+					self.ctx.instantiate_class(self.ctx.current_class.ptr(), ty_arg_asts),
+					bogus(loc));
 				let instantiator = Instantiator::of_inst_cls(&inst_cls);
 				let args = arg_asts.zip(slots, |arg, slot|
 					self.check_subtype(instantiate_type(&slot.ty, &instantiator), arg));
@@ -379,7 +380,7 @@ impl<'a> CheckExprContext<'a> {
 		});
 
 		let inst_method = unwrap_or_return!(
-			self.instantiate_method(&MethodOrAbstract::Method(method_decl.ptr()), ty_arg_asts),
+			self.ctx.instantiate_method(&MethodOrAbstract::Method(method_decl.ptr()), ty_arg_asts),
 			bogus(loc)
 		);
 
@@ -424,7 +425,7 @@ impl<'a> CheckExprContext<'a> {
 			}
 		};
 
-		let inst_method = unwrap_or_return!(self.instantiate_method(&method_decl, ty_arg_asts), bogus(loc));
+		let inst_method = unwrap_or_return!(self.ctx.instantiate_method(&method_decl, ty_arg_asts), bogus(loc));
 
 		let args = unwrap_or_return!(
 			self.check_call_arguments(loc, &inst_method, &member_instantiator, ArgAsts::Many(arg_asts)),
@@ -493,7 +494,7 @@ impl<'a> CheckExprContext<'a> {
 
 				// Note: member is instantiated based on the *class* type arguments,
                 // but there may sill be *method* type arguments.
-				let inst_method = unwrap_or_return!(self.instantiate_method(&method, ty_arg_asts), bogus(loc));
+				let inst_method = unwrap_or_return!(self.ctx.instantiate_method(&method, ty_arg_asts), bogus(loc));
 
 				let args = unwrap_or_return!(
 					self.check_call_arguments(loc, &inst_method, &member_instantiator, arg_asts),
@@ -552,22 +553,6 @@ impl<'a> CheckExprContext<'a> {
 					}))
 				},
 		}
-	}
-
-	//mv
-	fn get_ty_args(&self, ty_arg_asts: &Arr<ast::Ty>) -> Arr<Ty> {
-		ty_arg_asts.map(|ty_ast| self.ctx.get_ty(ty_ast))
-	}
-
-	fn instantiate_method(
-		&self,
-		method_decl: &MethodOrAbstract,
-		ty_arg_asts: &Arr<ast::Ty>,
-	) -> Option<InstMethod> {
-		if ty_arg_asts.len() != method_decl.type_parameters().len() {
-			todo!()
-		}
-		Some(InstMethod(method_decl.copy(), self.get_ty_args(ty_arg_asts)))
 	}
 
 	/*

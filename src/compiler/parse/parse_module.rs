@@ -257,7 +257,7 @@ fn parse_impls(l: &mut Lexer) -> Result<Arr<ast::Impl>> {
 		let start = l.pos();
 		let name = l.take_name()?;
 		l.take_parenl()?;
-		let parameters: Arr<Sym> = if l.try_take_parenr() {
+		let parameter_names: Arr<Sym> = if l.try_take_parenr() {
 			Arr::empty()
 		} else {
 			let first = l.take_name()?;
@@ -272,10 +272,9 @@ fn parse_impls(l: &mut Lexer) -> Result<Arr<ast::Impl>> {
 			}
 		};
 
-		l.take_indent()?;
-		let body = parse_block(l)?;
+		let body = if l.try_take_indent()? { Some(parse_block(l)?) } else { None };
 
-		impls.add(ast::Impl::of(l.loc_from(start), name, parameters, body));
+		impls.add(ast::Impl { loc: l.loc_from(start), name, parameter_names, body });
 		if l.try_take_dedent_from_dedenting() {
 			break Ok(impls.finish())
 		}

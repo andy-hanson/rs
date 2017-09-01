@@ -62,6 +62,10 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 		*self.0.get_mut(key).unwrap() = new_value;
 	}
 
+	pub fn has_key<Q: ?Sized>(&self, k: &Q) -> bool where K : Borrow<Q>, Q : Hash + Eq {
+		self.0.contains_key(k)
+	}
+
 	pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
 	where
 		K: Borrow<Q>,
@@ -84,5 +88,20 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 
 	fn move_into_iter(self) -> IntoIter<K, V> {
 		self.0.into_iter()
+	}
+}
+
+pub struct MutSet<K : Hash + Eq>(MutDict<K, ()>);
+impl<K : Hash + Eq> MutSet<K> {
+	pub fn new() -> MutSet<K> {
+		MutSet(MutDict::new())
+	}
+
+	pub fn add(&mut self, value: K) {
+		self.0.add(value, ())
+	}
+
+	pub fn has<Q : ?Sized>(&self, value: &Q) -> bool where K : Borrow<Q>, Q : Hash + Eq {
+		self.0.has_key(value)
 	}
 }

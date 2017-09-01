@@ -8,8 +8,9 @@ use util::sym::Sym;
 use super::super::compile::builtins::BuiltinsCtx;
 use super::super::diag::{Diag, Diagnostic};
 use super::super::model::class::ClassDeclaration;
+use super::super::model::method::{InstMethod, MethodOrAbstract};
 use super::super::model::module::Module;
-use super::super::model::ty::{Ty, TypeParameter};
+use super::super::model::ty::{Ty, TypeParameter, InstCls};
 use super::super::parse::ast;
 
 use super::class_utils::{try_get_member_from_class_declaration, InstMember};
@@ -42,7 +43,7 @@ impl<'a> Ctx<'a> {
 	}
 
 	pub fn get_ty(&self, ty_ast: &ast::Ty) -> Ty {
-		//TODO:PERF -- versino without type parameters?
+		//TODO:PERF -- version without type parameters?
 		self.get_ty_or_type_parameter(ty_ast, &Arr::empty())
 	}
 
@@ -53,6 +54,44 @@ impl<'a> Ctx<'a> {
 	) -> Ty {
 		unused!(ty_ast, type_parameters);
 		todo!()
+	}
+
+	pub fn instantiate_class_from_ast(
+		&self,
+		loc: Loc,
+		name: Sym,
+		ty_arg_asts: &Arr<ast::Ty>,
+	) -> Option<InstCls> {
+		self.access_class_declaration_or_add_diagnostic(loc, name).and_then(|class|
+			self.instantiate_class(class, ty_arg_asts))
+	}
+
+	pub fn instantiate_class(
+		&self,
+		class: Ptr<ClassDeclaration>,
+		ty_arg_asts: &Arr<ast::Ty>
+	) -> Option<InstCls> {
+		if ty_arg_asts.len() != class.type_parameters.len() {
+			todo!()
+		} else {
+			Some(InstCls(class.clone_ptr(), self.get_ty_args(ty_arg_asts)))
+		}
+	}
+
+	pub fn instantiate_method(
+		&self,
+		method_decl: &MethodOrAbstract,
+		ty_arg_asts: &Arr<ast::Ty>,
+	) -> Option<InstMethod> {
+		if ty_arg_asts.len() != method_decl.type_parameters().len() {
+			todo!()
+		} else {
+			Some(InstMethod(method_decl.copy(), self.get_ty_args(ty_arg_asts)))
+		}
+	}
+
+	fn get_ty_args(&self, ty_arg_asts: &Arr<ast::Ty>) -> Arr<Ty> {
+		ty_arg_asts.map(|ty_ast| self.get_ty(ty_ast))
 	}
 
 	pub fn access_class_declaration_or_add_diagnostic(

@@ -89,14 +89,15 @@ pub struct Parameter {
 	pub loc: Loc,
 	pub ty: Ty,
 	pub name: Sym,
-	pub index: u32,
+	pub index: u8,
 }
 
 pub struct InstMethod(pub MethodOrAbstract, pub Arr<Ty>);
 
 pub struct Impl {
+	pub loc: Loc,
 	pub implemented: Ptr<AbstractMethod>,
-	pub body: LateOwn<Expr>,
+	pub body: LateOwn<Option<Expr>>,
 }
 
 pub enum MethodOrImpl {

@@ -3,7 +3,7 @@ use util::loc::Loc;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
-use super::method::{AbstractMethod, MethodWithBody};
+use super::method::{AbstractMethod, MethodWithBody, Impl};
 //use super::module::Module;
 
 use super::ty::{InstCls, Ty, TypeParameter};
@@ -80,11 +80,7 @@ impl SlotDeclaration {
 pub struct Super {
 	pub loc: Loc,
 	pub super_class: InstCls,
-}
-impl Super {
-	pub fn of(loc: Loc, super_class: InstCls) -> Super {
-		Super { loc, super_class }
-	}
+	pub impls: Arr<Own<Impl>>,
 }
 
 pub enum MemberDeclaration {

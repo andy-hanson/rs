@@ -80,6 +80,17 @@ impl<T> Drop for Ptr<T> {
 		}
 	}
 }
+impl<T> Eq for Ptr<T> {}
+impl<T> PartialEq for Ptr<T> {
+	fn eq(&self, other: &Ptr<T>) -> bool {
+		self.ptr_equals(other)
+	}
+}
+impl<T> Hash for Ptr<T> {
+	fn hash<H : Hasher>(&self, hasher: &mut H) {
+		hasher.write_usize(self.0 as usize)
+	}
+}
 
 pub struct Late<T>(UnsafeCell<Option<T>>);
 impl<T> Late<T> {

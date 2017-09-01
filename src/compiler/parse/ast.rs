@@ -84,12 +84,8 @@ pub struct Impl {
 	pub loc: Loc,
 	pub name: Sym,
 	pub parameter_names: Arr<Sym>,
-	pub body: Expr,
-}
-impl Impl {
-	pub fn of(loc: Loc, name: Sym, parameter_names: Arr<Sym>, body: Expr) -> Impl {
-		Impl { loc, name, parameter_names, body }
-	}
+	// May be missing for a builtin
+	pub body: Option<Expr>,
 }
 
 pub struct Method {

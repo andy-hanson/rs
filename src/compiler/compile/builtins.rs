@@ -90,13 +90,3 @@ pub fn get_builtins() -> BuiltinsOwn {
 fn primitive_ty(cls: Ptr<ClassDeclaration>) -> Ty {
 	Ty::pure_ty(InstCls(cls, Arr::empty()))
 }
-
-/*fn find_builtin(name_str: &'static str) -> &'static ClassDeclaration {
-	let name = Sym::of(name_str);
-	for b in BUILTINS {
-		if b.name() == name {
-			return b.class
-		}
-	}
-	todo!() // Builtin not found
-}*/

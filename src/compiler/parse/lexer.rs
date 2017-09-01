@@ -266,11 +266,7 @@ impl<'a> Lexer<'a> {
 				}
 			}
 
-			b'0'...b'9' => self.take_number(
-				start,
-				/*isSigned*/
-				false,
-			),
+			b'0'...b'9' => self.take_number(start, /*isSigned*/ false),
 
 			b'a'...b'z' => self.take_name_or_keyword(start),
 
@@ -281,11 +277,7 @@ impl<'a> Lexer<'a> {
 
 			b'-' | b'+' =>
 				if is_digit(self.peek()) {
-					self.take_number(
-						start,
-						/*isSigned*/
-						true,
-					)
+					self.take_number(start, /*isSigned*/ true)
 				} else {
 					self.skip_while(is_operator_char);
 					Token::Operator

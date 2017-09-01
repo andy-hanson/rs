@@ -28,16 +28,17 @@ enum Ctx {
 fn parse_block_with_start(l: &mut Lexer, start: Pos, first: Token) -> Result<ast::Expr> {
 	let (expr, next) = parse_expr_2(l, Ctx::Statement, start, first)?;
 	match next.token {
-		Token::Newline => match expr.1 {
-			ast::ExprData::LetInProgress(pattern, value) => {
-				let then = parse_block(l)?;
-				Ok(ast::Expr::let_expr(l.loc_from(start), pattern, value, then))
-			}
-			_ => {
-				let then = parse_block(l)?;
-				Ok(ast::Expr::seq(l.loc_from(start), expr, then))
-			}
-		},
+		Token::Newline =>
+			match expr.1 {
+				ast::ExprData::LetInProgress(pattern, value) => {
+					let then = parse_block(l)?;
+					Ok(ast::Expr::let_expr(l.loc_from(start), pattern, value, then))
+				}
+				_ => {
+					let then = parse_block(l)?;
+					Ok(ast::Expr::seq(l.loc_from(start), expr, then))
+				}
+			},
 		Token::Dedent => Ok(expr),
 		_ => panic!(), // TODO: unexpected
 	}

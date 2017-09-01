@@ -349,14 +349,15 @@ impl<'a> CheckExprContext<'a> {
 				);
 				self.call_static_method(&mut expected, loc, cls, static_method_name, ty_arg_asts, args)
 			}
-			ast::ExprData::GetProperty(ref property_target, property_name) => self.call_method(
-				&mut expected,
-				loc,
-				property_target,
-				property_name,
-				ty_arg_asts,
-				ArgAsts::Many(args),
-			),
+			ast::ExprData::GetProperty(ref property_target, property_name) =>
+				self.call_method(
+					&mut expected,
+					loc,
+					property_target,
+					property_name,
+					ty_arg_asts,
+					ArgAsts::Many(args),
+				),
 			ast::ExprData::Access(name) => self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
 			_ => {
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
@@ -380,7 +381,8 @@ impl<'a> CheckExprContext<'a> {
 		});
 
 		let inst_method = unwrap_or_return!(
-			self.ctx.instantiate_method(&MethodOrAbstract::Method(method_decl.ptr()), ty_arg_asts),
+			self.ctx
+				.instantiate_method(&MethodOrAbstract::Method(method_decl.ptr()), ty_arg_asts),
 			bogus(loc)
 		);
 
@@ -425,7 +427,8 @@ impl<'a> CheckExprContext<'a> {
 			}
 		};
 
-		let inst_method = unwrap_or_return!(self.ctx.instantiate_method(&method_decl, ty_arg_asts), bogus(loc));
+		let inst_method =
+			unwrap_or_return!(self.ctx.instantiate_method(&method_decl, ty_arg_asts), bogus(loc));
 
 		let args = unwrap_or_return!(
 			self.check_call_arguments(loc, &inst_method, &member_instantiator, ArgAsts::Many(arg_asts)),
@@ -530,16 +533,17 @@ impl<'a> CheckExprContext<'a> {
 	) -> Option<Arr<Expr>> {
 		let parameters = method_decl.parameters();
 		match arg_asts {
-			ArgAsts::One(arg_ast) => match parameters.only() {
-				Some(parameter) => {
-					let ty = instantiate_type(&parameter.ty, instantiator);
-					Some(Arr::_1(self.check_subtype(ty, arg_ast)))
-				}
-				None => {
-					self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl.copy(), 1));
-					None
-				}
-			},
+			ArgAsts::One(arg_ast) =>
+				match parameters.only() {
+					Some(parameter) => {
+						let ty = instantiate_type(&parameter.ty, instantiator);
+						Some(Arr::_1(self.check_subtype(ty, arg_ast)))
+					}
+					None => {
+						self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl.copy(), 1));
+						None
+					}
+				},
 			ArgAsts::Many(arg_asts_array) =>
 				if parameters.len() != arg_asts_array.len() {
 					self.add_diagnostic(

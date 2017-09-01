@@ -1,6 +1,6 @@
 use util::arr::Arr;
 use util::dict::Dict;
-use util::ptr::{ Own, Ptr };
+use util::ptr::{Own, Ptr};
 
 use super::super::compiler::model::method::{Impl, MethodWithBody};
 

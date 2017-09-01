@@ -99,18 +99,19 @@ fn fill_method_bodies(ctx: &mut Ctx, method_asts: &Arr<ast::Method>) {
 
 fn check_super_initial(
 	ctx: &mut Ctx,
-	&ast::Super { loc, name, ref ty_args, impls: ref impl_asts }: &ast::Super
+	&ast::Super { loc, name, ref ty_args, impls: ref impl_asts }: &ast::Super,
 ) -> Option<Super> {
 	//let super_inst_cls = unwrap_or_return!(ctx.instantiate_class_from_ast(loc, name, ty_args), None);
 	//let super_class_declaration = super_inst_cls.class();
-	let super_class_declaration = unwrap_or_return!(ctx.access_class_declaration_or_add_diagnostic(loc, name), None);
+	let super_class_declaration =
+		unwrap_or_return!(ctx.access_class_declaration_or_add_diagnostic(loc, name), None);
 	if super_class_declaration.supers().len() != 0 {
 		// We should have a check that there is a separate implementation of the super-super.
 		todo!()
 	}
 
 	let impls = {
-		let abstract_methods = 	match *super_class_declaration.head() {
+		let abstract_methods = match *super_class_declaration.head() {
 			ClassHead::Abstract(_, ref abstract_methods) => abstract_methods,
 			_ => {
 				ctx.add_diagnostic(loc, Diag::NotAnAbstractClass(super_class_declaration.clone_ptr()));
@@ -118,18 +119,29 @@ fn check_super_initial(
 			}
 		};
 
-		if !abstract_methods.each_corresponds(impl_asts, |implemented, impl_ast| implemented.name() == impl_ast.name) {
-			ctx.add_diagnostic(loc, Diag::ImplsMismatch { expected_names: abstract_methods.map(|a| a.name()) });
+		if !abstract_methods
+			.each_corresponds(impl_asts, |implemented, impl_ast| implemented.name() == impl_ast.name)
+		{
+			ctx.add_diagnostic(
+				loc,
+				Diag::ImplsMismatch { expected_names: abstract_methods.map(|a| a.name()) },
+			);
 			return None
 		}
-		abstract_methods.zip(impl_asts, |implemented, &ast::Impl { loc, name: _, ref parameter_names, body: _ }| {
-			if !implemented.parameters().each_corresponds(parameter_names, |p, pn| p.name == *pn) {
-				ctx.add_diagnostic(loc, Diag::WrongImplParameters(implemented.ptr()));
-				todo!() // Should we continue or what?
-			}
+		abstract_methods.zip(
+			impl_asts,
+			|implemented, &ast::Impl { loc, name: _, ref parameter_names, body: _ }| {
+				if !implemented
+					.parameters()
+					.each_corresponds(parameter_names, |p, pn| p.name == *pn)
+				{
+					ctx.add_diagnostic(loc, Diag::WrongImplParameters(implemented.ptr()));
+					todo!() // Should we continue or what?
+				}
 
-			Own::new(Impl { loc, implemented: implemented.ptr(), body: LateOwn::new() })
-		})
+				Own::new(Impl { loc, implemented: implemented.ptr(), body: LateOwn::new() })
+			},
+		)
 	};
 
 	let super_inst_cls = unwrap_or_return!(ctx.instantiate_class(super_class_declaration, ty_args), None);

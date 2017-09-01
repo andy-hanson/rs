@@ -7,14 +7,13 @@ build:
 run:
 	cargo run
 
-install_dev_dependencies_first_time:
-	rustup run nightly cargo install clippy rustfmt-nightly
-
 update_dev_dependencies:
 	rustup update
+	cargo +nightly install clippy -f
+	cargo +nightly install rustfmt-nightly -f
 
 fmt:
-	rustup run nightly cargo fmt -- --write-mode overwrite
+	rustup run nightly cargo fmt
 
 lint:
 	rustup run nightly cargo clippy

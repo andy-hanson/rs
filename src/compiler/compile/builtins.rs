@@ -10,23 +10,14 @@ use super::super::parse::ast::Module as ModuleAst;
 use super::super::parse::parse;
 
 lazy_static! {
-static ref BUILTINS_FILES: Arr<(Sym, Arr<u8>)> = arr![
-(Sym::of("Void"), Arr::copy_from_str(include_str!("../../../builtins/Void.nz"))),
-(Sym::of("Bool"), Arr::copy_from_str(include_str!("../../../builtins/Bool.nz"))),
-(Sym::of("Nat"), Arr::copy_from_str(include_str!("../../../builtins/Nat.nz"))),
-(Sym::of("Int"), Arr::copy_from_str(include_str!("../../../builtins/Int.nz"))),
-(Sym::of("Float"), Arr::copy_from_str(include_str!("../../../builtins/Float.nz"))),
-(Sym::of("String"), Arr::copy_from_str(include_str!("../../../builtins/String.nz")))
-];
-
-// struct containing builtins used specially by checker.
-// Note that these won't be available while checking those builtins theirselves.
-//pub static ref SPECIAL_BUILTINS: SpecialBuiltins = {
-//
-//}
-
-//pub static ref BUILTIN_VOID: &'static ClassDeclaration = find_builtin("VOID");
-//pub static ref BUILTIN_BOOL: &'static ClassDeclaration = find_builtin("BOOL");
+	static ref BUILTINS_FILES: Arr<(Sym, Arr<u8>)> = arr![
+		(Sym::of("Void"), Arr::copy_from_str(include_str!("../../../builtins/Void.nz"))),
+		(Sym::of("Bool"), Arr::copy_from_str(include_str!("../../../builtins/Bool.nz"))),
+		(Sym::of("Nat"), Arr::copy_from_str(include_str!("../../../builtins/Nat.nz"))),
+		(Sym::of("Int"), Arr::copy_from_str(include_str!("../../../builtins/Int.nz"))),
+		(Sym::of("Float"), Arr::copy_from_str(include_str!("../../../builtins/Float.nz"))),
+		(Sym::of("String"), Arr::copy_from_str(include_str!("../../../builtins/String.nz")))
+	];
 }
 
 pub struct BuiltinsOwn {

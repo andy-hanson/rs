@@ -3,7 +3,7 @@ use util::loc::Loc;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
-use super::method::{AbstractMethod, MethodWithBody, Impl};
+use super::method::{AbstractMethod, Impl, MethodWithBody};
 //use super::module::Module;
 
 use super::ty::{InstCls, Ty, TypeParameter};

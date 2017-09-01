@@ -272,7 +272,11 @@ fn parse_impls(l: &mut Lexer) -> Result<Arr<ast::Impl>> {
 			}
 		};
 
-		let body = if l.try_take_indent()? { Some(parse_block(l)?) } else { None };
+		let body = if l.try_take_indent()? {
+			Some(parse_block(l)?)
+		} else {
+			None
+		};
 
 		impls.add(ast::Impl { loc: l.loc_from(start), name, parameter_names, body });
 		if l.try_take_dedent_from_dedenting() {

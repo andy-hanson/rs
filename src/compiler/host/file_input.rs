@@ -36,10 +36,11 @@ impl FileInput for NativeFileInput {
 				f.read_to_end(&mut v)?;
 				Ok(Some(Arr::from_vec(v)))
 			}
-			Err(e) => match e.kind() {
-				ErrorKind::NotFound => Ok(None),
-				_ => Err(e),
-			},
+			Err(e) =>
+				match e.kind() {
+					ErrorKind::NotFound => Ok(None),
+					_ => Err(e),
+				},
 		}
 	}
 }

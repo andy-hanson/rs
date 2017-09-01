@@ -218,12 +218,7 @@ impl Expr {
 
 pub enum ExprData {
 	Access(Sym),
-	StaticAccess(
-		/*class_name*/
-		Sym,
-		/*static_method_name*/
-		Sym,
-	),
+	StaticAccess(/*class_name*/ Sym, /*static_method_name*/ Sym),
 	OperatorCall(Box<Expr>, Sym, Box<Expr>),
 	TypeArguments(Box<Expr>, Arr<Ty>),
 	Call(Box<Expr>, Arr<Expr>),
@@ -242,22 +237,10 @@ pub enum ExprData {
 	WhenTest(Arr<Case>, Box<Expr>),
 	Assert(Box<Expr>),
 	Try(Box<Expr>, Option<Catch>, Option<Box<Expr>>),
-	For(
-		Sym,
-		/*looper*/
-		Box<Expr>,
-		/*body*/
-		Box<Expr>,
-	),
+	For(Sym, /*looper*/ Box<Expr>, /*body*/ Box<Expr>),
 }
 
-pub struct Case(
-	pub Loc,
-	/*test*/
-	pub Expr,
-	/*result*/
-	pub Expr,
-);
+pub struct Case(pub Loc, /*test*/ pub Expr, /*result*/ pub Expr);
 
 pub struct Catch {
 	pub loc: Loc,

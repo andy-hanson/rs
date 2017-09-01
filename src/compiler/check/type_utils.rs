@@ -10,16 +10,17 @@ use super::instantiator::Instantiator;
 pub fn common_type(a: &Ty, b: &Ty) -> Option<Ty> {
 	match *a {
 		Ty::Bogus => Some(b.clone()),
-		Ty::Plain(effect_a, ref inst_cls_a) => match *b {
-			Ty::Bogus => Some(a.clone()),
-			Ty::Plain(effect_b, ref inst_cls_b) =>
-				if inst_cls_a.fast_equals(inst_cls_b) {
-					Some(Ty::Plain(effect_a.min_common_effect(effect_b), inst_cls_a.clone()))
-				} else {
-					None
-				},
-			Ty::Param(_) => todo!(),
-		},
+		Ty::Plain(effect_a, ref inst_cls_a) =>
+			match *b {
+				Ty::Bogus => Some(a.clone()),
+				Ty::Plain(effect_b, ref inst_cls_b) =>
+					if inst_cls_a.fast_equals(inst_cls_b) {
+						Some(Ty::Plain(effect_a.min_common_effect(effect_b), inst_cls_a.clone()))
+					} else {
+						None
+					},
+				Ty::Param(_) => todo!(),
+			},
 		Ty::Param(_) => todo!(),
 	}
 }
@@ -27,16 +28,18 @@ pub fn common_type(a: &Ty, b: &Ty) -> Option<Ty> {
 pub fn is_assignable(expected: &Ty, actual: &Ty) -> bool {
 	match *expected {
 		Ty::Bogus => true,
-		Ty::Param(ref tpe) => match *actual {
-			Ty::Param(ref tpa) => tpe.fast_equals(tpa),
-			_ => false,
-		},
-		Ty::Plain(effect_expected, ref inst_cls_expected) => match *actual {
-			Ty::Bogus => true,
-			Ty::Plain(effect_actual, ref inst_cls_actual) =>
-				effect_actual.contains(effect_expected) && is_subclass(inst_cls_expected, inst_cls_actual),
-			Ty::Param(_) => todo!(),
-		},
+		Ty::Param(ref tpe) =>
+			match *actual {
+				Ty::Param(ref tpa) => tpe.fast_equals(tpa),
+				_ => false,
+			},
+		Ty::Plain(effect_expected, ref inst_cls_expected) =>
+			match *actual {
+				Ty::Bogus => true,
+				Ty::Plain(effect_actual, ref inst_cls_actual) =>
+					effect_actual.contains(effect_expected) && is_subclass(inst_cls_expected, inst_cls_actual),
+				Ty::Param(_) => todo!(),
+			},
 	}
 }
 
@@ -95,10 +98,17 @@ pub fn instantiate_and_narrow_effects(
 ) -> Ty {
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
-		Ty::Plain(original_effect, ref inst_cls) => Ty::Plain(
-			original_effect.min_common_effect(narrowed_effect),
-			instantiate_inst_cls_and_forbid_effects(narrowed_effect, inst_cls, instantiator, loc, &mut diags),
-		),
+		Ty::Plain(original_effect, ref inst_cls) =>
+			Ty::Plain(
+				original_effect.min_common_effect(narrowed_effect),
+				instantiate_inst_cls_and_forbid_effects(
+					narrowed_effect,
+					inst_cls,
+					instantiator,
+					loc,
+					&mut diags,
+				),
+			),
 		Ty::Param(ref p) => instantiator.replace_or_same(p),
 	}
 }

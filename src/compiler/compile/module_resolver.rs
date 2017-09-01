@@ -49,6 +49,6 @@ fn index_path(logical_path: &Path) -> Path {
 }
 
 lazy_static! {
-static ref EXTENSION: Arr<u8> = Arr::copy_from_str(".nz");
-static ref INDEX_NZ: Arr<u8> = Arr::copy_from_str("index.nz");
+	static ref EXTENSION: Arr<u8> = Arr::copy_from_str(".nz");
+	static ref INDEX_NZ: Arr<u8> = Arr::copy_from_str("index.nz");
 }

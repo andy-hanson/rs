@@ -62,7 +62,11 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 		*self.0.get_mut(key).unwrap() = new_value;
 	}
 
-	pub fn has_key<Q: ?Sized>(&self, k: &Q) -> bool where K : Borrow<Q>, Q : Hash + Eq {
+	pub fn has_key<Q: ?Sized>(&self, k: &Q) -> bool
+	where
+		K: Borrow<Q>,
+		Q: Hash + Eq,
+	{
 		self.0.contains_key(k)
 	}
 
@@ -91,8 +95,8 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 	}
 }
 
-pub struct MutSet<K : Hash + Eq>(MutDict<K, ()>);
-impl<K : Hash + Eq> MutSet<K> {
+pub struct MutSet<K: Hash + Eq>(MutDict<K, ()>);
+impl<K: Hash + Eq> MutSet<K> {
 	pub fn new() -> MutSet<K> {
 		MutSet(MutDict::new())
 	}
@@ -101,7 +105,11 @@ impl<K : Hash + Eq> MutSet<K> {
 		self.0.add(value, ())
 	}
 
-	pub fn has<Q : ?Sized>(&self, value: &Q) -> bool where K : Borrow<Q>, Q : Hash + Eq {
+	pub fn has<Q: ?Sized>(&self, value: &Q) -> bool
+	where
+		K: Borrow<Q>,
+		Q: Hash + Eq,
+	{
 		self.0.has_key(value)
 	}
 }

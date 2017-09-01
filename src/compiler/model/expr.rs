@@ -40,21 +40,9 @@ pub struct Local {
 	pub name: Sym,
 }
 
-pub struct Case(
-	pub Loc,
-	/*test*/
-	pub Box<Expr>,
-	/*result*/
-	pub Box<Expr>,
-);
+pub struct Case(pub Loc, /*test*/ pub Box<Expr>, /*result*/ pub Box<Expr>);
 
-pub struct Catch(
-	pub Loc,
-	/*caught*/
-	pub Own<Local>,
-	/*result*/
-	pub Box<Expr>,
-);
+pub struct Catch(pub Loc, /*caught*/ pub Own<Local>, /*result*/ pub Box<Expr>);
 
 pub struct For {
 	local: Own<Local>,

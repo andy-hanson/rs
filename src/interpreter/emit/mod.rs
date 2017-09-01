@@ -4,27 +4,21 @@ use util::ptr::{Own, Ptr};
 use util::sym::Sym;
 
 use super::super::compiler::model::expr::Expr;
-use super::super::compiler::model::module::Module;
 use super::super::compiler::model::method::{Impl, MethodWithBody, Parameter};
+use super::super::compiler::model::module::Module;
 
 use super::builtins::get_builtin;
-use super::emitted_model::{ Code, EmittedProgram, EmittedMethod, EmittedImpl };
+use super::emitted_model::{Code, EmittedImpl, EmittedMethod, EmittedProgram};
 
 mod emit_expr;
 use self::emit_expr::emit_method;
 
 pub fn emit_program(root_module: &Module) -> EmittedProgram {
 	// Emit all dependencies first.
-	let mut emitter = Emitter {
-		emitted_modules: MutSet::new(),
-		methods: MutDict::new(),
-		impls: MutDict::new(),
-	};
+	let mut emitter =
+		Emitter { emitted_modules: MutSet::new(), methods: MutDict::new(), impls: MutDict::new() };
 	emitter.emit_module(root_module);
-	EmittedProgram {
-		methods: emitter.methods.freeze(),
-		impls: emitter.impls.freeze(),
-	}
+	EmittedProgram { methods: emitter.methods.freeze(), impls: emitter.impls.freeze() }
 }
 
 struct Emitter {
@@ -53,22 +47,28 @@ impl Emitter {
 			for an_impl in zuper.impls.iter() {
 				let implemented = &an_impl.implemented;
 				let code = self.get_code(module, implemented.name(), implemented.parameters(), &an_impl.body);
-				self.impls.add(an_impl.ptr(), Own::new(EmittedImpl { source: an_impl.ptr(), code }))
+				self.impls
+					.add(an_impl.ptr(), Own::new(EmittedImpl { source: an_impl.ptr(), code }))
 			}
 		}
 
 		for method in class.methods().iter() {
 			let code = self.get_code(module, method.name(), method.parameters(), &method.body);
-			self.methods.add(method.ptr(), Own::new(EmittedMethod { source: method.ptr(), code }))
+			self.methods
+				.add(method.ptr(), Own::new(EmittedMethod { source: method.ptr(), code }))
 		}
 	}
 
-	fn get_code(&self, module: &Module, implemented: Sym, parameters: &Arr<Own<Parameter>>, body: &Option<Expr>) -> Code {
+	fn get_code(
+		&self,
+		module: &Module,
+		implemented: Sym,
+		parameters: &Arr<Own<Parameter>>,
+		body: &Option<Expr>,
+	) -> Code {
 		match *body {
-			Some(ref expr) =>
-				Code::Instructions(emit_method(parameters, expr)),
-			None =>
-				Code::Builtin(get_builtin(module, implemented))
+			Some(ref expr) => Code::Instructions(emit_method(parameters, expr)),
+			None => Code::Builtin(get_builtin(module, implemented)),
 		}
 	}
 }

@@ -3,7 +3,7 @@ use util::sym::Sym;
 
 use super::super::compiler::model::module::Module;
 
-use super::emitted_model::{BuiltinCode};
+use super::emitted_model::BuiltinCode;
 use super::value::Value;
 
 pub fn get_builtin(module: &Module, implemented: Sym) -> BuiltinCode {
@@ -23,9 +23,7 @@ lazy_static! {
 }
 
 fn get_bool_impls() -> Dict<Sym, BuiltinCode> {
-	Dict::of(vec![
-		(Sym::of("=="), BuiltinCode::Fn2(bool_eq)),
-	])
+	Dict::of(vec![(Sym::of("=="), BuiltinCode::Fn2(bool_eq))])
 }
 
 fn bool_eq(a: Value, b: Value) -> Value {

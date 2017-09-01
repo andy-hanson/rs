@@ -10,7 +10,7 @@ use super::super::diag::{Diag, Diagnostic};
 use super::super::model::class::ClassDeclaration;
 use super::super::model::method::{InstMethod, MethodOrAbstract};
 use super::super::model::module::Module;
-use super::super::model::ty::{Ty, TypeParameter, InstCls};
+use super::super::model::ty::{InstCls, Ty, TypeParameter};
 use super::super::parse::ast;
 
 use super::class_utils::{try_get_member_from_class_declaration, InstMember};
@@ -62,14 +62,14 @@ impl<'a> Ctx<'a> {
 		name: Sym,
 		ty_arg_asts: &Arr<ast::Ty>,
 	) -> Option<InstCls> {
-		self.access_class_declaration_or_add_diagnostic(loc, name).and_then(|class|
-			self.instantiate_class(class, ty_arg_asts))
+		self.access_class_declaration_or_add_diagnostic(loc, name)
+			.and_then(|class| self.instantiate_class(class, ty_arg_asts))
 	}
 
 	pub fn instantiate_class(
 		&self,
 		class: Ptr<ClassDeclaration>,
-		ty_arg_asts: &Arr<ast::Ty>
+		ty_arg_asts: &Arr<ast::Ty>,
 	) -> Option<InstCls> {
 		if ty_arg_asts.len() != class.type_parameters.len() {
 			todo!()

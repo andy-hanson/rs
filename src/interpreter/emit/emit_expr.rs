@@ -1,4 +1,4 @@
-use util::arith::{u8_add_mut, u8_sub_mut, u8_add, u8_sub, to_u8};
+use util::arith::{to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
 use util::arr::{Arr, ArrBuilder};
 use util::loc::Loc;
 use util::ptr::{Own, Ptr};
@@ -7,7 +7,7 @@ use util::vec::find_index;
 use super::super::super::compiler::model::expr::{Expr, ExprData, LiteralValue, Local, Pattern};
 use super::super::super::compiler::model::method::Parameter;
 
-use super::super::emitted_model::{Instructions, Instruction};
+use super::super::emitted_model::{Instruction, Instructions};
 
 pub fn emit_method(parameters: &Arr<Own<Parameter>>, body: &Expr) -> Instructions {
 	let n_parameters = to_u8(parameters.len());

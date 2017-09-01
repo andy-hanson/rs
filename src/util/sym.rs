@@ -5,9 +5,9 @@ use util::arr::Arr;
 use util::string_maker::{Show, Shower};
 
 lazy_static! {
-    static ref STRING_TO_SYMBOL: Mutex<HashMap<Box<[u8]>, Sym>> = Mutex::new(HashMap::new());
-static ref SYMBOL_TO_STRING: Mutex<HashMap<Sym, Arr<u8>>> = Mutex::new(HashMap::new());
-static ref NEXT_SYMBOL_ID: Mutex<i32> = Mutex::new(0);
+	static ref STRING_TO_SYMBOL: Mutex<HashMap<Box<[u8]>, Sym>> = Mutex::new(HashMap::new());
+	static ref SYMBOL_TO_STRING: Mutex<HashMap<Sym, Arr<u8>>> = Mutex::new(HashMap::new());
+	static ref NEXT_SYMBOL_ID: Mutex<i32> = Mutex::new(0);
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]

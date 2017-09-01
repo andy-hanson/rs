@@ -16,12 +16,7 @@ pub enum Diag {
 	CircularDependency(Path, RelPath),
 	CantFindLocalModule(Path, RelPath),
 
-	TooMuchIndent(
-		/*expected*/
-		u32,
-		/*actual*/
-		u32,
-	),
+	TooMuchIndent(/*expected*/ u32, /*actual*/ u32),
 	LeadingSpace,
 	TrailingSpace,
 	ExmptyExpression,
@@ -32,40 +27,21 @@ pub enum Diag {
 	UnexpectedToken(&'static str, &'static str),
 
 	CantCombineTypes(Ty, Ty),
-	NotAssignable(
-		/*expected*/
-		Ty,
-		/*actual*/
-		Ty,
-	),
+	NotAssignable(/*expected*/ Ty, /*actual*/ Ty),
 	MemberNotFound(Ptr<ClassDeclaration>, Sym),
 	CantAccessSlotFromStaticMethod(Ptr<SlotDeclaration>),
 	MissingEffectToGetSlot(Ptr<SlotDeclaration>),
-	MissingEffectToSetSlot(
-		/*actual*/
-		Effect,
-		Ptr<SlotDeclaration>,
-	),
+	MissingEffectToSetSlot(/*actual*/ Effect, Ptr<SlotDeclaration>),
 	DelegatesNotYetSupported,
 	CantAccessStaticMethodThroughInstance(Ptr<MethodWithBody>),
-	IllegalEffect(
-		/*allowed*/
-		Effect,
-		/*actual*/
-		Effect,
-	),
+	IllegalEffect(/*allowed*/ Effect, /*actual*/ Effect),
 	ArgumentCountMismatch(MethodOrAbstract, usize),
 	ClassNotFound(Sym),
 	StaticMethodNotFound(Ptr<ClassDeclaration>, Sym),
 	CantCallInstanceMethodFromStaticMethod(MethodOrAbstract),
 	NotATailCall,
 	NewInvalid(Ptr<ClassDeclaration>),
-	NewArgumentCountMismatch(
-		/*actual*/
-		usize,
-		/*expected*/
-		usize,
-	),
+	NewArgumentCountMismatch(/*actual*/ usize, /*expected*/ usize),
 	CantSetNonSlot(MemberDeclaration),
 	SlotNotMutable(Ptr<SlotDeclaration>),
 	CantReassignParameter(Ptr<Parameter>),
@@ -73,8 +49,6 @@ pub enum Diag {
 
 	//mv
 	NotAnAbstractClass(Ptr<ClassDeclaration>),
-	ImplsMismatch {
-		expected_names: Arr<Sym>,
-	},
+	ImplsMismatch { expected_names: Arr<Sym> },
 	WrongImplParameters(Ptr<AbstractMethod>),
 }

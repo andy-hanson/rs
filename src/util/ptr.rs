@@ -87,7 +87,7 @@ impl<T> PartialEq for Ptr<T> {
 	}
 }
 impl<T> Hash for Ptr<T> {
-	fn hash<H : Hasher>(&self, hasher: &mut H) {
+	fn hash<H: Hasher>(&self, hasher: &mut H) {
 		hasher.write_usize(self.0 as usize)
 	}
 }

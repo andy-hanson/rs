@@ -43,7 +43,7 @@ impl Emitter {
 
 	fn emit_single_module(&mut self, module: &Module) {
 		let class = &module.class;
-		for zuper in class.supers().iter() {
+		for zuper in class.supers.iter() {
 			for an_impl in zuper.impls.iter() {
 				let implemented = &an_impl.implemented;
 				let code = self.get_code(module, implemented.name(), implemented.parameters(), &an_impl.body);
@@ -52,7 +52,7 @@ impl Emitter {
 			}
 		}
 
-		for method in class.methods().iter() {
+		for method in class.methods.iter() {
 			let code = self.get_code(module, method.name(), method.parameters(), &method.body);
 			self.methods
 				.add(method.ptr(), Own::new(EmittedMethod { source: method.ptr(), code }))

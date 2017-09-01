@@ -19,13 +19,13 @@ fn get_member_worker(
 	instantiator: Instantiator,
 	member_name: Sym,
 ) -> Option<InstMember> {
-	for method in cls.methods().iter() {
+	for method in cls.methods.iter() {
 		if method.name() == member_name {
 			return Some(InstMember(MemberDeclaration::Method(method.ptr()), instantiator))
 		}
 	}
 
-	match *cls.head() {
+	match *cls.head {
 		ClassHead::Static | ClassHead::Builtin => {}
 		ClassHead::Slots(_, ref slots) =>
 			for slot in slots.iter() {
@@ -41,7 +41,7 @@ fn get_member_worker(
 			},
 	}
 
-	for zuper in cls.supers().iter() {
+	for zuper in cls.supers.iter() {
 		let super_instantiator = instantiator.combine(&Instantiator::of_inst_cls(&zuper.super_class));
 		let got = get_member_worker(zuper.super_class.class(), super_instantiator, member_name);
 		if got.is_some() {

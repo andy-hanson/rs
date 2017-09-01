@@ -123,7 +123,7 @@ impl<'a> CheckExprContext<'a> {
 				self.handle(&mut e, loc, ExprData::Recur(self.method_or_impl.copy(), args))
 			}
 			ast::ExprData::New(ref ty_arg_asts, ref arg_asts) => {
-				let slots = match *self.ctx.current_class.head() {
+				let slots = match *self.ctx.current_class.head {
 					ClassHead::Slots(_, ref slots) => slots,
 					_ => {
 						self.add_diagnostic(loc, Diag::NewInvalid(self.ctx.current_class.ptr()));

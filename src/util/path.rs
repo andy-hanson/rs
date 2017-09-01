@@ -27,7 +27,7 @@ impl Path {
 	}
 
 	pub fn into_rel(self) -> RelPath {
-		RelPath::of(0, self)
+		RelPath { n_parents: 0, rel_to_parent: self }
 	}
 
 	pub fn child(&self, child_name: &Arr<u8>) -> Path {
@@ -62,8 +62,8 @@ impl Path {
 		}
 
 		let n_parents = self.0.len() - first_different_part - 1;
-		let rel_to_parent = other.0.copy_slice(first_different_part, other.0.len());
-		RelPath::of(n_parents, Path(rel_to_parent))
+		let rel_to_parent = Path(other.0.copy_slice(first_different_part, other.0.len()));
+		RelPath { n_parents, rel_to_parent }
 	}
 
 	pub fn last(&self) -> Option<&Arr<u8>> {
@@ -126,11 +126,6 @@ fn is_path_part(s: &Arr<u8>) -> bool {
 }
 
 pub struct RelPath {
-	n_parents: usize,
-	rel_to_parent: Path,
-}
-impl RelPath {
-	pub fn of(n_parents: usize, rel_to_parent: Path) -> RelPath {
-		RelPath { n_parents, rel_to_parent }
-	}
+	pub n_parents: usize,
+	pub rel_to_parent: Path,
 }

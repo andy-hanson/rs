@@ -20,7 +20,13 @@ pub fn check_module(module: &Module, builtins: &BuiltinsCtx, ast: &ast::Class, n
 	let class = &module.class;
 	// Create the class early and assign its properties later.
 	// This allows us to access the class' type when checking type annotations.
-	class.init(ClassDeclaration::new(name, type_parameters));
+	class.init(ClassDeclaration {
+		type_parameters,
+		name,
+		head: LateOwn::new(),
+		supers: LateOwn::new(),
+		methods: LateOwn::new(),
+	});
 	let origin = TypeParameterOrigin::Class(class.ptr());
 	TypeParameter::set_origins(&class.type_parameters, origin);
 	let mut ctx = Ctx::new(class, builtins, &module.imports);
@@ -33,14 +39,14 @@ fn do_check(ctx: &mut Ctx, ast: &ast::Class) {
 	let &ast::Class { head: ref head_ast, supers: ref super_asts, methods: ref method_asts, .. } = ast;
 
 	let methods = method_asts.map(|m| check_method_initial(ctx, m));
-	ctx.current_class.set_methods(methods);
+	ctx.current_class.methods.init(methods);
 
 	// Adds slots too
 	let head = check_head(ctx, head_ast.as_ref());
-	ctx.current_class.set_head(head);
+	ctx.current_class.head.init(head);
 
 	let supers = super_asts.map_defined_probably_all(|s| check_super_initial(ctx, s));
-	ctx.current_class.set_supers(supers);
+	ctx.current_class.supers.init(supers);
 
 	// We delayed checking impl bodies until now
 	// because we need all supers present for method resolution.
@@ -53,7 +59,7 @@ fn fill_impl_bodies(ctx: &mut Ctx, super_asts: &Arr<ast::Super>) {
 	// There may be fewer supers than super_asts.
 	// TODO: but we can check that they correspond using the `loc`.
 
-	let supers = ctx.current_class.supers();
+	let supers = &ctx.current_class.supers;
 	if super_asts.len() != supers.len() {
 		todo!()
 	}
@@ -81,7 +87,7 @@ fn fill_method_bodies(ctx: &mut Ctx, method_asts: &Arr<ast::Method>) {
 	// Now that all methods exist, fill in their bodies.
 	for i in method_asts.range() {
 		let method_ast = &method_asts[i];
-		let method = ctx.current_class.methods()[i].ptr();
+		let method = ctx.current_class.methods[i].ptr();
 		let body = match method_ast.body {
 			Some(ref body_ast) =>
 				Some(check_method_body(
@@ -105,13 +111,13 @@ fn check_super_initial(
 	//let super_class_declaration = super_inst_cls.class();
 	let super_class_declaration =
 		unwrap_or_return!(ctx.access_class_declaration_or_add_diagnostic(loc, name), None);
-	if super_class_declaration.supers().len() != 0 {
+	if super_class_declaration.supers.len() != 0 {
 		// We should have a check that there is a separate implementation of the super-super.
 		todo!()
 	}
 
 	let impls = {
-		let abstract_methods = match *super_class_declaration.head() {
+		let abstract_methods = match *super_class_declaration.head {
 			ClassHead::Abstract(_, ref abstract_methods) => abstract_methods,
 			_ => {
 				ctx.add_diagnostic(loc, Diag::NotAnAbstractClass(super_class_declaration.clone_ptr()));

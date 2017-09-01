@@ -54,8 +54,9 @@ fn is_subclass(expected: &InstCls, actual: &InstCls) -> bool {
 		return true
 	}
 
-	for s in actual_cls.supers().iter() {
-		let instantiated_super_cls = instantiate_inst_cls(&s.super_class, &Instantiator::of_inst_cls(actual));
+	for zuper in actual_cls.supers.iter() {
+		let instantiated_super_cls =
+			instantiate_inst_cls(&zuper.super_class, &Instantiator::of_inst_cls(actual));
 		if is_subclass(expected, &instantiated_super_cls) {
 			return true
 		}

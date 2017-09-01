@@ -43,20 +43,6 @@ impl Instantiator {
 	pub fn combine(&self, other: &Instantiator) -> Instantiator {
 		Instantiator(self.0.concat(&other.0))
 	}
-
-	/*pub fn add_inst_cls(&mut self, (class_declaration, type_arguments): InstCls) {
-		self.add(class_declaration.type_parameters, type_arguments)
-	}
-
-	fn add(&mut self, new_type_parameters: Arr<Ref<TypeParameter>>, new_type_arguments: Arr<Ty>) {
-		assert!(new_type_parameters.len() == new_type_arguments.len());
-		for n in new_type_parameters {
-			self.type_parameters.push(n)
-		}
-		for n in new_type_arguments {
-			self.type_arguments.push(n)
-		}
-	}*/
 }
 
 fn new(type_parameters: &Arr<Own<TypeParameter>>, type_arguments: &Arr<Ty>) -> Instantiator {

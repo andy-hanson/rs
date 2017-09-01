@@ -4,13 +4,13 @@ use compiler::model::expr::LiteralValue;
 use util::arr::{Arr, ArrBuilder};
 use util::loc::Pos;
 
-use super::ast;
+use super::ast::{Case, Catch, Expr, ExprData, Pattern};
 use super::lexer::{CatchOrFinally, Lexer, Next, Result};
 use super::parse_ty::{parse_ty, take_type_arguments_after_passing_bracketl, try_take_type_argument,
                       try_take_type_arguments};
 use super::token::Token;
 
-pub fn parse_block(l: &mut Lexer) -> Result<ast::Expr> {
+pub fn parse_block(l: &mut Lexer) -> Result<Expr> {
 	let start = l.pos();
 	let next = l.next_token();
 	parse_block_with_start(l, start, next)
@@ -22,29 +22,40 @@ enum Ctx {
 	// Allow any operator
 	YesOperators,
 	// Like YesOperators, but stop is you see an operator.
-	NoOperator,
+	NoOperators,
 }
-
-fn parse_block_with_start(l: &mut Lexer, start: Pos, first: Token) -> Result<ast::Expr> {
-	let (expr, next) = parse_expr_2(l, Ctx::Statement, start, first)?;
-	match next.token {
-		Token::Newline =>
-			match expr.1 {
-				ast::ExprData::LetInProgress(pattern, value) => {
-					let then = parse_block(l)?;
-					Ok(ast::Expr::let_expr(l.loc_from(start), pattern, value, then))
-				}
-				_ => {
-					let then = parse_block(l)?;
-					Ok(ast::Expr::seq(l.loc_from(start), expr, then))
-				}
-			},
-		Token::Dedent => Ok(expr),
-		_ => panic!(), // TODO: unexpected
+impl Ctx {
+	fn operators_if(b: bool) -> Ctx {
+		if b {
+			Ctx::YesOperators
+		} else {
+			Ctx::NoOperators
+		}
 	}
 }
 
-fn parse_expr_and_expect_next(l: &mut Lexer, ctx: Ctx, expected_next: Token) -> Result<ast::Expr> {
+fn parse_block_with_start(l: &mut Lexer, start: Pos, first: Token) -> Result<Expr> {
+	let (expr, next) = parse_expr_2(l, Ctx::Statement, start, first)?;
+	match next.token {
+		Token::Newline => {
+			let data = match expr.1 {
+				ExprData::LetInProgress(pattern, value) => {
+					let then = parse_block(l)?;
+					ExprData::Let(pattern, value, Box::new(then))
+				}
+				_ => {
+					let then = parse_block(l)?;
+					ExprData::Seq(Box::new(expr), Box::new(then))
+				}
+			};
+			Ok(l.expr_from(start, data))
+		}
+		Token::Dedent => Ok(expr),
+		_ => todo!(), // TODO: unexpected
+	}
+}
+
+fn parse_expr_and_expect_next(l: &mut Lexer, ctx: Ctx, expected_next: Token) -> Result<Expr> {
 	let start = l.pos();
 	let first_token = l.next_token();
 	parse_expr_and_expect_next_2(l, ctx, expected_next, start, first_token)
@@ -56,7 +67,7 @@ fn parse_expr_and_expect_next_2(
 	expected_next: Token,
 	start: Pos,
 	start_token: Token,
-) -> Result<ast::Expr> {
+) -> Result<Expr> {
 	let (expr, next) = parse_expr_2(l, ctx, start, start_token)?;
 	if next.token != expected_next {
 		panic!() // Diagnostic
@@ -64,30 +75,30 @@ fn parse_expr_and_expect_next_2(
 	Ok(expr)
 }
 
-fn parse_expr(l: &mut Lexer, ctx: Ctx) -> Result<(ast::Expr, Next)> {
+fn parse_expr(l: &mut Lexer, ctx: Ctx) -> Result<(Expr, Next)> {
 	let start = l.pos();
 	let first_token = l.next_token();
 	parse_expr_2(l, ctx, start, first_token)
 }
 
-fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Result<(ast::Expr, Next)> {
+fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Result<(Expr, Next)> {
 	let (first, next) = parse_first_expr(l, start, first_token)?;
 	match next.token {
 		Token::Colon => {
-			if ctx == Ctx::NoOperator {
+			if ctx == Ctx::NoOperators {
 				panic!()
 			}
 
 			l.take_space()?;
 			let (args, next_2) = parse_args(l, Ctx::YesOperators)?;
-			let call = ast::Expr::call(l.loc_from(start), first, args);
+			let call = l.expr_from(start, ExprData::Call(Box::new(first), args));
 			Ok((call, next_2))
 		}
 
 		Token::Operator =>
 			// In `f x + 1`, we would have read through the space while parsing the arguments to `f`.
 			// So can encounter an operator now.
-			if ctx == Ctx::NoOperator {
+			if ctx == Ctx::NoOperators {
 				Ok((first, next))
 			} else {
 				slurp_operators(l, start, first)
@@ -101,10 +112,10 @@ fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Resu
 						panic!()
 					}
 					l.take_equals()?;
-					if let ast::ExprData::Access(property_name) = first.1 {
+					if let ExprData::Access(property_name) = first.1 {
 						l.take_space()?;
 						let (value, next_2) = parse_expr(l, Ctx::YesOperators)?;
-						Ok((ast::Expr::set_property(l.loc_from(start), property_name, value), next_2))
+						Ok((l.expr_from(start, ExprData::SetProperty(property_name, Box::new(value))), next_2))
 					} else {
 						Err(Diagnostic(first.0, Diag::PrecedingEquals))
 					}
@@ -114,14 +125,14 @@ fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Resu
 					if ctx != Ctx::Statement {
 						panic!()
 					}
-					if let ast::ExprData::Access(local_name) = first.1 {
-						let pattern = ast::Pattern::single(first.0, local_name);
+					if let ExprData::Access(local_name) = first.1 {
+						let pattern = Pattern::single(first.0, local_name);
 						l.take_space()?;
 						let (value, next_2) = parse_expr(l, Ctx::YesOperators)?;
 						let loc = l.loc_from(start);
 						match next_2.token {
 							Token::Newline =>
-								Ok((ast::Expr::let_in_progress(loc, pattern, value), next_2)),
+								Ok((Expr(loc, ExprData::LetInProgress(pattern, Box::new(value))), next_2)),
 							_ =>
 								Err(Diagnostic(loc, Diag::BlockCantEndInLet)),
 						}
@@ -138,16 +149,16 @@ fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Resu
 					// leave that to the outer version of `parseExprWithNext`.
 					// This ensures that `a + b * c` is parsed as `(a + b) * c`,
 					// because we stop parsing at the `*` and allow the outer parser to continue.
-					if ctx == Ctx::NoOperator {
+					if ctx == Ctx::NoOperators {
 						Ok((first, next))
 					} else {
 						slurp_operators(l, start, first)
 					},
 
 				_ => {
-					let (args, next_2) = parse_args_2(l, Ctx::NoOperator, next)?;
-					let call = ast::Expr::call(l.loc_from(start), first, args);
-					if ctx != Ctx::NoOperator && next_2.token == Token::Operator {
+					let (args, next_2) = parse_args_2(l, Ctx::NoOperators, next)?;
+					let call = l.expr_from(start, ExprData::Call(Box::new(first), args));
+					if ctx != Ctx::NoOperators && next_2.token == Token::Operator {
 						slurp_operators(l, start, call)
 					} else {
 						Ok((call, next_2))
@@ -161,52 +172,36 @@ fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Resu
 	}
 }
 
-fn parse_first_expr(l: &mut Lexer, start: Pos, token: Token) -> Result<(ast::Expr, Next)> {
-	match token {
+fn parse_first_expr(l: &mut Lexer, start: Pos, token: Token) -> Result<(Expr, Next)> {
+	let (data, next) = match token {
 		Token::New => {
 			// e.g. `new[Nat] 1, 2`
 			let type_arguments = try_take_type_arguments(l)?;
-			let ctx = if l.try_take_colon() {
-				Ctx::YesOperators
-			} else {
-				Ctx::NoOperator
-			};
+			let ctx = Ctx::operators_if(l.try_take_colon());
 			l.take_space()?;
 			let (args, next) = parse_args(l, ctx)?;
-			let expr = ast::Expr::new(l.loc_from(start), type_arguments, args);
-			Ok((expr, next))
+			(ExprData::New(type_arguments, args), next)
 		}
 
 		Token::Array => {
 			let type_argument = try_take_type_argument(l)?;
-			let ctx = if l.try_take_colon() {
-				Ctx::YesOperators
-			} else {
-				Ctx::NoOperator
-			};
+			let ctx = Ctx::operators_if(l.try_take_colon());
 			l.take_space()?;
 			let (args, next) = parse_args(l, ctx)?;
-			let expr = ast::Expr::array_literal(l.loc_from(start), type_argument, args);
-			Ok((expr, next))
+			(ExprData::ArrayLiteral(type_argument, args), next)
 		}
 
 		Token::Recur => {
-			let ctx = if l.try_take_colon() {
-				Ctx::YesOperators
-			} else {
-				Ctx::NoOperator
-			};
+			let ctx = Ctx::operators_if(l.try_take_colon());
 			l.take_space()?;
 			let (args, next) = parse_args(l, ctx)?;
-			let expr = ast::Expr::recur(l.loc_from(start), args);
-			Ok((expr, next))
+			(ExprData::Recur(args), next)
 		}
 
 		Token::Assert => {
 			l.take_space()?;
 			let (asserted, next) = parse_expr(l, Ctx::YesOperators)?;
-			let assert = ast::Expr::assert(l.loc_from(start), asserted);
-			Ok((assert, next))
+			(ExprData::Assert(Box::new(asserted)), next)
 		}
 
 		Token::If => {
@@ -216,8 +211,7 @@ fn parse_first_expr(l: &mut Lexer, start: Pos, token: Token) -> Result<(ast::Exp
 			let then = parse_expr_and_expect_next(l, Ctx::YesOperators, Token::Else)?;
 			l.take_space()?;
 			let (elze, next) = parse_expr(l, Ctx::YesOperators)?;
-			let if_else = ast::Expr::if_else(l.loc_from(start), test, then, elze);
-			Ok((if_else, next))
+			(ExprData::IfElse(Box::new(test), Box::new(then), Box::new(elze)), next)
 		}
 
 		Token::For | Token::When | Token::Try => {
@@ -233,14 +227,15 @@ fn parse_first_expr(l: &mut Lexer, start: Pos, token: Token) -> Result<(ast::Exp
 			} else {
 				Token::Newline
 			};
-			Ok((expr, Next { pos: next_pos, token: next_token }))
+			return Ok((expr, Next { pos: next_pos, token: next_token }))
 		}
 
-		_ => parse_simple_expr(l, start, token),
-	}
+		_ => return parse_simple_expr(l, start, token),
+	};
+	Ok((l.expr_from(start, data), next))
 }
 
-fn parse_for(l: &mut Lexer, start: Pos) -> Result<ast::Expr> {
+fn parse_for(l: &mut Lexer, start: Pos) -> Result<Expr> {
 	l.take_space()?;
 	let local_name = l.take_name()?;
 	l.take_space()?;
@@ -248,17 +243,17 @@ fn parse_for(l: &mut Lexer, start: Pos) -> Result<ast::Expr> {
 	l.take_space()?;
 	let looper = parse_expr_and_expect_next(l, Ctx::YesOperators, Token::Indent)?;
 	let body = parse_block(l)?;
-	Ok(ast::Expr::for_expr(l.loc_from(start), local_name, looper, body))
+	Ok(l.expr_from(start, ExprData::For(local_name, Box::new(looper), Box::new(body))))
 }
 
-fn slurp_operators(l: &mut Lexer, start: Pos, first: ast::Expr) -> Result<(ast::Expr, Next)> {
+fn slurp_operators(l: &mut Lexer, start: Pos, first: Expr) -> Result<(Expr, Next)> {
 	// Just saw Token::Operator
 	let mut operator = l.token_sym(start);
 	let mut left = first;
 	loop {
 		l.take_space()?; // operator must be followed by space.
-		let (right, next) = parse_expr(l, Ctx::NoOperator)?;
-		left = ast::Expr::operator_call(l.loc_from(start), left, operator, right);
+		let (right, next) = parse_expr(l, Ctx::NoOperators)?;
+		left = l.expr_from(start, ExprData::OperatorCall(Box::new(left), operator, Box::new(right)));
 		match next.token {
 			Token::Operator => operator = l.token_sym(next.pos),
 			_ => break Ok((left, next)),
@@ -266,7 +261,7 @@ fn slurp_operators(l: &mut Lexer, start: Pos, first: ast::Expr) -> Result<(ast::
 	}
 }
 
-fn parse_args(l: &mut Lexer, ctx: Ctx) -> Result<(Arr<ast::Expr>, Next)> {
+fn parse_args(l: &mut Lexer, ctx: Ctx) -> Result<(Arr<Expr>, Next)> {
 	let next = l.next_pos_token();
 	parse_args_2(l, ctx, next)
 }
@@ -275,8 +270,8 @@ fn parse_args_2(
 	l: &mut Lexer,
 	ctx: Ctx,
 	Next { pos: start, token: first_token }: Next,
-) -> Result<(Arr<ast::Expr>, Next)> {
-	let mut args = ArrBuilder::<ast::Expr>::new();
+) -> Result<(Arr<Expr>, Next)> {
+	let mut args = ArrBuilder::<Expr>::new();
 	let (first_arg, mut next) = parse_expr_2(l, ctx, start, first_token)?;
 	args.add(first_arg);
 	while next.token == Token::Comma {
@@ -288,56 +283,56 @@ fn parse_args_2(
 	Ok((args.finish(), next))
 }
 
-fn parse_simple_expr(l: &mut Lexer, start: Pos, token: Token) -> Result<(ast::Expr, Next)> {
+fn parse_simple_expr(l: &mut Lexer, start: Pos, token: Token) -> Result<(Expr, Next)> {
 	let mut expr = parse_simple_expr_without_suffixes(l, start, token)?;
-
 	loop {
 		let next = l.next_pos_token();
-		match next.token {
+		let data = match next.token {
 			Token::Dot => {
 				let name = l.take_name()?;
-				expr = ast::Expr::get_property(l.loc_from(start), expr, name)
+				ExprData::GetProperty(Box::new(expr), name)
 			}
-
 			Token::BracketL => {
 				let type_arguments = take_type_arguments_after_passing_bracketl(l)?;
-				expr = ast::Expr::type_arguments(l.loc_from(start), expr, type_arguments)
+				ExprData::TypeArguments(Box::new(expr), type_arguments)
 			}
-
 			Token::ParenL => {
 				l.take_parenr()?;
-				expr = ast::Expr::call(l.loc_from(start), expr, Arr::empty())
+				ExprData::Call(Box::new(expr), Arr::empty())
 			}
-
 			_ => break Ok((expr, next)),
-		}
+		};
+		expr = l.expr_from(start, data)
 	}
 }
 
-fn parse_simple_expr_without_suffixes(l: &mut Lexer, start: Pos, token: Token) -> Result<ast::Expr> {
-	let loc = l.loc_from(start);
-	match token {
+fn parse_simple_expr_without_suffixes(l: &mut Lexer, start: Pos, token: Token) -> Result<Expr> {
+	if token == Token::ParenL {
+		return parse_expr_and_expect_next(l, Ctx::YesOperators, Token::ParenR)
+	}
+
+	let data = match token {
 		Token::TyName => {
 			let class_name = l.token_sym(start);
 			l.take_dot()?;
 			let static_method_name = l.take_name()?;
-			Ok(ast::Expr::static_access(loc, class_name, static_method_name))
+			ExprData::StaticAccess(class_name, static_method_name)
 		}
-		Token::ParenL => parse_expr_and_expect_next(l, Ctx::YesOperators, Token::ParenR),
-		Token::Name => Ok(ast::Expr::access(loc, l.token_sym(start))),
-		Token::NatLiteral => Ok(ast::Expr::literal(loc, LiteralValue::Nat(l.token_nat()))),
-		Token::IntLiteral => Ok(ast::Expr::literal(loc, LiteralValue::Int(l.token_int()))),
-		Token::FloatLiteral => Ok(ast::Expr::literal(loc, LiteralValue::Float(l.token_float()))),
-		Token::StringLiteral => Ok(ast::Expr::literal(loc, LiteralValue::String(l.quote_part_value()))),
-		Token::Pass => Ok(ast::Expr::literal(loc, LiteralValue::Pass)),
-		Token::True => Ok(ast::Expr::literal(loc, LiteralValue::Bool(true))),
-		Token::False => Ok(ast::Expr::literal(loc, LiteralValue::Bool(false))),
-		Token::SelfKw => Ok(ast::Expr::self_expr(loc)),
-		_ => panic!(), // TODO:diagnostic
-	}
+		Token::Name => ExprData::Access(l.token_sym(start)),
+		Token::NatLiteral => ExprData::Literal(LiteralValue::Nat(l.token_nat())),
+		Token::IntLiteral => ExprData::Literal(LiteralValue::Int(l.token_int())),
+		Token::FloatLiteral => ExprData::Literal(LiteralValue::Float(l.token_float())),
+		Token::StringLiteral => ExprData::Literal(LiteralValue::String(l.quote_part_value())),
+		Token::Pass => ExprData::Literal(LiteralValue::Pass),
+		Token::True => ExprData::Literal(LiteralValue::Bool(true)),
+		Token::False => ExprData::Literal(LiteralValue::Bool(false)),
+		Token::SelfKw => ExprData::SelfExpr,
+		_ => todo!(), // TODO:diagnostic
+	};
+	Ok(l.expr_from(start, data))
 }
 
-fn parse_when(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
+fn parse_when(l: &mut Lexer, start_pos: Pos) -> Result<Expr> {
 	/*
 	when
 		firstTest
@@ -347,14 +342,14 @@ fn parse_when(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
 	*/
 	l.take_indent()?;
 
-	let mut cases = ArrBuilder::<ast::Case>::new();
+	let mut cases = ArrBuilder::<Case>::new();
 	let mut case_start = start_pos;
 	let mut case_start_token = l.next_token();
 	loop {
 		let first_test =
 			parse_expr_and_expect_next_2(l, Ctx::YesOperators, Token::Indent, case_start, case_start_token)?;
 		let first_result = parse_block(l)?;
-		cases.add(ast::Case(l.loc_from(case_start), first_test, first_result));
+		cases.add(Case(l.loc_from(case_start), first_test, first_result));
 
 		case_start = l.pos();
 		case_start_token = l.next_token();
@@ -369,10 +364,10 @@ fn parse_when(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
 		panic!() // 'else' must be the last clause. Must double-dedent after its block.
 	}
 
-	Ok(ast::Expr::when_test(l.loc_from(start_pos), cases.finish(), else_result))
+	Ok(l.expr_from(start_pos, ExprData::WhenTest(cases.finish(), Box::new(else_result))))
 }
 
-fn parse_try(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
+fn parse_try(l: &mut Lexer, start_pos: Pos) -> Result<Expr> {
 	/*
 	try
 		do
@@ -388,8 +383,8 @@ fn parse_try(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
 	l.take_specific_keyword("do")?;
 	l.take_indent()?;
 	let do_ = parse_block(l)?;
-	let mut catch: Option<ast::Catch> = None;
-	let mut finally: Option<ast::Expr> = None;
+	let mut catch: Option<Catch> = None;
+	let mut finally: Option<Expr> = None;
 
 	let catch_start = l.pos();
 
@@ -403,7 +398,7 @@ fn parse_try(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
 			let exception_name_loc = l.loc_from(name_start);
 			l.take_indent()?;
 			let then = parse_block(l)?;
-			catch = Some(ast::Catch {
+			catch = Some(Catch {
 				loc: l.loc_from(catch_start),
 				exception_type,
 				exception_name_loc,
@@ -420,10 +415,10 @@ fn parse_try(l: &mut Lexer, start_pos: Pos) -> Result<ast::Expr> {
 		CatchOrFinally::Finally => finally = Some(parse_finally(l)?),
 	}
 
-	Ok(ast::Expr::try(l.loc_from(start_pos), do_, catch, finally))
+	Ok(l.expr_from(start_pos, ExprData::Try(Box::new(do_), catch, finally.map(Box::new))))
 }
 
-fn parse_finally(l: &mut Lexer) -> Result<ast::Expr> {
+fn parse_finally(l: &mut Lexer) -> Result<Expr> {
 	l.take_indent()?;
 	let res = parse_block(l)?;
 	l.take_dedent()?;

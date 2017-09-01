@@ -1,11 +1,11 @@
 clean:
-	cargo clean
+	rustup run nightly cargo clean
 
 build:
-	cargo build
+	rustup run nightly cargo build
 
 run:
-	cargo run
+	rustup run nightly cargo run
 
 update_dev_dependencies:
 	rustup update

@@ -81,7 +81,7 @@ pub fn try_take_type_parameters(l: &mut Lexer) -> Result<Arr<Sym>> {
 
 fn finish_parse_ty(l: &mut Lexer, start: Pos, effect: Effect, name: Sym) -> Result<ast::Ty> {
 	let ty_args = try_take_type_arguments(l)?;
-	Ok(ast::Ty::of(l.loc_from(start), effect, name, ty_args))
+	Ok(ast::Ty { loc: l.loc_from(start), effect, name, ty_args })
 }
 
 pub fn try_take_type_argument(l: &mut Lexer) -> Result<Option<ast::Ty>> {

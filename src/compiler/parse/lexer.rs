@@ -7,6 +7,7 @@ use util::arr::{Arr, ArrBuilder};
 use util::loc::{Loc, Pos, POS_ZERO};
 use util::sym::Sym;
 
+use super::ast::{Expr, ExprData};
 use super::token::Token;
 
 pub type Result<T> = ::std::result::Result<T, Diagnostic>;
@@ -141,6 +142,10 @@ impl<'a> Lexer<'a> {
 
 	pub fn loc_from(&self, start: Pos) -> Loc {
 		Loc { start, end: self.pos() }
+	}
+
+	pub fn expr_from(&self, start: Pos, data: ExprData) -> Expr {
+		Expr(self.loc_from(start), data)
 	}
 
 	fn skip_while<F: Fn(u8) -> bool>(&mut self, pred: F) {

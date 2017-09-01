@@ -24,8 +24,8 @@ pub fn parse_module(l: &mut Lexer) -> Result<ast::Module> {
 		(Arr::empty(), l.pos(), kw)
 	};
 
-	let class = parse_class(l, class_start, next_kw)?;
-	Ok(ast::Module::of(imports, class))
+	let class = Box::new(parse_class(l, class_start, next_kw)?);
+	Ok(ast::Module { imports, class })
 }
 
 fn parse_imports(l: &mut Lexer) -> Result<Arr<ast::Import>> {
@@ -56,7 +56,7 @@ fn parse_imports(l: &mut Lexer) -> Result<Arr<ast::Import>> {
 			if leading_dots == 0 {
 				ast::Import::Global(loc, path)
 			} else {
-				ast::Import::Local(loc, RelPath::of(leading_dots, path))
+				ast::Import::Local(loc, RelPath { n_parents: leading_dots - 1, rel_to_parent: path })
 			},
 		)
 	}
@@ -124,14 +124,14 @@ fn parse_abstract_head(l: &mut Lexer, start: Pos) -> Result<ast::ClassHead> {
 			l.take_space()?;
 		}
 		let (return_ty, name, self_effect, parameters) = parse_method_head(l)?;
-		abstract_methods.add(ast::AbstractMethod::of(
-			l.loc_from(method_start),
+		abstract_methods.add(ast::AbstractMethod {
+			loc: l.loc_from(method_start),
 			type_parameters,
 			return_ty,
 			name,
 			self_effect,
 			parameters,
-		));
+		});
 		match l.take_newline_or_dedent()? {
 			NewlineOrDedent::Newline => {}
 			NewlineOrDedent::Dedent => break,
@@ -247,7 +247,7 @@ fn parse_super(l: &mut Lexer, start: Pos) -> Result<ast::Super> {
 		NewlineOrIndent::Indent => parse_impls(l)?,
 		NewlineOrIndent::Newline => Arr::empty(),
 	};
-	Ok(ast::Super::of(l.loc_from(start), name, ty_args, impls))
+	Ok(ast::Super { loc: l.loc_from(start), name, ty_args, impls })
 }
 
 fn parse_impls(l: &mut Lexer) -> Result<Arr<ast::Impl>> {
@@ -299,7 +299,7 @@ fn parse_slots(l: &mut Lexer, start: Pos) -> Result<ast::ClassHead> {
 		let ty = parse_ty(l)?;
 		l.take_space()?;
 		let name = l.take_name()?;
-		slots.add(ast::Slot::of(l.loc_from(start), mutable, ty, name));
+		slots.add(ast::Slot { loc: l.loc_from(start), mutable, ty, name });
 		match l.take_newline_or_dedent()? {
 			NewlineOrDedent::Newline => {}
 			NewlineOrDedent::Dedent => break,

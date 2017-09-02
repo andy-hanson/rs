@@ -1,9 +1,9 @@
 use util::arr::Arr;
 use util::path::{Path, RelPath};
 
-use super::super::host::document_info::DocumentInfo;
-use super::super::host::document_provider::DocumentProvider;
-use super::super::host::file_input::Result;
+use super::super::super::host::document_info::DocumentInfo;
+use super::super::super::host::document_provider::DocumentProvider;
+use super::super::super::host::file_input::Result;
 
 pub fn get_document_from_logical_path(
 	document_provider: &DocumentProvider,
@@ -45,7 +45,7 @@ fn regular_path(logical_path: &Path) -> Path {
 }
 
 fn index_path(logical_path: &Path) -> Path {
-	logical_path.child(&INDEX_NZ)
+	logical_path.child(INDEX_NZ.clone())
 }
 
 lazy_static! {

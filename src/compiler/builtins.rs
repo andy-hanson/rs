@@ -17,7 +17,7 @@ lazy_static! {
 		(Sym::of("Nat"), Arr::copy_from_str(include_str!("../../builtins/Nat.nz"))),
 		(Sym::of("Int"), Arr::copy_from_str(include_str!("../../builtins/Int.nz"))),
 		(Sym::of("Float"), Arr::copy_from_str(include_str!("../../builtins/Float.nz"))),
-		(Sym::of("String"), Arr::copy_from_str(include_str!("../../builtins/String.nz")))
+		(Sym::of("String"), Arr::copy_from_str(include_str!("../../builtins/String.nz"))),
 	];
 }
 
@@ -54,7 +54,7 @@ pub fn get_builtins() -> BuiltinsOwn {
 			class: LateOwn::new(),
 			diagnostics: LateOwn::new(),
 		});
-		let ModuleAst { imports, class } = match parse(source) {
+		let ModuleAst { imports, class } = match parse(source.as_slice()) {
 			Ok(module) => module,
 			Err(e) => {
 				// Parse error in a builtin

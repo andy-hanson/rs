@@ -1,4 +1,3 @@
-pub mod host;
 mod builtins;
 mod check;
 mod compile;

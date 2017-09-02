@@ -47,17 +47,17 @@ impl Loc {
 	}
 }
 
-struct LineAndColumn {
-	line: u32,
-	column: u32,
+pub struct LineAndColumn {
+	pub line: u32,
+	pub column: u32,
 }
 
-struct LineAndColumnLoc {
-	start: LineAndColumn,
-	end: LineAndColumn,
+pub struct LineAndColumnLoc {
+	pub start: LineAndColumn,
+	pub end: LineAndColumn,
 }
 impl LineAndColumnLoc {
-	fn single_line(line: u32, start_column: u32, end_column: u32) -> LineAndColumnLoc {
+	pub fn single_line(line: u32, start_column: u32, end_column: u32) -> LineAndColumnLoc {
 		LineAndColumnLoc {
 			start: LineAndColumn { line, column: start_column },
 			end: LineAndColumn { line, column: end_column },
@@ -65,11 +65,11 @@ impl LineAndColumnLoc {
 	}
 }
 
-struct LineAndColumnGetter {
+pub struct LineAndColumnGetter {
 	line_to_pos: Arr<u32>,
 }
 impl LineAndColumnGetter {
-	fn new(text: &Arr<u8>) -> LineAndColumnGetter {
+	pub fn new(text: &Arr<u8>) -> LineAndColumnGetter {
 		let mut line_to_pos = ArrBuilder::<u32>::new();
 		line_to_pos.add(0); // line 0 as position 0
 		for pos in text.range() {
@@ -81,7 +81,7 @@ impl LineAndColumnGetter {
 		LineAndColumnGetter { line_to_pos: line_to_pos.finish() }
 	}
 
-	fn line_and_column_at_loc(&self, loc: Loc) -> LineAndColumnLoc {
+	pub fn line_and_column_at_loc(&self, loc: Loc) -> LineAndColumnLoc {
 		LineAndColumnLoc {
 			start: self.line_and_column_at_pos(loc.start),
 			end: self.line_and_column_at_pos(loc.end),

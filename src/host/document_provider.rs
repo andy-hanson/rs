@@ -28,9 +28,7 @@ impl<FI: FileInput> DocumentProvider for FileLoadingDocumentProvider<FI> {
 
 	fn get_document(&self, path: &Path) -> Result<Option<DocumentInfo>> {
 		self.file_input.read(path).map(|result| {
-			result.map(|content| {
-				DocumentInfo::parse(content, /*version*/ 0)
-			})
+			result.map(|source| DocumentInfo::of(source, /*version*/ 0))
 		})
 	}
 }

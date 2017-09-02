@@ -14,13 +14,13 @@ use super::token::Token;
 pub type Result<T> = ::std::result::Result<T, Diagnostic>;
 
 struct Reader<'a> {
-	source: &'a Arr<u8>,
+	source: &'a [u8],
 	iter: Iter<'a, u8>,
 	peek: u8,
 	pos_cell: Cell<Pos>,
 }
 impl<'a> Reader<'a> {
-	fn new(source: &'a Arr<u8>) -> Reader<'a> {
+	fn new(source: &'a [u8]) -> Reader<'a> {
 		let len = source.len();
 		assert!(len >= 2);
 
@@ -59,7 +59,7 @@ impl<'a> Reader<'a> {
 	fn slice_from(&self, start_pos: Pos) -> &[u8] {
 		let a = start_pos.index as usize;
 		let b = self.pos_cell.get().index as usize;
-		self.source.slice(a, b)
+		&self.source[a..b]
 	}
 }
 
@@ -76,7 +76,7 @@ pub struct Lexer<'a> {
 	diagnostic: Option<Diagnostic>,
 }
 impl<'a> Lexer<'a> {
-	pub fn new(source: &'a Arr<u8>) -> Lexer {
+	pub fn new(source: &'a [u8]) -> Lexer {
 		Lexer {
 			reader: Reader::new(source),
 			indent: 0,

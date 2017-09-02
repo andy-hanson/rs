@@ -9,7 +9,9 @@ mod util;
 extern crate lazy_static;
 
 mod compiler;
+mod host;
 mod interpreter;
 mod model;
+mod test;
 
 fn main() {}

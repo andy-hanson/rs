@@ -16,14 +16,16 @@ pub fn get_builtin(module: &Module, implemented: Sym) -> BuiltinCode {
 lazy_static! {
 	//TODO:PERF load each class lazily?
 	static ref PATH_TO_IMPLS: Dict<Sym, Dict<Sym, BuiltinCode>> = {
-		Dict::of(vec![
-			(Sym::of("Bool"), get_bool_impls()),
-		])
+		dict![
+			Sym::of("Bool") => get_bool_impls(),
+		]
 	};
 }
 
 fn get_bool_impls() -> Dict<Sym, BuiltinCode> {
-	Dict::of(vec![(Sym::of("=="), BuiltinCode::Fn2(bool_eq))])
+	dict![
+		Sym::of("==") => BuiltinCode::Fn2(bool_eq),
+	]
 }
 
 #[allow(needless_pass_by_value)]

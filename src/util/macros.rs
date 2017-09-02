@@ -1,6 +1,14 @@
 macro_rules! arr {
-	($($e:expr),*) => {
+	($($e:expr,)*) => {
 		Arr::from_vec(vec!($($e),*))
+	}
+}
+
+macro_rules! dict {
+	($($key:expr => $value:expr,)+) => {
+		Dict::of(vec!(
+			$(($key, $value)),*
+		))
 	}
 }
 

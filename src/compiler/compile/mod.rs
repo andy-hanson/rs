@@ -2,10 +2,11 @@ use util::dict::MutDict;
 use util::path::Path;
 use util::ptr::Own;
 
-use super::builtins::BuiltinsOwn;
-use super::host::document_provider::DocumentProvider;
-use super::host::file_input::Result;
+use super::super::host::document_provider::DocumentProvider;
+use super::super::host::file_input::Result;
 use super::super::model::module::{OwnModuleOrFail, PtrModuleOrFail};
+
+use super::builtins::BuiltinsOwn;
 
 mod compiler;
 mod module_resolver;

@@ -4,15 +4,16 @@ use util::path::Path;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
+use super::super::super::host::document_info::DocumentInfo;
+use super::super::super::host::document_provider::DocumentProvider;
+use super::super::super::host::file_input::Result as IoResult;
 use super::super::super::model::diag::{Diag, Diagnostic};
 use super::super::super::model::module::{FailModule, Module, ModuleSource, OwnModuleOrFail, PtrModuleOrFail};
 
 use super::super::builtins::{get_builtins, BuiltinsOwn};
 use super::super::check::check_module;
-use super::super::host::document_info::DocumentInfo;
-use super::super::host::document_provider::DocumentProvider;
-use super::super::host::file_input::Result as IoResult;
 use super::super::parse::ast::{Class as ClassAst, Import as ImportAst, Module as ModuleAst};
+use super::super::parse::parse;
 
 use super::{CompileResult, CompiledProgram};
 use super::module_resolver::{get_document_from_logical_path, GetDocumentResult};
@@ -99,7 +100,7 @@ impl<'a> Compiler<'a> {
 		document: DocumentInfo,
 	) -> IoResult<(CompileSingleResult, bool)> {
 		let own_logical_path = Own::new(logical_path);
-		Ok(match document.parse_result {
+		Ok(match parse(document.source.as_slice()) {
 			Ok(ModuleAst { imports, class }) => {
 				let ptr_logical_path = own_logical_path.ptr();
 				self.modules.add(own_logical_path, ModuleState::Compiling);

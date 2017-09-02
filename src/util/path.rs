@@ -18,6 +18,10 @@ impl Path {
 		Path(s.split(|ch| ch == b'/' || ch == b'\\'))
 	}
 
+	pub fn from_parts(strings: Arr<&'static str>) -> Path {
+		Path(strings.map(|s| Arr::copy_from_str(s)))
+	}
+
 	pub fn to_string(&self) -> String {
 		StringMaker::stringify(self)
 	}
@@ -30,9 +34,9 @@ impl Path {
 		RelPath { n_parents: 0, rel_to_parent: self }
 	}
 
-	pub fn child(&self, child_name: &Arr<u8>) -> Path {
-		assert!(is_path_part(child_name));
-		Path(self.0.rcons(child_name.clone()))
+	pub fn child(&self, child_name: Arr<u8>) -> Path {
+		assert!(is_path_part(&child_name));
+		Path(self.0.rcons(child_name))
 	}
 
 	pub fn resolve_2(&self, rel1: &RelPath, rel2: &RelPath) {

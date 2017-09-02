@@ -4,6 +4,7 @@ pub use std::io::Result;
 
 use util::arr::Arr;
 use util::path::Path;
+use util::string_maker::Show;
 use util::sym::Sym;
 
 pub trait FileInput {
@@ -19,7 +20,7 @@ pub struct NativeFileInput {
 	root_dir: Path,
 }
 impl NativeFileInput {
-	pub fn new(root_dir: Path) -> NativeFileInput {
+	pub fn new(root_dir: Path) -> Self {
 		NativeFileInput { root_dir }
 	}
 }

@@ -6,14 +6,14 @@ pub enum Effect {
 	Io,
 }
 impl Effect {
-	pub const MIN: Effect = Effect::Pure;
-	pub const MAX: Effect = Effect::Io;
+	pub const MIN: Self = Effect::Pure;
+	pub const MAX: Self = Effect::Io;
 
-	pub fn contains(self, other: Effect) -> bool {
+	pub fn contains(self, other: Self) -> bool {
 		self as usize > other as usize
 	}
 
-	pub fn min_common_effect(self, other: Effect) -> Effect {
+	pub fn min_common_effect(self, other: Self) -> Self {
 		if self.contains(other) {
 			self
 		} else {

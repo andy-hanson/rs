@@ -18,19 +18,19 @@ pub enum Ty {
 }
 impl Ty {
 	// Used for getting a *reference* to Ty::Bogus.
-	pub fn bogus_ref() -> &'static Ty {
+	pub fn bogus_ref() -> &'static Self {
 		&BOGUS.0
 	}
 
-	pub fn pure_ty(cls: InstCls) -> Ty {
+	pub fn pure_ty(cls: InstCls) -> Self {
 		Ty::Plain(Effect::Pure, cls)
 	}
 
-	pub fn io(cls: InstCls) -> Ty {
+	pub fn io(cls: InstCls) -> Self {
 		Ty::Plain(Effect::Io, cls)
 	}
 
-	pub fn fast_equals(&self, other: &Ty) -> bool {
+	pub fn fast_equals(&self, other: &Self) -> bool {
 		match *self {
 			Ty::Bogus =>
 				// TODO: this should probably always be true, but then don't call this fn "equals"
@@ -52,7 +52,7 @@ impl Ty {
 	}
 }
 impl Clone for Ty {
-	fn clone(&self) -> Ty {
+	fn clone(&self) -> Self {
 		match *self {
 			Ty::Bogus => Ty::Bogus,
 			Ty::Plain(effect, ref inst_cls) => Ty::Plain(effect, inst_cls.clone()),
@@ -63,7 +63,7 @@ impl Clone for Ty {
 
 pub struct InstCls(pub Ptr<ClassDeclaration>, pub Arr<Ty>);
 impl InstCls {
-	pub fn generic_self_reference(cls: Ptr<ClassDeclaration>) -> InstCls {
+	pub fn generic_self_reference(cls: Ptr<ClassDeclaration>) -> Self {
 		let type_arguments = cls.type_parameters.map(|tp| Ty::Param(tp.ptr()));
 		InstCls(cls, type_arguments)
 	}
@@ -72,12 +72,12 @@ impl InstCls {
 		&self.0
 	}
 
-	pub fn fast_equals(&self, other: &InstCls) -> bool {
+	pub fn fast_equals(&self, other: &Self) -> bool {
 		self.0.ptr_equals(&other.0) && self.1.each_equals(&other.1, Ty::fast_equals)
 	}
 }
 impl Clone for InstCls {
-	fn clone(&self) -> InstCls {
+	fn clone(&self) -> Self {
 		InstCls(self.0.clone_ptr(), self.1.clone())
 	}
 }
@@ -87,7 +87,7 @@ pub enum TypeParameterOrigin {
 	Method(Ptr<MethodWithBody>),
 }
 impl<'a> TypeParameterOrigin {
-	fn copy(&self) -> TypeParameterOrigin {
+	fn copy(&self) -> Self {
 		match *self {
 			TypeParameterOrigin::Class(ref cls) => TypeParameterOrigin::Class(cls.clone_ptr()),
 			TypeParameterOrigin::Method(ref m) => TypeParameterOrigin::Method(m.clone_ptr()),
@@ -100,7 +100,7 @@ pub struct TypeParameter {
 	name: Sym,
 }
 impl TypeParameter {
-	pub fn create(name: Sym) -> Own<TypeParameter> {
+	pub fn create(name: Sym) -> Own<Self> {
 		Own::new(TypeParameter { origin: LateOwn::new(), name })
 	}
 

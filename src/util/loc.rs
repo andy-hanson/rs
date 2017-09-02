@@ -7,26 +7,26 @@ pub struct Pos {
 	pub index: u32,
 }
 impl Pos {
-	pub const ZERO: Pos = Pos { index: 0 };
+	pub const ZERO: Self = Pos { index: 0 };
 
-	pub fn decr(self) -> Pos {
+	pub fn decr(self) -> Self {
 		Pos { index: self.index - 1 }
 	}
-	pub fn incr(self) -> Pos {
+	pub fn incr(self) -> Self {
 		Pos { index: self.index + 1 }
 	}
 }
 impl Add<u32> for Pos {
-	type Output = Pos;
+	type Output = Self;
 
-	fn add(self, rhs: u32) -> Pos {
+	fn add(self, rhs: u32) -> Self {
 		Pos { index: self.index + rhs }
 	}
 }
 impl Sub<Pos> for Pos {
 	type Output = u32;
 
-	fn sub(self, rhs: Pos) -> u32 {
+	fn sub(self, rhs: Self) -> u32 {
 		self.index - rhs.index
 	}
 }
@@ -37,11 +37,11 @@ pub struct Loc {
 	pub end: Pos,
 }
 impl Loc {
-	pub fn single_char(start: Pos) -> Loc {
+	pub fn single_char(start: Pos) -> Self {
 		Loc { start, end: start.incr() }
 	}
 
-	pub fn slice_start_length(self, rel_start: u32, length: u32) -> Loc {
+	pub fn slice_start_length(self, rel_start: u32, length: u32) -> Self {
 		let start = self.start + rel_start;
 		Loc { start: start, end: start + length }
 	}
@@ -57,7 +57,7 @@ pub struct LineAndColumnLoc {
 	pub end: LineAndColumn,
 }
 impl LineAndColumnLoc {
-	pub fn single_line(line: u32, start_column: u32, end_column: u32) -> LineAndColumnLoc {
+	pub fn single_line(line: u32, start_column: u32, end_column: u32) -> Self {
 		LineAndColumnLoc {
 			start: LineAndColumn { line, column: start_column },
 			end: LineAndColumn { line, column: end_column },
@@ -69,7 +69,7 @@ pub struct LineAndColumnGetter {
 	line_to_pos: Arr<u32>,
 }
 impl LineAndColumnGetter {
-	pub fn new(text: &[u8]) -> LineAndColumnGetter {
+	pub fn new(text: &[u8]) -> Self {
 		let mut line_to_pos = ArrBuilder::<u32>::new();
 		line_to_pos.add(0); // line 0 as position 0
 		for pos in text.range() {

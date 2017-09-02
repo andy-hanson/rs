@@ -4,7 +4,7 @@ use super::super::value::Value;
 
 pub struct DataStack(Vec<Value>);
 impl DataStack {
-	pub fn new(initial: Vec<Value>) -> DataStack {
+	pub fn new(initial: Vec<Value>) -> Self {
 		DataStack(initial)
 	}
 

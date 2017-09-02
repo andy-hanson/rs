@@ -9,7 +9,7 @@ use std::iter::FromIterator;
 // Immutable hash map
 pub struct Dict<K: Hash + Eq, V>(HashMap<K, V>);
 impl<K: Hash + Eq, V> Dict<K, V> {
-	pub fn of(keysvals: Vec<(K, V)>) -> Dict<K, V> {
+	pub fn of(keysvals: Vec<(K, V)>) -> Self {
 		let mut b = MutDict::new();
 		for (k, v) in keysvals {
 			b.add(k, v)
@@ -21,7 +21,7 @@ impl<K: Hash + Eq, V> Dict<K, V> {
 		self.0.iter()
 	}
 
-	pub fn from_iterator<T: IntoIterator<Item = (K, V)>>(i: T) -> Dict<K, V> {
+	pub fn from_iterator<T: IntoIterator<Item = (K, V)>>(i: T) -> Self {
 		Dict(HashMap::from_iter(i))
 	}
 
@@ -36,7 +36,7 @@ impl<K: Hash + Eq, V> Dict<K, V> {
 
 pub struct MutDict<K: Hash + Eq, V>(HashMap<K, V>);
 impl<K: Hash + Eq, V> MutDict<K, V> {
-	pub fn new() -> MutDict<K, V> {
+	pub fn new() -> Self {
 		MutDict(HashMap::new())
 	}
 

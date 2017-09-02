@@ -14,11 +14,11 @@ lazy_static! {
 pub struct Sym(i32);
 
 impl Sym {
-	pub fn of(s: &'static str) -> Sym {
+	pub fn of(s: &'static str) -> Self {
 		Sym::from_slice(s.as_bytes())
 	}
 
-	pub fn from_slice(input: &[u8]) -> Sym {
+	pub fn from_slice(input: &[u8]) -> Self {
 		let mut string_to_symbol = STRING_TO_SYMBOL.lock().unwrap();
 		let cached_symbol = string_to_symbol.get(input).cloned();
 		cached_symbol.unwrap_or_else(|| {
@@ -33,12 +33,6 @@ impl Sym {
 			sym
 		})
 	}
-
-	/*pub fn to_str(&self) -> String {
-		let map = SYMBOL_TO_STRING.lock().unwrap();
-		let s = map.get(self).unwrap();
-		s.clone()
-	}*/
 }
 impl Show for Sym {
 	fn show<S: Shower>(&self, s: &mut S) {

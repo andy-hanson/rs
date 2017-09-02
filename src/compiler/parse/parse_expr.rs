@@ -6,7 +6,7 @@ use util::loc::Pos;
 use super::super::super::model::diag::{Diag, Diagnostic};
 use super::super::super::model::expr::LiteralValue;
 
-use super::ast::{Case, Catch, Expr, ExprData, Pattern};
+use super::ast::{Case, Catch, Expr, ExprData, Pattern, PatternData};
 use super::lexer::{CatchOrFinally, Lexer, Next, Result};
 use super::parse_ty::{parse_ty, take_type_arguments_after_passing_bracketl, try_take_type_argument,
                       try_take_type_arguments};
@@ -27,7 +27,7 @@ enum Ctx {
 	NoOperators,
 }
 impl Ctx {
-	fn operators_if(b: bool) -> Ctx {
+	fn operators_if(b: bool) -> Self {
 		if b {
 			Ctx::YesOperators
 		} else {
@@ -128,7 +128,7 @@ fn parse_expr_2(l: &mut Lexer, ctx: Ctx, start: Pos, first_token: Token) -> Resu
 						panic!()
 					}
 					if let ExprData::Access(local_name) = first.1 {
-						let pattern = Pattern::single(first.0, local_name);
+						let pattern = Pattern(first.0, PatternData::Single(local_name));
 						l.take_space()?;
 						let (value, next_2) = parse_expr(l, Ctx::YesOperators)?;
 						let loc = l.loc_from(start);

@@ -4,8 +4,15 @@ use std::marker::Sized;
 
 use util::arr::{Arr, SliceOps, U8SliceOps};
 
-pub trait Show {
+pub trait Show
+where
+	Self: Sized,
+{
 	fn show<S: Shower>(&self, s: &mut S);
+
+	fn to_string(&self) -> String {
+		StringMaker::stringify(self)
+	}
 }
 
 pub trait Shower

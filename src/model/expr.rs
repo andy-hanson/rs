@@ -65,7 +65,7 @@ impl Expr {
 		self.1.ty()
 	}
 
-	pub fn children(&self) -> Arr<&Expr> {
+	pub fn children(&self) -> Arr<&Self> {
 		self.1.children()
 	}
 }

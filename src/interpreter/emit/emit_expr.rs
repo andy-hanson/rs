@@ -26,7 +26,7 @@ struct InstructionWriter {
 	instructions: ArrBuilder<Instruction>,
 }
 impl InstructionWriter {
-	fn new() -> InstructionWriter {
+	fn new() -> Self {
 		InstructionWriter { instructions: ArrBuilder::new() }
 	}
 

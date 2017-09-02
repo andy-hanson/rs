@@ -87,11 +87,6 @@ pub struct Ty {
 }
 
 pub struct Pattern(pub Loc, pub PatternData);
-impl Pattern {
-	pub fn single(loc: Loc, sym: Sym) -> Pattern {
-		Pattern(loc, PatternData::Single(sym))
-	}
-}
 pub enum PatternData {
 	Ignore,
 	Single(Sym),

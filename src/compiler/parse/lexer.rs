@@ -20,7 +20,7 @@ struct Reader<'a> {
 	pos_cell: Cell<Pos>,
 }
 impl<'a> Reader<'a> {
-	fn new(source: &'a [u8]) -> Reader<'a> {
+	fn new(source: &'a [u8]) -> Self {
 		let len = source.len();
 		assert!(len >= 2);
 
@@ -76,7 +76,7 @@ pub struct Lexer<'a> {
 	diagnostic: Option<Diagnostic>,
 }
 impl<'a> Lexer<'a> {
-	pub fn new(source: &'a [u8]) -> Lexer {
+	pub fn new(source: &'a [u8]) -> Self {
 		Lexer {
 			reader: Reader::new(source),
 			indent: 0,

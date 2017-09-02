@@ -33,7 +33,7 @@ struct TestDocumentProvider {
 	errors: RefCell<MutDict<Path, Arr<Error>>>,
 }
 impl TestDocumentProvider {
-	fn new(test_directory: Path) -> TestDocumentProvider {
+	fn new(test_directory: Path) -> Self {
 		TestDocumentProvider {
 			file_input: NativeFileInput::new(test_directory),
 			errors: RefCell::new(MutDict::new()),

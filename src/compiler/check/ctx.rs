@@ -27,7 +27,7 @@ impl<'a> Ctx<'a> {
 		current_class: &'a LateOwn<ClassDeclaration>,
 		builtins: &'a BuiltinsCtx<'a>,
 		imports: &'a Arr<Ptr<Module>>,
-	) -> Ctx<'a> {
+	) -> Self {
 		Ctx { current_class, builtins, imports, diags: RefCell::new(ArrBuilder::new()) }
 	}
 

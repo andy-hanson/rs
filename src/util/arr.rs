@@ -18,20 +18,20 @@ impl<T> Arr<T> {
 		self.0
 	}
 
-	pub fn _1(a: T) -> Arr<T> {
+	pub fn _1(a: T) -> Self {
 		Arr(Box::new([a]))
 	}
-	pub fn _2(a: T, b: T) -> Arr<T> {
+	pub fn _2(a: T, b: T) -> Self {
 		Arr(Box::new([a, b]))
 	}
-	pub fn _3(a: T, b: T, c: T) -> Arr<T> {
+	pub fn _3(a: T, b: T, c: T) -> Self {
 		Arr(Box::new([a, b, c]))
 	}
-	pub fn _4(a: T, b: T, c: T, d: T) -> Arr<T> {
+	pub fn _4(a: T, b: T, c: T, d: T) -> Self {
 		Arr(Box::new([a, b, c, d]))
 	}
 
-	pub fn from_vec(v: Vec<T>) -> Arr<T> {
+	pub fn from_vec(v: Vec<T>) -> Self {
 		Arr(v.into_boxed_slice())
 	}
 
@@ -39,7 +39,7 @@ impl<T> Arr<T> {
 		0..self.len()
 	}
 
-	pub fn empty() -> Arr<T> {
+	pub fn empty() -> Self {
 		Arr(Vec::new().into_boxed_slice())
 	}
 
@@ -65,11 +65,11 @@ impl<T: Clone> Arr<T> {
 		v
 	}
 
-	pub fn copy_slice(&self, lo: usize, hi: usize) -> Arr<T> {
+	pub fn copy_slice(&self, lo: usize, hi: usize) -> Self {
 		Arr(self.0[lo..hi].to_owned().into_boxed_slice())
 	}
 
-	pub fn rcons(&self, new_last_element: T) -> Arr<T> {
+	pub fn rcons(&self, new_last_element: T) -> Self {
 		let mut b = self.copy_to_builder();
 		b.add(new_last_element);
 		b.finish()
@@ -83,7 +83,7 @@ impl<T: Clone> Arr<T> {
 		&self.0[self.rtail_range()]
 	}
 
-	pub fn copy_rtail(&self) -> Arr<T> {
+	pub fn copy_rtail(&self) -> Self {
 		let mut b = ArrBuilder::<T>::new();
 		for i in self.rtail_range() {
 			b.add(self[i].clone())
@@ -92,7 +92,7 @@ impl<T: Clone> Arr<T> {
 	}
 }
 impl<T: Copy> Arr<T> {
-	pub fn copy_from_slice(slice: &[T]) -> Arr<T> {
+	pub fn copy_from_slice(slice: &[T]) -> Self {
 		// TODO: better way?
 		let mut v = Vec::new();
 		v.copy_from_slice(slice);
@@ -126,7 +126,7 @@ impl<T: Eq> Arr<T> {
 
 //TODO: kill?
 impl Arr<u8> {
-	pub fn copy_from_str(s: &str) -> Arr<u8> {
+	pub fn copy_from_str(s: &str) -> Self {
 		Arr(s.as_bytes().to_owned().into_boxed_slice())
 	}
 }
@@ -190,7 +190,7 @@ impl<T> Index<usize> for Arr<T> {
 pub struct ArrBuilder<T>(Vec<T>);
 
 impl<T> ArrBuilder<T> {
-	pub fn new() -> ArrBuilder<T> {
+	pub fn new() -> Self {
 		ArrBuilder(Vec::new())
 	}
 
@@ -198,13 +198,13 @@ impl<T> ArrBuilder<T> {
 		self.0.len()
 	}
 
-	pub fn new_with_first(first: T) -> ArrBuilder<T> {
+	pub fn new_with_first(first: T) -> Self {
 		let mut b = ArrBuilder(Vec::new());
 		b.add(first);
 		b
 	}
 
-	pub fn new_with_optional_first(first: Option<T>) -> ArrBuilder<T> {
+	pub fn new_with_optional_first(first: Option<T>) -> Self {
 		let mut b = ArrBuilder(Vec::new());
 		if let Some(x) = first {
 			b.add(x)

@@ -156,7 +156,7 @@ fn a(k: &'static str) -> Arr<u8> {
 }
 
 impl Token {
-	pub fn keyword_from_name(name: &[u8]) -> Option<Token> {
+	pub fn keyword_from_name(name: &[u8]) -> Option<Self> {
 		NAME_TO_TOKEN.get(name).cloned()
 	}
 }

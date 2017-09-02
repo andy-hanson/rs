@@ -115,7 +115,7 @@ pub enum MethodOrImpl {
 	Impl(Ptr<Impl>),
 }
 impl MethodOrImpl {
-	pub fn copy(&self) -> MethodOrImpl {
+	pub fn copy(&self) -> Self {
 		match *self {
 			MethodOrImpl::Method(ref m) => MethodOrImpl::Method(m.clone_ptr()),
 			MethodOrImpl::Impl(ref i) => MethodOrImpl::Impl(i.clone_ptr()),
@@ -150,7 +150,7 @@ pub enum MethodOrAbstract {
 	Abstract(Ptr<AbstractMethod>),
 }
 impl MethodOrAbstract {
-	pub fn copy(&self) -> MethodOrAbstract {
+	pub fn copy(&self) -> Self {
 		match *self {
 			MethodOrAbstract::Method(ref m) => MethodOrAbstract::Method(m.clone_ptr()),
 			MethodOrAbstract::Abstract(ref a) => MethodOrAbstract::Abstract(a.clone_ptr()),

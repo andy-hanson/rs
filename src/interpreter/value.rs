@@ -15,7 +15,7 @@ pub enum Value {
 	String(Rc<Arr<u8>>),
 }
 impl Clone for Value {
-	fn clone(&self) -> Value {
+	fn clone(&self) -> Self {
 		match *self {
 			Value::Instance(ref i) => Value::Instance(i.clone()),
 			Value::Void => Value::Void,

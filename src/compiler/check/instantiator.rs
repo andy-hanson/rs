@@ -6,23 +6,27 @@ use super::super::super::model::ty::{InstCls, Ty, TypeParameter};
 
 struct Inner(Ptr<TypeParameter>, Ty);
 impl Clone for Inner {
-	fn clone(&self) -> Inner {
+	fn clone(&self) -> Self {
 		Inner(self.0.clone_ptr(), self.1.clone())
 	}
 }
 
 pub struct Instantiator(Arr<Inner>);
 impl Instantiator {
-	pub fn nil() -> Instantiator {
+	pub fn nil() -> Self {
 		Instantiator(Arr::empty())
 	}
 
-	pub fn of_inst_cls(&InstCls(ref class, ref type_arguments): &InstCls) -> Instantiator {
-		new(&class.type_parameters, type_arguments)
+	pub fn of_inst_cls(&InstCls(ref class, ref type_arguments): &InstCls) -> Self {
+		Self::new(&class.type_parameters, type_arguments)
 	}
 
-	pub fn of_inst_method(&InstMethod(ref decl, ref type_arguments): &InstMethod) -> Instantiator {
-		new(decl.type_parameters(), type_arguments)
+	pub fn of_inst_method(&InstMethod(ref decl, ref type_arguments): &InstMethod) -> Self {
+		Self::new(decl.type_parameters(), type_arguments)
+	}
+
+	fn new(type_parameters: &[Own<TypeParameter>], type_arguments: &[Ty]) -> Self {
+		Instantiator(type_parameters.zip(type_arguments, |tp, ta| Inner(tp.ptr(), ta.clone())))
 	}
 
 	pub fn replace_or_same(&self, ty: &Ptr<TypeParameter>) -> Ty {
@@ -40,13 +44,7 @@ impl Instantiator {
 		None
 	}
 
-	pub fn combine(&self, other: &Instantiator) -> Instantiator {
+	pub fn combine(&self, other: &Instantiator) -> Self {
 		Instantiator(self.0.concat(&other.0))
 	}
-}
-
-fn new(type_parameters: &[Own<TypeParameter>], type_arguments: &[Ty]) -> Instantiator {
-	assert_eq!(type_parameters.len(), type_arguments.len());
-	let s = type_parameters.zip(type_arguments, |tp, ta| Inner(tp.ptr(), ta.clone()));
-	Instantiator(s)
 }

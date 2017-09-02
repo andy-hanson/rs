@@ -7,6 +7,8 @@ pub struct Pos {
 	pub index: u32,
 }
 impl Pos {
+	pub const ZERO: Pos = Pos { index: 0 };
+
 	pub fn decr(self) -> Pos {
 		Pos { index: self.index - 1 }
 	}
@@ -28,7 +30,6 @@ impl Sub<Pos> for Pos {
 		self.index - rhs.index
 	}
 }
-pub const POS_ZERO: Pos = Pos { index: 0 };
 
 #[derive(Copy, Clone)]
 pub struct Loc {
@@ -45,7 +46,6 @@ impl Loc {
 		Loc { start: start, end: start + length }
 	}
 }
-pub const LOC_ZERO: Loc = Loc { start: POS_ZERO, end: POS_ZERO };
 
 struct LineAndColumn {
 	line: u32,

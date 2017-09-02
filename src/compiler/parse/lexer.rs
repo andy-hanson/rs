@@ -4,7 +4,7 @@ use std::slice::Iter;
 
 use compiler::diag::{Diag, Diagnostic};
 use util::arr::{Arr, ArrBuilder};
-use util::loc::{Loc, Pos, POS_ZERO};
+use util::loc::{Loc, Pos};
 use util::sym::Sym;
 
 use super::ast::{Expr, ExprData};
@@ -28,7 +28,7 @@ impl<'a> Reader<'a> {
 
 		let mut iter = source.iter();
 		let peek = *iter.next().unwrap();
-		Reader { source, iter, peek, pos_cell: Cell::new(POS_ZERO) }
+		Reader { source, iter, peek, pos_cell: Cell::new(Pos::ZERO) }
 	}
 
 	fn pos(&self) -> Pos {
@@ -171,7 +171,7 @@ impl<'a> Lexer<'a> {
 					is_end = false;
 					break
 				}
-				b'\n' => todo!(),
+				b'\n' => unimplemented!(),
 				b'\\' => {
 					let ch = self.read_char();
 					b.add(escape(ch));
@@ -681,7 +681,7 @@ fn escape(escaped: u8) -> u8 {
 		b'"' | b'{' => escaped,
 		b'n' => b'\n',
 		b't' => b'\t',
-		_ => todo!(), // bad escape
+		_ => unimplemented!(), // bad escape
 	}
 }
 

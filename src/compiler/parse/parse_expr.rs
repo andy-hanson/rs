@@ -51,7 +51,7 @@ fn parse_block_with_start(l: &mut Lexer, start: Pos, first: Token) -> Result<Exp
 			Ok(l.expr_from(start, data))
 		}
 		Token::Dedent => Ok(expr),
-		_ => todo!(), // TODO: unexpected
+		_ => unimplemented!(), // TODO: unexpected
 	}
 }
 
@@ -327,7 +327,7 @@ fn parse_simple_expr_without_suffixes(l: &mut Lexer, start: Pos, token: Token) -
 		Token::True => ExprData::Literal(LiteralValue::Bool(true)),
 		Token::False => ExprData::Literal(LiteralValue::Bool(false)),
 		Token::SelfKw => ExprData::SelfExpr,
-		_ => todo!(), // TODO:diagnostic
+		_ => unimplemented!(), // TODO:diagnostic
 	};
 	Ok(l.expr_from(start, data))
 }

@@ -19,9 +19,9 @@ pub fn common_type(a: &Ty, b: &Ty) -> Option<Ty> {
 					} else {
 						None
 					},
-				Ty::Param(_) => todo!(),
+				Ty::Param(_) => unimplemented!(),
 			},
-		Ty::Param(_) => todo!(),
+		Ty::Param(_) => unimplemented!(),
 	}
 }
 
@@ -38,7 +38,7 @@ pub fn is_assignable(expected: &Ty, actual: &Ty) -> bool {
 				Ty::Bogus => true,
 				Ty::Plain(effect_actual, ref inst_cls_actual) =>
 					effect_actual.contains(effect_expected) && is_subclass(inst_cls_expected, inst_cls_actual),
-				Ty::Param(_) => todo!(),
+				Ty::Param(_) => unimplemented!(),
 			},
 	}
 }
@@ -140,7 +140,7 @@ fn instantiate_ty_and_forbid_effects(
 					),
 				)
 			} else {
-				todo!()
+				unimplemented!()
 			},
 		Ty::Param(ref p) => instantiator.replace_or_same(p),
 	}

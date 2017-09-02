@@ -61,7 +61,7 @@ fn fill_impl_bodies(ctx: &mut Ctx, super_asts: &Arr<ast::Super>) {
 
 	let supers = &ctx.current_class.supers;
 	if super_asts.len() != supers.len() {
-		todo!()
+		unimplemented!()
 	}
 
 	super_asts.do_zip(supers, |super_ast, zuper| {
@@ -113,7 +113,7 @@ fn check_super_initial(
 		unwrap_or_return!(ctx.access_class_declaration_or_add_diagnostic(loc, name), None);
 	if super_class_declaration.supers.len() != 0 {
 		// We should have a check that there is a separate implementation of the super-super.
-		todo!()
+		unimplemented!()
 	}
 
 	let impls = {
@@ -140,7 +140,7 @@ fn check_super_initial(
 				.each_corresponds(parameter_names, |p, pn| p.name == *pn)
 			{
 				ctx.add_diagnostic(loc, Diag::WrongImplParameters(implemented.ptr()));
-				todo!() // Should we continue or what?
+				unimplemented!() // Should we continue or what?
 			}
 
 			Own::new(Impl { loc, implemented: implemented.ptr(), body: LateOwn::new() })
@@ -191,7 +191,7 @@ fn check_parameters(
 	param_asts.map_with_index(|&ast::Parameter { loc, ty: ref ty_ast, name }, index| {
 		for prior_param in param_asts.iter().take(index) {
 			if prior_param.name == name {
-				todo!()
+				unimplemented!()
 				//ctx.add_diagnostic(loc, )
 			}
 		}
@@ -207,21 +207,21 @@ fn check_parameters(
 fn check_head(ctx: &mut Ctx, ast: Option<&ast::ClassHead>) -> ClassHead {
 	let &ast::ClassHead(loc, ref head_data) = unwrap_or_return!(ast, {
 		if ctx.current_class.type_parameters.any() {
-			todo!() // Error: static class can't have type parameters
+			unimplemented!() // Error: static class can't have type parameters
 		}
 		ClassHead::Static
 	});
 	match *head_data {
 		ast::ClassHeadData::Abstract(_) => {
 			unused!(loc);
-			todo!()
+			unimplemented!()
 		}
-		ast::ClassHeadData::Slots(_) => todo!(),
+		ast::ClassHeadData::Slots(_) => unimplemented!(),
 		ast::ClassHeadData::Builtin => ClassHead::Builtin,
 	}
 }
 
 fn check_slot(ctx: &mut Ctx, slot_ast: &ast::Slot) -> SlotDeclaration {
 	unused!(ctx, slot_ast);
-	todo!()
+	unimplemented!()
 }

@@ -114,6 +114,6 @@ impl TypeParameter {
 		// TODO: self and other should be `Ref`, then use reference identity.
 		// See https://www.reddit.com/r/rust/comments/2dmzf6/why_do_equality_tests_of_references_seem_to/
 		unused!(other);
-		todo!()
+		unimplemented!()
 	}
 }

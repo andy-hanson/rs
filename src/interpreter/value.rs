@@ -33,7 +33,7 @@ impl Value {
 		if let Value::Bool(b) = *self {
 			b
 		} else {
-			todo!()
+			unimplemented!()
 		}
 	}
 }

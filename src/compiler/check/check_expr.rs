@@ -7,7 +7,7 @@ use util::sym::Sym;
 
 use super::super::diag::Diag;
 use super::super::model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration};
-use super::super::model::effect::{Effect, EFFECT_MAX};
+use super::super::model::effect::Effect;
 use super::super::model::expr::{Case, Catch, Expr, ExprData, Local, Pattern};
 use super::super::model::method::{InstMethod, MethodOrAbstract, MethodOrImpl, Parameter};
 use super::super::model::ty::{InstCls, Ty};
@@ -95,7 +95,7 @@ impl<'a> CheckExprContext<'a> {
 						MemberDeclaration::Slot(slot) =>
 							self.get_own_slot(&mut e, loc, slot, instantiator),
 						MemberDeclaration::Method(_) | MemberDeclaration::AbstractMethod(_) =>
-							todo!(), //diagnostic
+							unimplemented!(), //diagnostic
 					}
 				}
 
@@ -136,7 +136,7 @@ impl<'a> CheckExprContext<'a> {
 				}
 
 				if self.ctx.current_class.type_parameters.len() != ty_arg_asts.len() {
-					todo!()
+					unimplemented!()
 				}
 
 				let inst_cls = unwrap_or_return!(
@@ -145,12 +145,12 @@ impl<'a> CheckExprContext<'a> {
 				let instantiator = Instantiator::of_inst_cls(&inst_cls);
 				let args = arg_asts.zip(slots, |arg, slot|
 					self.check_subtype(instantiate_type(&slot.ty, &instantiator), arg));
-				let ty = Ty::Plain(EFFECT_MAX, inst_cls);
+				let ty = Ty::Plain(Effect::MAX, inst_cls);
 				self.handle(&mut e, loc, ExprData::New(ty, args))
 			}
 			ast::ExprData::ArrayLiteral(ref element_ty, ref args) => {
 				unused!(element_ty, args);
-				todo!()
+				unimplemented!()
 			}
 			ast::ExprData::GetProperty(ref target_ast, property_name) => {
 				let target = self.check_infer(target_ast);
@@ -176,7 +176,7 @@ impl<'a> CheckExprContext<'a> {
 						(slot, slot_ty)
 					},
 					Ty::Param(_) =>
-						todo!()
+						unimplemented!()
 				};
 				self.handle(&mut e, loc, ExprData::GetSlot(Box::new(target), slot, slot_ty))
 			}
@@ -215,7 +215,7 @@ impl<'a> CheckExprContext<'a> {
 							(Pattern::Single(local), 1)
 						}
 						ast::PatternData::Destruct(_) => {
-							todo!()
+							unimplemented!()
 						}
 					}
 				};
@@ -234,7 +234,7 @@ impl<'a> CheckExprContext<'a> {
 			}
 			ast::ExprData::Literal(ref value) => {
 				unused!(value);
-				todo!()
+				unimplemented!()
 			}
 			ast::ExprData::SelfExpr => {
 				/*
@@ -306,7 +306,7 @@ impl<'a> CheckExprContext<'a> {
 				Handled(Expr(loc, try))
 			}
 			ast::ExprData::For(_, _, _) => //(local_name, ref looper, ref body) =>
-				todo!(),
+				unimplemented!(),
 		}
 	}
 
@@ -507,7 +507,7 @@ impl<'a> CheckExprContext<'a> {
 				(inst_method, args, ty)
 			}
 			Ty::Param(_) =>
-				todo!()
+				unimplemented!()
 		};
 		let e = ExprData::InstanceMethodCall(Box::new(target), inst_method, args, ty);
 		self.handle(&mut expected, loc, e)

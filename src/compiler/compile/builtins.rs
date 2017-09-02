@@ -58,7 +58,7 @@ pub fn get_builtins() -> BuiltinsOwn {
 			Err(e) => {
 				// Parse error in a builtin
 				unused!(e);
-				todo!()
+				unimplemented!()
 			}
 		};
 		assert_eq!(imports.len(), 0);

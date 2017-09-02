@@ -1,10 +1,3 @@
-#[macro_export]
-macro_rules! todo {
-	() => {
-		panic!()
-	};
-}
-
 macro_rules! arr {
 	($($e:expr),*) => {
 		Arr::from_vec(vec!($($e),*))

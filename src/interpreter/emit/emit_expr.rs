@@ -74,7 +74,7 @@ impl ExprEmitter {
 		match *data {
 			ExprData::Bogus | ExprData::BogusCast(_, _) =>
 				// Should not reach here.
-				todo!(),
+				unimplemented!(),
 			ExprData::AccessParameter(ref param, _) =>
 				self.fetch(loc, param.index),
 			ExprData::AccessLocal(ref local) => {
@@ -86,12 +86,12 @@ impl ExprEmitter {
 			ExprData::Let(ref pattern, ref value, ref then) => {
 				self.emit_expr(value);
 				let n_pushed = match *pattern {
-					Pattern::Ignore => todo!(),
+					Pattern::Ignore => unimplemented!(),
 					Pattern::Single(ref local) => {
 						self.locals.push(local.ptr());
 						1
 					},
-					Pattern::Destruct(_, _) => todo!(),
+					Pattern::Destruct(_, _) => unimplemented!(),
 				};
 
 				self.emit_expr(then);
@@ -119,21 +119,21 @@ impl ExprEmitter {
 					LiteralValue::String(ref s) => Instruction::LiteralString(s.clone()),
 				})
 			},
-			ExprData::IfElse { .. } => todo!(),
-			ExprData::WhenTest(_, _, _) => todo!(),
-			ExprData::Try { .. } => todo!(),
-			ExprData::For(_) => todo!(),
-			ExprData::StaticMethodCall(_, _, _) => todo!(),
-			ExprData::InstanceMethodCall(_, _, _, _) => todo!(),
-			ExprData::MyInstanceMethodCall(_, _, _) => todo!(),
-			ExprData::New(_, _) => todo!(),
-			ExprData::ArrayLiteral { .. } => todo!(),
-			ExprData::GetMySlot(_, _) => todo!(),
-			ExprData::GetSlot(_, _, _) => todo!(),
-			ExprData::SetSlot(_, _) => todo!(),
-			ExprData::SelfExpr(_) => todo!(),
-			ExprData::Assert(_) => todo!(),
-			ExprData::Recur(_, _) => todo!(),
+			ExprData::IfElse { .. } => unimplemented!(),
+			ExprData::WhenTest(_, _, _) => unimplemented!(),
+			ExprData::Try { .. } => unimplemented!(),
+			ExprData::For(_) => unimplemented!(),
+			ExprData::StaticMethodCall(_, _, _) => unimplemented!(),
+			ExprData::InstanceMethodCall(_, _, _, _) => unimplemented!(),
+			ExprData::MyInstanceMethodCall(_, _, _) => unimplemented!(),
+			ExprData::New(_, _) => unimplemented!(),
+			ExprData::ArrayLiteral { .. } => unimplemented!(),
+			ExprData::GetMySlot(_, _) => unimplemented!(),
+			ExprData::GetSlot(_, _, _) => unimplemented!(),
+			ExprData::SetSlot(_, _) => unimplemented!(),
+			ExprData::SelfExpr(_) => unimplemented!(),
+			ExprData::Assert(_) => unimplemented!(),
+			ExprData::Recur(_, _) => unimplemented!(),
 		}
 	}
 }

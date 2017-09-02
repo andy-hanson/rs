@@ -53,7 +53,7 @@ impl<'a> Ctx<'a> {
 		type_parameters: &Arr<Own<TypeParameter>>,
 	) -> Ty {
 		unused!(ty_ast, type_parameters);
-		todo!()
+		unimplemented!()
 	}
 
 	pub fn instantiate_class_from_ast(
@@ -72,7 +72,7 @@ impl<'a> Ctx<'a> {
 		ty_arg_asts: &Arr<ast::Ty>,
 	) -> Option<InstCls> {
 		if ty_arg_asts.len() != class.type_parameters.len() {
-			todo!()
+			unimplemented!()
 		} else {
 			Some(InstCls(class.clone_ptr(), self.get_ty_args(ty_arg_asts)))
 		}
@@ -84,7 +84,7 @@ impl<'a> Ctx<'a> {
 		ty_arg_asts: &Arr<ast::Ty>,
 	) -> Option<InstMethod> {
 		if ty_arg_asts.len() != method_decl.type_parameters().len() {
-			todo!()
+			unimplemented!()
 		} else {
 			Some(InstMethod(method_decl.copy(), self.get_ty_args(ty_arg_asts)))
 		}
@@ -123,7 +123,7 @@ impl<'a> Ctx<'a> {
 			}
 		}
 
-		todo!() //Diagnostic: class not found
+		unimplemented!() //Diagnostic: class not found
 	}
 
 	pub fn add_diagnostic(&self, loc: Loc, data: Diag) {

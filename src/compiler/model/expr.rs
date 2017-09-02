@@ -18,12 +18,12 @@ pub enum LiteralValue {
 impl LiteralValue {
 	fn ty(&self) -> &Ty {
 		match *self {
-			LiteralValue::Pass => todo!(),
-			LiteralValue::Bool(_) => todo!(),
-			LiteralValue::Nat(_) => todo!(),
-			LiteralValue::Int(_) => todo!(),
-			LiteralValue::Float(_) => todo!(),
-			LiteralValue::String(_) => todo!(),
+			LiteralValue::Pass => unimplemented!(),
+			LiteralValue::Bool(_) => unimplemented!(),
+			LiteralValue::Nat(_) => unimplemented!(),
+			LiteralValue::Int(_) => unimplemented!(),
+			LiteralValue::Float(_) => unimplemented!(),
+			LiteralValue::String(_) => unimplemented!(),
 		}
 	}
 }
@@ -116,9 +116,9 @@ impl ExprData {
 			ExprData::Let(_, _, ref then) | ExprData::Seq(_, ref then) => then.ty(),
 			ExprData::Literal(ref v) => v.ty(),
 			ExprData::For(ref f) => &f.result_ty,
-			ExprData::ArrayLiteral { .. } => todo!(), //array[array type]
-			ExprData::SetSlot(_, _) => todo!(),       //void
-			ExprData::Assert(_) => todo!(),           //void
+			ExprData::ArrayLiteral { .. } => unimplemented!(), //array[array type]
+			ExprData::SetSlot(_, _) => unimplemented!(),       //void
+			ExprData::Assert(_) => unimplemented!(),           //void
 			//&ExprData::RecurMethod(ref method, _) => method.return_ty(),
 			//&ExprData::RecurImpl(ref imp, _) => imp.implemented.return_ty(),
 			ExprData::Recur(ref m, _) => m.return_ty(),

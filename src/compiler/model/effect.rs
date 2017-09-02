@@ -6,6 +6,9 @@ pub enum Effect {
 	Io,
 }
 impl Effect {
+	pub const MIN: Effect = Effect::Pure;
+	pub const MAX: Effect = Effect::Io;
+
 	pub fn contains(self, other: Effect) -> bool {
 		self as usize > other as usize
 	}
@@ -43,6 +46,3 @@ impl Effect {
 		}
 	}
 }
-
-pub const EFFECT_MIN: Effect = Effect::Pure;
-pub const EFFECT_MAX: Effect = Effect::Io;

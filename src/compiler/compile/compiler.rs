@@ -192,7 +192,7 @@ impl<'a> Compiler<'a> {
 	) -> IoResult<Option<PtrModuleOrFail>> {
 		match import_ast {
 			ImportAst::Global(_loc, _path) => {
-				todo!() // Get the builtin with this name
+				unimplemented!() // Get the builtin with this name
 			}
 			ImportAst::Local(loc, relative_path) => {
 				let (imported_module, is_import_reused) =

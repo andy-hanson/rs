@@ -1,41 +1,47 @@
+use std::rc::Rc;
+
 use util::arr::Arr;
 use util::dict::Dict;
 use util::ptr::{Own, Ptr};
 
-use super::super::compiler::model::method::{Impl, MethodWithBody};
+use super::super::compiler::model::method::{Impl, MethodOrImpl, MethodWithBody};
 
 use super::value::Value;
 
 pub struct EmittedProgram {
-	pub methods: Dict<Ptr<MethodWithBody>, Own<EmittedMethod>>,
-	pub impls: Dict<Ptr<Impl>, Own<EmittedImpl>>,
+	pub methods: Dict<Ptr<MethodWithBody>, Own<Code>>,
+	pub impls: Dict<Ptr<Impl>, Own<Code>>,
 }
 
 //ACTUALLY, just use one big global map of method -> implementation.
 //Use regular model for the rest.
-pub struct EmittedMethod {
+/*pub struct EmittedMethod {
 	// Dont' worry about AbstractMethod because those don't have code
 	pub source: Ptr<MethodWithBody>, // Mostly just for debug
 	pub code: Code,
-}
+}*/
 
-pub struct EmittedImpl {
+/*pub struct EmittedImpl {
 	pub source: Ptr<Impl>,
 	pub code: Code,
-}
+}*/
 
-pub enum Code {
-	Instructions(Instructions),
+pub struct Code {
+	pub source: MethodOrImpl,
+	pub code: CodeData,
+}
+pub enum CodeData {
+	Instructions(Own<Instructions>),
 	Builtin(BuiltinCode),
 }
-pub struct Instructions(pub Arr<Instruction>);
 #[derive(Clone)]
 pub enum BuiltinCode {
 	Fn0(fn() -> Value),
-	Fn1(fn(&Value) -> Value),
-	Fn2(fn(&Value, &Value) -> Value),
+	Fn1(fn(Value) -> Value),
+	Fn2(fn(Value, Value) -> Value),
 }
 
+pub struct Instructions(pub Arr<Instruction>);
 
 /*
 Note: These types are meant to be used alongside the regular model.
@@ -63,7 +69,7 @@ pub enum Instruction {
 	LiteralNat(u32),
 	LiteralInt(i32),
 	LiteralFloat(f64),
-	LiteralString(Arr<u8>),
+	LiteralString(Rc<Arr<u8>>),
 	/** Fetch a value from N values up the stack. */
 	Fetch(u8),
 	/**
@@ -73,4 +79,7 @@ pub enum Instruction {
 	UnLet(u8),
 	/** Pops the `Void` value pushed by the last expression. */
 	PopVoid,
+	Call(MethodOrImpl, Ptr<Instructions>),
+	CallBuiltin(MethodOrImpl, BuiltinCode),
+	Return,
 }

@@ -6,7 +6,7 @@ use util::ptr::Ptr;
 use super::super::compiler::model::class::ClassDeclaration;
 
 pub enum Value {
-	Slots(Ptr<ClassDeclaration>, Rc<Arr<Value>>),
+	Instance(Instance),
 	Void,
 	Bool(bool),
 	Nat(u32),
@@ -17,7 +17,7 @@ pub enum Value {
 impl Clone for Value {
 	fn clone(&self) -> Value {
 		match *self {
-			Value::Slots(ref class, ref slots) => Value::Slots(class.clone_ptr(), Rc::clone(slots)),
+			Value::Instance(ref i) => Value::Instance(i.clone()),
 			Value::Void => Value::Void,
 			Value::Bool(b) => Value::Bool(b),
 			Value::Nat(n) => Value::Nat(n),
@@ -27,7 +27,6 @@ impl Clone for Value {
 		}
 	}
 }
-
 impl Value {
 	pub fn as_bool(&self) -> bool {
 		if let Value::Bool(b) = *self {
@@ -36,4 +35,11 @@ impl Value {
 			unimplemented!()
 		}
 	}
+}
+
+#[derive(Clone)]
+pub struct Instance(Rc<InstanceData>);
+struct InstanceData {
+	class: Ptr<ClassDeclaration>,
+	slots: Arr<Value>,
 }

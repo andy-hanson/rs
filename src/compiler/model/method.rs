@@ -1,3 +1,4 @@
+use util::arith::to_u8;
 use util::arr::Arr;
 use util::loc::Loc;
 use util::ptr::{LateOwn, Own, Ptr};
@@ -16,6 +17,11 @@ pub struct MethodSignature {
 	pub return_ty: Ty,
 	pub self_effect: Effect, // Ignore for static methods
 	pub parameters: Arr<Own<Parameter>>,
+}
+impl MethodSignature {
+	pub fn arity(&self) -> u8 {
+		to_u8(self.parameters.len())
+	}
 }
 
 pub struct AbstractMethod(MethodSignature);
@@ -83,6 +89,10 @@ impl MethodWithBody {
 	pub fn set_body(&self, expr: Option<Expr>) {
 		self.body.init(expr)
 	}
+
+	pub fn arity(&self) -> u8 {
+		self.signature.arity()
+	}
 }
 
 pub struct Parameter {
@@ -128,6 +138,10 @@ impl MethodOrImpl {
 			MethodOrImpl::Method(ref method) => &method.signature,
 			MethodOrImpl::Impl(ref imp) => &imp.implemented.0,
 		}
+	}
+
+	pub fn arity(&self) -> u8 {
+		self.signature().arity()
 	}
 }
 

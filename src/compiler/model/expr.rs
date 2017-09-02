@@ -1,11 +1,13 @@
-use super::class::SlotDeclaration;
-use super::method::{InstMethod, MethodOrImpl, Parameter};
-use super::ty::Ty;
+use std::rc::Rc;
 
 use util::arr::{Arr, ArrBuilder};
 use util::loc::Loc;
 use util::ptr::{Own, Ptr};
 use util::sym::Sym;
+
+use super::class::SlotDeclaration;
+use super::method::{InstMethod, MethodOrImpl, Parameter};
+use super::ty::Ty;
 
 pub enum LiteralValue {
 	Pass,
@@ -13,7 +15,7 @@ pub enum LiteralValue {
 	Nat(u32),
 	Int(i32),
 	Float(f64),
-	String(Arr<u8>),
+	String(Rc<Arr<u8>>),
 }
 impl LiteralValue {
 	fn ty(&self) -> &Ty {

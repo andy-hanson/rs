@@ -1,5 +1,9 @@
 use std::u8;
 
+pub fn u8_to_usize(u: u8) -> usize {
+	u as usize
+}
+
 pub fn u8_add_mut(a: &mut u8, b: u8) {
 	*a = u8_add(*a, b)
 }

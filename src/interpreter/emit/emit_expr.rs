@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use util::arith::{to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
 use util::arr::{Arr, ArrBuilder};
 use util::loc::Loc;
@@ -116,7 +118,7 @@ impl ExprEmitter {
 					LiteralValue::Nat(n) => Instruction::LiteralNat(n),
 					LiteralValue::Int(i) => Instruction::LiteralInt(i),
 					LiteralValue::Float(f) => Instruction::LiteralFloat(f),
-					LiteralValue::String(ref s) => Instruction::LiteralString(s.clone()),
+					LiteralValue::String(ref s) => Instruction::LiteralString(Rc::clone(s)),
 				})
 			},
 			ExprData::IfElse { .. } => unimplemented!(),

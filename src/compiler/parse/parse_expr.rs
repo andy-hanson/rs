@@ -1,8 +1,10 @@
-use compiler::diag::{Diag, Diagnostic};
-use compiler::model::expr::LiteralValue;
+use std::rc::Rc;
 
 use util::arr::{Arr, ArrBuilder};
 use util::loc::Pos;
+
+use super::super::diag::{Diag, Diagnostic};
+use super::super::model::expr::LiteralValue;
 
 use super::ast::{Case, Catch, Expr, ExprData, Pattern};
 use super::lexer::{CatchOrFinally, Lexer, Next, Result};
@@ -322,7 +324,7 @@ fn parse_simple_expr_without_suffixes(l: &mut Lexer, start: Pos, token: Token) -
 		Token::NatLiteral => ExprData::Literal(LiteralValue::Nat(l.token_nat())),
 		Token::IntLiteral => ExprData::Literal(LiteralValue::Int(l.token_int())),
 		Token::FloatLiteral => ExprData::Literal(LiteralValue::Float(l.token_float())),
-		Token::StringLiteral => ExprData::Literal(LiteralValue::String(l.quote_part_value())),
+		Token::StringLiteral => ExprData::Literal(LiteralValue::String(Rc::new(l.quote_part_value()))),
 		Token::Pass => ExprData::Literal(LiteralValue::Pass),
 		Token::True => ExprData::Literal(LiteralValue::Bool(true)),
 		Token::False => ExprData::Literal(LiteralValue::Bool(false)),

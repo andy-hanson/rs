@@ -1,7 +1,7 @@
 use util::dict::Dict;
 use util::sym::Sym;
 
-use super::super::compiler::model::module::Module;
+use super::super::model::module::Module;
 
 use super::emitted_model::BuiltinCode;
 use super::value::Value;

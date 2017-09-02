@@ -6,8 +6,8 @@ use util::loc::Loc;
 use util::ptr::{Own, Ptr};
 use util::slice::find_index;
 
-use super::super::super::compiler::model::expr::{Expr, ExprData, LiteralValue, Local, Pattern};
-use super::super::super::compiler::model::method::Parameter;
+use super::super::super::model::expr::{Expr, ExprData, LiteralValue, Local, Pattern};
+use super::super::super::model::method::Parameter;
 
 use super::super::emitted_model::{Instruction, Instructions};
 

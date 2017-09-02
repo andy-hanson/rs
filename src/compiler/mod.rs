@@ -1,6 +1,9 @@
 pub mod host;
+mod builtins;
 mod check;
-mod diag;
-pub mod compile;
-pub mod model;
+mod compile;
 mod parse;
+
+pub use self::compile::compile_dir;
+pub use self::compile::compile_file;
+pub use self::compile::full_path;

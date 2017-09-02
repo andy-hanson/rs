@@ -3,7 +3,7 @@ use std::rc::Rc;
 use util::arith::to_u8;
 use util::ptr::{Own, Ptr};
 
-use super::super::compiler::model::method::{MethodOrImpl, MethodWithBody};
+use super::super::model::method::{MethodOrImpl, MethodWithBody};
 
 use super::emitted_model::{BuiltinCode, Code, CodeData, EmittedProgram, Instruction, Instructions};
 use super::value::Value;

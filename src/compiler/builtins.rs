@@ -2,21 +2,22 @@ use util::arr::{Arr, ArrBuilder};
 use util::ptr::{Late, LateOwn, Own, Ptr};
 use util::sym::Sym;
 
-use super::super::check::check_module;
 use super::super::model::class::ClassDeclaration;
 use super::super::model::module::Module;
 use super::super::model::ty::{InstCls, Ty};
-use super::super::parse::ast::Module as ModuleAst;
-use super::super::parse::parse;
+
+use super::check::check_module;
+use super::parse::ast::Module as ModuleAst;
+use super::parse::parse;
 
 lazy_static! {
 	static ref BUILTINS_FILES: Arr<(Sym, Arr<u8>)> = arr![
-		(Sym::of("Void"), Arr::copy_from_str(include_str!("../../../builtins/Void.nz"))),
-		(Sym::of("Bool"), Arr::copy_from_str(include_str!("../../../builtins/Bool.nz"))),
-		(Sym::of("Nat"), Arr::copy_from_str(include_str!("../../../builtins/Nat.nz"))),
-		(Sym::of("Int"), Arr::copy_from_str(include_str!("../../../builtins/Int.nz"))),
-		(Sym::of("Float"), Arr::copy_from_str(include_str!("../../../builtins/Float.nz"))),
-		(Sym::of("String"), Arr::copy_from_str(include_str!("../../../builtins/String.nz")))
+		(Sym::of("Void"), Arr::copy_from_str(include_str!("../../builtins/Void.nz"))),
+		(Sym::of("Bool"), Arr::copy_from_str(include_str!("../../builtins/Bool.nz"))),
+		(Sym::of("Nat"), Arr::copy_from_str(include_str!("../../builtins/Nat.nz"))),
+		(Sym::of("Int"), Arr::copy_from_str(include_str!("../../builtins/Int.nz"))),
+		(Sym::of("Float"), Arr::copy_from_str(include_str!("../../builtins/Float.nz"))),
+		(Sym::of("String"), Arr::copy_from_str(include_str!("../../builtins/String.nz")))
 	];
 }
 

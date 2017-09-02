@@ -4,17 +4,53 @@ use util::path::Path;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
+use super::super::super::model::diag::{Diag, Diagnostic};
+use super::super::super::model::module::{FailModule, Module, ModuleSource, OwnModuleOrFail, PtrModuleOrFail};
+
+use super::super::builtins::{get_builtins, BuiltinsOwn};
 use super::super::check::check_module;
-use super::super::diag::{Diag, Diagnostic};
 use super::super::host::document_info::DocumentInfo;
 use super::super::host::document_provider::DocumentProvider;
 use super::super::host::file_input::Result as IoResult;
-use super::super::model::module::{FailModule, Module, ModuleSource, OwnModuleOrFail, PtrModuleOrFail};
 use super::super::parse::ast::{Class as ClassAst, Import as ImportAst, Module as ModuleAst};
 
 use super::{CompileResult, CompiledProgram};
-use super::builtins::{get_builtins, BuiltinsOwn};
 use super::module_resolver::{get_document_from_logical_path, GetDocumentResult};
+
+pub fn compile(
+	path: Path,
+	document_provider: &DocumentProvider,
+	old_program: Option<CompiledProgram>,
+) -> IoResult<CompileResult> {
+	let (builtins, old_modules) = match old_program {
+		Some(CompiledProgram { builtins, modules }) => (builtins, modules),
+		None =>
+			// Use an empty MutDict as the old modules
+			(get_builtins(), MutDict::new()),
+	};
+	// Don't care about isReused for top level
+	let (result, modules_states) = {
+		let mut compiler =
+			Compiler { builtins: &builtins, document_provider, old_modules, modules: MutDict::new() };
+		let res = compiler.compile_single(path)?.0;
+		(res, compiler.modules)
+	};
+	Ok(match result {
+		CompileSingleResult::Found(root) => {
+			let modules = modules_states.map_values(|o| match o {
+					ModuleState::CompiledFresh(m) | ModuleState::CompiledReused(m) => m,
+					ModuleState::Compiling => unreachable!(),
+				});
+			let new_program = CompiledProgram { builtins, modules };
+			CompileResult::RootFound(new_program, root)
+		}
+		CompileSingleResult::Missing =>
+			CompileResult::RootMissing,
+		CompileSingleResult::Circular =>
+			// Very first module can't be circular
+			unreachable!(),
+	})
+}
 
 /*
 Design notes:
@@ -222,43 +258,6 @@ enum ResolvedImports {
 	Success(Arr<Ptr<Module>>),
 	Failure(Arr<PtrModuleOrFail>, Arr<Diagnostic>),
 }
-
-
-pub fn compile(
-	path: Path,
-	document_provider: &DocumentProvider,
-	old_program: Option<CompiledProgram>,
-) -> IoResult<CompileResult> {
-	let (builtins, old_modules) = match old_program {
-		Some(CompiledProgram { builtins, modules }) => (builtins, modules),
-		None =>
-			// Use an empty MutDict as the old modules
-			(get_builtins(), MutDict::new()),
-	};
-	// Don't care about isReused for top level
-	let (result, modules_states) = {
-		let mut compiler =
-			Compiler { builtins: &builtins, document_provider, old_modules, modules: MutDict::new() };
-		let res = compiler.compile_single(path)?.0;
-		(res, compiler.modules)
-	};
-	Ok(match result {
-		CompileSingleResult::Found(root) => {
-			let modules = modules_states.map_values(|o| match o {
-					ModuleState::CompiledFresh(m) | ModuleState::CompiledReused(m) => m,
-					ModuleState::Compiling => unreachable!(),
-				});
-			let new_program = CompiledProgram { builtins, modules };
-			CompileResult::RootFound(new_program, root)
-		}
-		CompileSingleResult::Missing =>
-			CompileResult::RootMissing,
-		CompileSingleResult::Circular =>
-			// Very first module can't be circular
-			unreachable!(),
-	})
-}
-
 
 enum CompileSingleResult {
 	Missing,

@@ -4,7 +4,7 @@ use util::arr::Arr;
 use util::dict::Dict;
 use util::ptr::{Own, Ptr};
 
-use super::super::compiler::model::method::{Impl, MethodOrImpl, MethodWithBody};
+use super::super::model::method::{Impl, MethodOrImpl, MethodWithBody};
 
 use super::value::Value;
 

@@ -1,7 +1,7 @@
-use compiler::model::class::{ClassDeclaration, ClassHead, MemberDeclaration};
-use compiler::model::ty::InstCls;
-
 use util::sym::Sym;
+
+use super::super::super::model::class::{ClassDeclaration, ClassHead, MemberDeclaration};
+use super::super::super::model::ty::InstCls;
 
 use super::instantiator::Instantiator;
 

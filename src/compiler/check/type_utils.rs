@@ -1,9 +1,9 @@
 use util::arr::ArrBuilder;
 use util::loc::Loc;
 
-use super::super::diag::Diagnostic;
-use super::super::model::effect::Effect;
-use super::super::model::ty::{InstCls, Ty};
+use super::super::super::model::diag::Diagnostic;
+use super::super::super::model::effect::Effect;
+use super::super::super::model::ty::{InstCls, Ty};
 
 use super::instantiator::Instantiator;
 

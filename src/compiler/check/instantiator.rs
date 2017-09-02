@@ -1,8 +1,8 @@
 use util::arr::Arr;
 use util::ptr::{Own, Ptr};
 
-use super::super::model::method::InstMethod;
-use super::super::model::ty::{InstCls, Ty, TypeParameter};
+use super::super::super::model::method::InstMethod;
+use super::super::super::model::ty::{InstCls, Ty, TypeParameter};
 
 struct Inner(Ptr<TypeParameter>, Ty);
 impl Clone for Inner {

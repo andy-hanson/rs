@@ -4,7 +4,7 @@ use util::loc::Pos;
 use util::path::{Path, RelPath};
 use util::sym::Sym;
 
-use compiler::model::effect::Effect;
+use super::super::super::model::effect::Effect;
 
 use super::ast;
 use super::lexer::{Lexer, MethodKw, NewlineOrDedent, NewlineOrIndent, Result, SlotKw};

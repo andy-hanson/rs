@@ -3,8 +3,8 @@ use std::rc::Rc;
 use util::arr::{Arr, ArrBuilder};
 use util::loc::Pos;
 
-use super::super::diag::{Diag, Diagnostic};
-use super::super::model::expr::LiteralValue;
+use super::super::super::model::diag::{Diag, Diagnostic};
+use super::super::super::model::expr::LiteralValue;
 
 use super::ast::{Case, Catch, Expr, ExprData, Pattern};
 use super::lexer::{CatchOrFinally, Lexer, Next, Result};

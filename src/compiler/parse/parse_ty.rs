@@ -1,9 +1,9 @@
-use compiler::model::effect::Effect;
-
 use util::arr::{Arr, ArrBuilder};
 use util::either::Either;
 use util::loc::Pos;
 use util::sym::Sym;
+
+use super::super::super::model::effect::Effect;
 
 use super::ast;
 use super::lexer::{Lexer, Result};

@@ -3,10 +3,10 @@ use util::path::Path;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
-use super::super::compile::full_path;
-use super::super::diag::Diagnostic;
+use super::super::compiler::full_path;
 
 use super::class::ClassDeclaration;
+use super::diag::Diagnostic;
 
 pub struct ModuleSource {
 	pub logical_path: Ptr<Path>,

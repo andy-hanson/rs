@@ -2,14 +2,13 @@ use util::dict::MutDict;
 use util::path::Path;
 use util::ptr::Own;
 
+use super::builtins::BuiltinsOwn;
 use super::host::document_provider::DocumentProvider;
 use super::host::file_input::Result;
-use super::model::module::{OwnModuleOrFail, PtrModuleOrFail};
+use super::super::model::module::{OwnModuleOrFail, PtrModuleOrFail};
 
-pub mod builtins;
 mod compiler;
 mod module_resolver;
-use self::builtins::BuiltinsOwn;
 use self::compiler::compile;
 pub use self::module_resolver::full_path;
 

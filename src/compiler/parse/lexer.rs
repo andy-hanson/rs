@@ -2,10 +2,11 @@ use std::cell::Cell;
 use std::mem::replace;
 use std::slice::Iter;
 
-use compiler::diag::{Diag, Diagnostic};
 use util::arr::{Arr, ArrBuilder};
 use util::loc::{Loc, Pos};
 use util::sym::Sym;
+
+use super::super::super::model::diag::{Diag, Diagnostic};
 
 use super::ast::{Expr, ExprData};
 use super::token::Token;

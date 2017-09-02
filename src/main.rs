@@ -10,5 +10,6 @@ extern crate lazy_static;
 
 mod compiler;
 mod interpreter;
+mod model;
 
 fn main() {}

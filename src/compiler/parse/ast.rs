@@ -1,9 +1,10 @@
-use compiler::model::effect::Effect;
-use compiler::model::expr::LiteralValue;
 use util::arr::Arr;
 use util::loc::Loc;
 use util::path::{Path, RelPath};
 use util::sym::Sym;
+
+use super::super::super::model::effect::Effect;
+use super::super::super::model::expr::LiteralValue;
 
 pub struct Module {
 	pub imports: Arr<Import>,

@@ -5,12 +5,13 @@ use util::loc::Loc;
 use util::ptr::{Own, Ptr};
 use util::sym::Sym;
 
-use super::super::diag::Diag;
-use super::super::model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration};
-use super::super::model::effect::Effect;
-use super::super::model::expr::{Case, Catch, Expr, ExprData, Local, Pattern};
-use super::super::model::method::{InstMethod, MethodOrAbstract, MethodOrImpl, Parameter};
-use super::super::model::ty::{InstCls, Ty};
+use super::super::super::model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration};
+use super::super::super::model::diag::Diag;
+use super::super::super::model::effect::Effect;
+use super::super::super::model::expr::{Case, Catch, Expr, ExprData, Local, Pattern};
+use super::super::super::model::method::{InstMethod, MethodOrAbstract, MethodOrImpl, Parameter};
+use super::super::super::model::ty::{InstCls, Ty};
+
 use super::super::parse::ast;
 
 use super::class_utils::{try_get_member_of_inst_cls, InstMember};

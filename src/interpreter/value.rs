@@ -3,7 +3,7 @@ use std::rc::Rc;
 use util::arr::Arr;
 use util::ptr::Ptr;
 
-use super::super::compiler::model::class::ClassDeclaration;
+use super::super::model::class::ClassDeclaration;
 
 pub enum Value {
 	Instance(Instance),

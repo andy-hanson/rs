@@ -3,12 +3,13 @@ use util::arr::Arr;
 use util::ptr::{LateOwn, Own};
 use util::sym::Sym;
 
-use super::super::compile::builtins::BuiltinsCtx;
-use super::super::diag::Diag;
-use super::super::model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
-use super::super::model::method::{Impl, MethodOrImpl, MethodSignature, MethodWithBody, Parameter};
-use super::super::model::module::Module;
-use super::super::model::ty::{TypeParameter, TypeParameterOrigin};
+use super::super::super::model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
+use super::super::super::model::diag::Diag;
+use super::super::super::model::method::{Impl, MethodOrImpl, MethodSignature, MethodWithBody, Parameter};
+use super::super::super::model::module::Module;
+use super::super::super::model::ty::{TypeParameter, TypeParameterOrigin};
+
+use super::super::builtins::BuiltinsCtx;
 use super::super::parse::ast;
 
 use super::check_expr::check_method_body;

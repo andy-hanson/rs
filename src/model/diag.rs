@@ -4,11 +4,11 @@ use util::path::{Path, RelPath};
 use util::ptr::Ptr;
 use util::sym::Sym;
 
-use super::model::class::{ClassDeclaration, MemberDeclaration, SlotDeclaration};
-use super::model::effect::Effect;
-use super::model::expr::Local;
-use super::model::method::{AbstractMethod, MethodOrAbstract, MethodWithBody, Parameter};
-use super::model::ty::Ty;
+use super::super::model::class::{ClassDeclaration, MemberDeclaration, SlotDeclaration};
+use super::super::model::effect::Effect;
+use super::super::model::expr::Local;
+use super::super::model::method::{AbstractMethod, MethodOrAbstract, MethodWithBody, Parameter};
+use super::super::model::ty::Ty;
 
 pub struct Diagnostic(pub Loc, pub Diag);
 

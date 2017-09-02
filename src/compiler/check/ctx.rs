@@ -5,12 +5,13 @@ use util::loc::Loc;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
-use super::super::compile::builtins::BuiltinsCtx;
-use super::super::diag::{Diag, Diagnostic};
-use super::super::model::class::ClassDeclaration;
-use super::super::model::method::{InstMethod, MethodOrAbstract};
-use super::super::model::module::Module;
-use super::super::model::ty::{InstCls, Ty, TypeParameter};
+use super::super::super::model::class::ClassDeclaration;
+use super::super::super::model::diag::{Diag, Diagnostic};
+use super::super::super::model::method::{InstMethod, MethodOrAbstract};
+use super::super::super::model::module::Module;
+use super::super::super::model::ty::{InstCls, Ty, TypeParameter};
+
+use super::super::builtins::BuiltinsCtx;
 use super::super::parse::ast;
 
 use super::class_utils::{try_get_member_from_class_declaration, InstMember};

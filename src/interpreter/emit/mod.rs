@@ -3,9 +3,9 @@ use util::dict::{MutDict, MutSet};
 use util::ptr::{Own, Ptr};
 use util::sym::Sym;
 
-use super::super::compiler::model::expr::Expr;
-use super::super::compiler::model::method::{Impl, MethodOrImpl, MethodWithBody, Parameter};
-use super::super::compiler::model::module::Module;
+use super::super::model::expr::Expr;
+use super::super::model::method::{Impl, MethodOrImpl, MethodWithBody, Parameter};
+use super::super::model::module::Module;
 
 use super::builtins::get_builtin;
 use super::emitted_model::{Code, CodeData, EmittedProgram};

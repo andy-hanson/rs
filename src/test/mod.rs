@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use util::arr::Arr;
+use util::arr::{Arr, SliceOps};
 use util::dict::MutDict;
 use util::loc::LineAndColumnLoc;
 use util::path::Path;
@@ -48,7 +48,7 @@ impl DocumentProvider for TestDocumentProvider {
 	fn get_document(&self, path: &Path) -> Result<Option<DocumentInfo>> {
 		self.file_input.read(path).map(|op| {
 			op.map(|content| {
-				let (text_without_errors, errors) = parse_expected_errors(content.as_slice());
+				let (text_without_errors, errors) = parse_expected_errors(&content);
 				if errors.any() {
 					self.errors.borrow_mut().add(path.clone_path(), errors);
 				}

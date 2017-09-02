@@ -1,17 +1,16 @@
 use std::rc::Rc;
 
 use util::arith::{to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
-use util::arr::{Arr, ArrBuilder};
+use util::arr::{ArrBuilder, SliceOps};
 use util::loc::Loc;
 use util::ptr::{Own, Ptr};
-use util::slice::find_index;
 
 use super::super::super::model::expr::{Expr, ExprData, LiteralValue, Local, Pattern};
 use super::super::super::model::method::Parameter;
 
 use super::super::emitted_model::{Instruction, Instructions};
 
-pub fn emit_method(parameters: &Arr<Own<Parameter>>, body: &Expr) -> Instructions {
+pub fn emit_method(parameters: &[Own<Parameter>], body: &Expr) -> Instructions {
 	let n_parameters = to_u8(parameters.len());
 	let mut emitter = ExprEmitter {
 		w: InstructionWriter::new(),
@@ -81,7 +80,7 @@ impl ExprEmitter {
 				self.fetch(loc, param.index),
 			ExprData::AccessLocal(ref local) => {
 				// Get the index of the local
-				let index = find_index(&self.locals, |l| l.ptr_equals(local)).unwrap();
+				let index = self.locals.find_index(|l| l.ptr_equals(local)).unwrap();
 				let local_depth = u8_add(self.n_parameters, to_u8(index));
 				self.fetch(loc, local_depth)
 			}

@@ -1,4 +1,4 @@
-use util::arr::Arr;
+use util::arr::{Arr, SliceOps};
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
@@ -104,7 +104,7 @@ impl TypeParameter {
 		Own::new(TypeParameter { origin: LateOwn::new(), name })
 	}
 
-	pub fn set_origins(type_parameters: &Arr<Own<TypeParameter>>, origin: TypeParameterOrigin) {
+	pub fn set_origins(type_parameters: &[Own<TypeParameter>], origin: TypeParameterOrigin) {
 		for tp in type_parameters.iter() {
 			tp.origin.init(origin.copy())
 		}

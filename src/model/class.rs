@@ -1,4 +1,4 @@
-use util::arr::Arr;
+use util::arr::{Arr, SliceOps};
 use util::loc::Loc;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;

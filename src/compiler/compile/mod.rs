@@ -1,3 +1,4 @@
+use util::arr::U8SliceOps;
 use util::dict::MutDict;
 use util::path::Path;
 use util::ptr::Own;

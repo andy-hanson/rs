@@ -203,7 +203,7 @@ impl<'a> Lexer<'a> {
 			self.skip_while(is_digit);
 		}
 		// TODO:PERF less copying
-		self.quote_part_value = Arr::from_slice(self.slice_from(start_pos));
+		self.quote_part_value = Arr::copy_from_slice(self.slice_from(start_pos));
 		if is_float {
 			Token::FloatLiteral
 		} else if is_signed {
@@ -547,7 +547,7 @@ impl<'a> Lexer<'a> {
 	}
 
 	pub fn take_ty_name_string(&mut self) -> Result<Arr<u8>> {
-		self.take_ty_name_slice().map(Arr::from_slice)
+		self.take_ty_name_slice().map(Arr::copy_from_slice)
 	}
 
 	pub fn take_ty_name_slice(&mut self) -> Result<&[u8]> {

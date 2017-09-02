@@ -25,11 +25,11 @@ impl Sym {
 			let mut next_id = NEXT_SYMBOL_ID.lock().unwrap();
 			let sym = Sym(*next_id);
 			*next_id += 1;
-			string_to_symbol.insert(Arr::from_slice(input).into_box(), sym);
+			string_to_symbol.insert(Arr::copy_from_slice(input).into_box(), sym);
 			SYMBOL_TO_STRING
 				.lock()
 				.unwrap()
-				.insert(sym, Arr::from_slice(input));
+				.insert(sym, Arr::copy_from_slice(input));
 			sym
 		})
 	}

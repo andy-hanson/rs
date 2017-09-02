@@ -1,4 +1,4 @@
-use util::arr::Arr;
+use util::arr::{Arr, CloneSliceOps, SliceOps};
 use util::ptr::{Own, Ptr};
 
 use super::super::super::model::method::InstMethod;
@@ -45,7 +45,7 @@ impl Instantiator {
 	}
 }
 
-fn new(type_parameters: &Arr<Own<TypeParameter>>, type_arguments: &Arr<Ty>) -> Instantiator {
+fn new(type_parameters: &[Own<TypeParameter>], type_arguments: &[Ty]) -> Instantiator {
 	assert_eq!(type_parameters.len(), type_arguments.len());
 	let s = type_parameters.zip(type_arguments, |tp, ta| Inner(tp.ptr(), ta.clone()));
 	Instantiator(s)

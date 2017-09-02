@@ -1,4 +1,4 @@
-use util::arr::ArrBuilder;
+use util::arr::{ArrBuilder, SliceOps};
 use util::loc::Loc;
 
 use super::super::super::model::diag::Diagnostic;

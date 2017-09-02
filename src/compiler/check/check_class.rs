@@ -1,5 +1,5 @@
 use util::arith::to_u8;
-use util::arr::Arr;
+use util::arr::{Arr, SliceOps};
 use util::ptr::{LateOwn, Own};
 use util::sym::Sym;
 
@@ -56,7 +56,7 @@ fn do_check(ctx: &mut Ctx, ast: &ast::Class) {
 }
 
 //mv
-fn fill_impl_bodies(ctx: &mut Ctx, super_asts: &Arr<ast::Super>) {
+fn fill_impl_bodies(ctx: &mut Ctx, super_asts: &[ast::Super]) {
 	// There may be fewer supers than super_asts.
 	// TODO: but we can check that they correspond using the `loc`.
 
@@ -84,10 +84,9 @@ fn fill_impl_bodies(ctx: &mut Ctx, super_asts: &Arr<ast::Super>) {
 	})
 }
 
-fn fill_method_bodies(ctx: &mut Ctx, method_asts: &Arr<ast::Method>) {
+fn fill_method_bodies(ctx: &mut Ctx, method_asts: &[ast::Method]) {
 	// Now that all methods exist, fill in their bodies.
-	for i in method_asts.range() {
-		let method_ast = &method_asts[i];
+	for (i, method_ast) in method_asts.iter().enumerate() {
 		let method = ctx.current_class.methods[i].ptr();
 		let body = match method_ast.body {
 			Some(ref body_ast) =>
@@ -186,8 +185,8 @@ fn check_method_initial(ctx: &mut Ctx, ast: &ast::Method) -> Own<MethodWithBody>
 
 fn check_parameters(
 	ctx: &mut Ctx,
-	param_asts: &Arr<ast::Parameter>,
-	type_parameters: &Arr<Own<TypeParameter>>,
+	param_asts: &[ast::Parameter],
+	type_parameters: &[Own<TypeParameter>],
 ) -> Arr<Own<Parameter>> {
 	param_asts.map_with_index(|&ast::Parameter { loc, ty: ref ty_ast, name }, index| {
 		for prior_param in param_asts.iter().take(index) {

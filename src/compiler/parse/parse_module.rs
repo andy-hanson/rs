@@ -1,4 +1,4 @@
-use util::arr::{Arr, ArrBuilder};
+use util::arr::{Arr, ArrBuilder, SliceOps};
 use util::either::Either;
 use util::loc::Pos;
 use util::path::{Path, RelPath};

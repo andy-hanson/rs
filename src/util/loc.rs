@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub};
 
-use util::arr::{Arr, ArrBuilder};
+use util::arr::{Arr, ArrBuilder, SliceOps};
 
 #[derive(Copy, Clone)]
 pub struct Pos {
@@ -69,7 +69,7 @@ pub struct LineAndColumnGetter {
 	line_to_pos: Arr<u32>,
 }
 impl LineAndColumnGetter {
-	pub fn new(text: &Arr<u8>) -> LineAndColumnGetter {
+	pub fn new(text: &[u8]) -> LineAndColumnGetter {
 		let mut line_to_pos = ArrBuilder::<u32>::new();
 		line_to_pos.add(0); // line 0 as position 0
 		for pos in text.range() {

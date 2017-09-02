@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::iter::Iterator;
 use std::marker::Sized;
 
-use util::arr::Arr;
+use util::arr::{Arr, SliceOps, U8SliceOps};
 
 pub trait Show {
 	fn show<S: Shower>(&self, s: &mut S);
@@ -14,13 +14,13 @@ where
 {
 	fn nl(&mut self) -> &mut Self;
 	fn add_char(&mut self, char: char) -> &mut Self;
-	fn add_bytes(&mut self, bytes: &Arr<u8>) -> &mut Self;
+	fn add_bytes(&mut self, bytes: &[u8]) -> &mut Self;
 	fn add_str(&mut self, str: &'static str) -> &mut Self;
 	fn add_uint(&mut self, u: u32) -> &mut Self;
 	fn add_int(&mut self, i: i32) -> &mut Self;
 	fn add_float(&mut self, f: f64) -> &mut Self;
 
-	fn join<T: Show>(&mut self, arr: Arr<T>) -> &mut Self {
+	fn join<T: Show>(&mut self, arr: &[T]) -> &mut Self {
 		if arr.any() {
 			arr[0].show(self);
 			for x in arr.iter().skip(1) {
@@ -32,7 +32,7 @@ where
 		self
 	}
 
-	fn join_arrs(&mut self, arr: &Arr<Arr<u8>>) -> &mut Self {
+	fn join_arrs(&mut self, arr: &[Arr<u8>]) -> &mut Self {
 		if arr.any() {
 			self.add_bytes(&arr[0]);
 			for x in arr.iter().skip(1) {
@@ -57,7 +57,7 @@ impl Shower for StringMaker {
 		self
 	}
 
-	fn add_bytes(&mut self, bytes: &Arr<u8>) -> &mut Self {
+	fn add_bytes(&mut self, bytes: &[u8]) -> &mut Self {
 		//TODO:PERF
 		self.0.push_str(&bytes.clone_to_utf8_string());
 		self

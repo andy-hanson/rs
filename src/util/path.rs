@@ -1,7 +1,7 @@
 use std::cmp::min;
 use std::hash::{Hash, Hasher};
 
-use util::arr::{Arr, ArrBuilder};
+use util::arr::{Arr, ArrBuilder, CloneSliceOps, SliceOps, U8SliceOps};
 use util::string_maker::{Show, Shower, StringMaker};
 
 pub struct Path(pub Arr<Arr<u8>>);
@@ -14,8 +14,8 @@ impl Path {
 		Path(self.0.clone())
 	}
 
-	pub fn from_string(s: Arr<u8>) -> Path {
-		Path(s.split(|ch| ch == b'/' || ch == b'\\'))
+	pub fn from_string(s: &[u8]) -> Path {
+		Path(s.split_on_char(|ch| ch == b'/' || ch == b'\\'))
 	}
 
 	pub fn from_parts(strings: Arr<&'static str>) -> Path {
@@ -70,22 +70,25 @@ impl Path {
 		RelPath { n_parents, rel_to_parent }
 	}
 
-	pub fn last(&self) -> Option<&Arr<u8>> {
-		self.0.last()
+	pub fn last(&self) -> Option<&[u8]> {
+		self.0.last().map(|a| {
+			let slice: &[u8] = &*a;
+			slice
+		})
 	}
 
-	pub fn without_extension(&self, extension: &Arr<u8>) -> Path {
+	pub fn without_extension(&self, extension: &[u8]) -> Path {
 		let mut b = ArrBuilder::<Arr<u8>>::new();
 		for part in self.0.slice_rtail() {
 			b.add(part.clone())
 		}
 		let last_part = self.last().unwrap();
 		assert!(last_part.ends_with(extension));
-		b.add(last_part.copy_slice(0, last_part.len() - extension.len()));
+		b.add(Arr::copy_from_slice(&last_part[0..last_part.len() - extension.len()]));
 		Path(b.finish())
 	}
 
-	pub fn add_extension(&self, extension: &Arr<u8>) -> Path {
+	pub fn add_extension(&self, extension: &[u8]) -> Path {
 		let parts = &self.0;
 		assert!(parts.any());
 		let mut b = ArrBuilder::<Arr<u8>>::new();
@@ -96,7 +99,7 @@ impl Path {
 		Path(b.finish())
 	}
 
-	pub fn name_of_containing_directory(&self) -> &Arr<u8> {
+	pub fn name_of_containing_directory(&self) -> &[u8] {
 		self.0.last().unwrap()
 	}
 
@@ -122,7 +125,7 @@ impl PartialEq for Path {
 }
 impl Eq for Path {}
 
-fn is_path_part(s: &Arr<u8>) -> bool {
+fn is_path_part(s: &[u8]) -> bool {
 	s.iter().all(|ch| match *ch {
 		b'/' | b'\\' => false,
 		_ => true,

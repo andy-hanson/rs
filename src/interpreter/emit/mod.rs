@@ -1,4 +1,3 @@
-use util::arr::Arr;
 use util::dict::{MutDict, MutSet};
 use util::ptr::{Own, Ptr};
 use util::sym::Sym;
@@ -63,7 +62,7 @@ impl Emitter {
 		&self,
 		module: &Module,
 		implemented: Sym,
-		parameters: &Arr<Own<Parameter>>,
+		parameters: &[Own<Parameter>],
 		body: &Option<Expr>,
 	) -> CodeData {
 		match *body {

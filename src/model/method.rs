@@ -34,7 +34,7 @@ impl AbstractMethod {
 		self.0.name
 	}
 
-	pub fn type_parameters(&self) -> &Arr<Own<TypeParameter>> {
+	pub fn type_parameters(&self) -> &[Own<TypeParameter>] {
 		&self.0.type_parameters
 	}
 
@@ -46,7 +46,7 @@ impl AbstractMethod {
 		self.0.self_effect
 	}
 
-	pub fn parameters(&self) -> &Arr<Own<Parameter>> {
+	pub fn parameters(&self) -> &[Own<Parameter>] {
 		&self.0.parameters
 	}
 }
@@ -66,7 +66,7 @@ impl MethodWithBody {
 		self.signature.name
 	}
 
-	pub fn type_parameters(&self) -> &Arr<Own<TypeParameter>> {
+	pub fn type_parameters(&self) -> &[Own<TypeParameter>] {
 		&self.signature.type_parameters
 	}
 
@@ -78,7 +78,7 @@ impl MethodWithBody {
 		self.signature.self_effect
 	}
 
-	pub fn parameters(&self) -> &Arr<Own<Parameter>> {
+	pub fn parameters(&self) -> &[Own<Parameter>] {
 		&self.signature.parameters
 	}
 
@@ -164,7 +164,7 @@ impl MethodOrAbstract {
 		}
 	}
 
-	pub fn type_parameters(&self) -> &Arr<Own<TypeParameter>> {
+	pub fn type_parameters(&self) -> &[Own<TypeParameter>] {
 		match *self {
 			MethodOrAbstract::Method(ref m) => m.type_parameters(),
 			MethodOrAbstract::Abstract(ref a) => a.type_parameters(),
@@ -185,7 +185,7 @@ impl MethodOrAbstract {
 		}
 	}
 
-	pub fn parameters(&self) -> &Arr<Own<Parameter>> {
+	pub fn parameters(&self) -> &[Own<Parameter>] {
 		match *self {
 			MethodOrAbstract::Method(ref m) => m.parameters(),
 			MethodOrAbstract::Abstract(ref a) => a.parameters(),

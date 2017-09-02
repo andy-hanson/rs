@@ -1,6 +1,6 @@
 use std::cell::{RefCell, RefMut};
 
-use util::arr::{Arr, ArrBuilder};
+use util::arr::{Arr, ArrBuilder, SliceOps};
 use util::loc::Loc;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
@@ -48,11 +48,7 @@ impl<'a> Ctx<'a> {
 		self.get_ty_or_type_parameter(ty_ast, &Arr::empty())
 	}
 
-	pub fn get_ty_or_type_parameter(
-		&self,
-		ty_ast: &ast::Ty,
-		type_parameters: &Arr<Own<TypeParameter>>,
-	) -> Ty {
+	pub fn get_ty_or_type_parameter(&self, ty_ast: &ast::Ty, type_parameters: &[Own<TypeParameter>]) -> Ty {
 		unused!(ty_ast, type_parameters);
 		unimplemented!()
 	}
@@ -61,7 +57,7 @@ impl<'a> Ctx<'a> {
 		&self,
 		loc: Loc,
 		name: Sym,
-		ty_arg_asts: &Arr<ast::Ty>,
+		ty_arg_asts: &[ast::Ty],
 	) -> Option<InstCls> {
 		self.access_class_declaration_or_add_diagnostic(loc, name)
 			.and_then(|class| self.instantiate_class(class, ty_arg_asts))
@@ -70,7 +66,7 @@ impl<'a> Ctx<'a> {
 	pub fn instantiate_class(
 		&self,
 		class: Ptr<ClassDeclaration>,
-		ty_arg_asts: &Arr<ast::Ty>,
+		ty_arg_asts: &[ast::Ty],
 	) -> Option<InstCls> {
 		if ty_arg_asts.len() != class.type_parameters.len() {
 			unimplemented!()
@@ -82,7 +78,7 @@ impl<'a> Ctx<'a> {
 	pub fn instantiate_method(
 		&self,
 		method_decl: &MethodOrAbstract,
-		ty_arg_asts: &Arr<ast::Ty>,
+		ty_arg_asts: &[ast::Ty],
 	) -> Option<InstMethod> {
 		if ty_arg_asts.len() != method_decl.type_parameters().len() {
 			unimplemented!()
@@ -91,7 +87,7 @@ impl<'a> Ctx<'a> {
 		}
 	}
 
-	fn get_ty_args(&self, ty_arg_asts: &Arr<ast::Ty>) -> Arr<Ty> {
+	fn get_ty_args(&self, ty_arg_asts: &[ast::Ty]) -> Arr<Ty> {
 		ty_arg_asts.map(|ty_ast| self.get_ty(ty_ast))
 	}
 

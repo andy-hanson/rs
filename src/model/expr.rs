@@ -184,13 +184,14 @@ impl ExprData {
 	}
 }
 
-fn make_refs<T>(arr: &Arr<T>) -> Arr<&T> {
+//mv?
+fn make_refs<T>(arr: &[T]) -> Arr<&T> {
 	let mut b = ArrBuilder::<&T>::new();
 	add_refs(&mut b, arr);
 	b.finish()
 }
 
-fn add_refs<'a, T>(b: &mut ArrBuilder<&'a T>, arr: &'a Arr<T>) {
+fn add_refs<'a, T>(b: &mut ArrBuilder<&'a T>, arr: &'a [T]) {
 	for a in arr.iter() {
 		b.add(a)
 	}

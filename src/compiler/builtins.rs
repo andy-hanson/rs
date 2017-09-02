@@ -29,7 +29,7 @@ pub struct BuiltinsOwn {
 impl BuiltinsOwn {
 	#[allow(needless_lifetimes)] // Can't seem to write this without the lifetimes?
 	pub fn as_ctx<'a>(&'a self) -> BuiltinsCtx<'a> {
-		BuiltinsCtx { all: self.all.as_slice(), void: Some(&self.void), bool: Some(&self.bool) }
+		BuiltinsCtx { all: &self.all, void: Some(&self.void), bool: Some(&self.bool) }
 	}
 }
 
@@ -54,7 +54,7 @@ pub fn get_builtins() -> BuiltinsOwn {
 			class: LateOwn::new(),
 			diagnostics: LateOwn::new(),
 		});
-		let ModuleAst { imports, class } = match parse(source.as_slice()) {
+		let ModuleAst { imports, class } = match parse(source) {
 			Ok(module) => module,
 			Err(e) => {
 				// Parse error in a builtin
@@ -64,8 +64,7 @@ pub fn get_builtins() -> BuiltinsOwn {
 		};
 		assert_eq!(imports.len(), 0);
 		{
-			let cur_builtins =
-				BuiltinsCtx { all: builtins.as_slice(), void: void.try_get(), bool: bool.try_get() };
+			let cur_builtins = BuiltinsCtx { all: &builtins, void: void.try_get(), bool: bool.try_get() };
 			check_module(&module, &cur_builtins, &class, name);
 		}
 		if name == sym_void {

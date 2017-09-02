@@ -25,7 +25,7 @@ impl NativeFileInput {
 }
 impl FileInput for NativeFileInput {
 	fn root_name(&self) -> Sym {
-		Sym::from_slice(self.root_dir.last().unwrap().as_slice())
+		Sym::from_slice(self.root_dir.last().unwrap())
 	}
 
 	fn read(&self, path: &Path) -> Result<Option<Arr<u8>>> {

@@ -100,7 +100,7 @@ impl<'a> Compiler<'a> {
 		document: DocumentInfo,
 	) -> IoResult<(CompileSingleResult, bool)> {
 		let own_logical_path = Own::new(logical_path);
-		Ok(match parse(document.source.as_slice()) {
+		Ok(match parse(&document.source) {
 			Ok(ModuleAst { imports, class }) => {
 				let ptr_logical_path = own_logical_path.ptr();
 				self.modules.add(own_logical_path, ModuleState::Compiling);
@@ -167,7 +167,7 @@ impl<'a> Compiler<'a> {
 				let module =
 					Own::new(Module { source, imports, class: LateOwn::new(), diagnostics: LateOwn::new() });
 				let name = match logical_path.last() {
-					Some(name) => Sym::from_slice(name.as_slice()),
+					Some(name) => Sym::from_slice(name),
 					None => self.document_provider.root_name(),
 				};
 				// Initializes module.class and module.diagnostics.

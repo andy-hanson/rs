@@ -111,7 +111,7 @@ impl Token {
 
 lazy_static! {
 // TODO: use a static map? https://github.com/cbreeden/static-map
-	static ref NAME_TO_TOKEN: Dict<Box<[u8]>, Token> = dict!(
+	static ref NAME_TO_TOKEN: Dict<Arr<u8>, Token> = dict!(
 		a("abstract") => Token::Abstract,
 		a("array") => Token::Array,
 		a("assert") => Token::Assert,
@@ -151,10 +151,9 @@ lazy_static! {
 			(*v, String::from_utf8(k.clone().into_vec()).unwrap())));
 }
 
-fn a(k: &'static str) -> Box<[u8]> {
-	Arr::copy_from_str(k).into_box()
+fn a(k: &'static str) -> Arr<u8> {
+	Arr::copy_from_str(k)
 }
-
 
 impl Token {
 	pub fn keyword_from_name(name: &[u8]) -> Option<Token> {

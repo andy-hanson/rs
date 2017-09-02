@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use util::arr::Arr;
+use util::arr::{Arr, SliceOps};
 use util::loc::Loc;
 use util::ptr::{Own, Ptr};
 use util::sym::Sym;
@@ -332,7 +332,7 @@ impl<'a> CheckExprContext<'a> {
 		mut expected: &mut Expected,
 		loc: Loc,
 		target: &ast::Expr,
-		args: &Arr<ast::Expr>,
+		args: &[ast::Expr],
 	) -> Handled {
 		let &ast::Expr(target_loc, ref target_data) = target;
 		let arr_empty = Arr::empty();
@@ -373,8 +373,8 @@ impl<'a> CheckExprContext<'a> {
 		loc: Loc,
 		cls: Ptr<ClassDeclaration>,
 		method_name: Sym,
-		ty_arg_asts: &Arr<ast::Ty>,
-		arg_asts: &Arr<ast::Expr>,
+		ty_arg_asts: &[ast::Ty],
+		arg_asts: &[ast::Expr],
 	) -> Handled {
 		let method_decl = unwrap_or_return!(cls.find_static_method(method_name), {
 			self.add_diagnostic(loc, Diag::StaticMethodNotFound(cls.clone_ptr(), method_name));
@@ -408,8 +408,8 @@ impl<'a> CheckExprContext<'a> {
 		mut expected: &mut Expected,
 		loc: Loc,
 		method_name: Sym,
-		ty_arg_asts: &Arr<ast::Ty>,
-		arg_asts: &Arr<ast::Expr>,
+		ty_arg_asts: &[ast::Ty],
+		arg_asts: &[ast::Expr],
 	) -> Handled {
 		// Note: InstCls is still relevent here:
 		// Even if 'self' is not an inst, in a superclass we will fill in type parameters.
@@ -463,7 +463,7 @@ impl<'a> CheckExprContext<'a> {
 		loc: Loc,
 		target_ast: &ast::Expr,
 		method_name: Sym,
-		ty_arg_asts: &Arr<ast::Ty>,
+		ty_arg_asts: &[ast::Ty],
 		arg_asts: ArgAsts,
 	) -> Handled {
 		let target = self.check_infer(target_ast);
@@ -667,7 +667,7 @@ impl Expected {
 // TODO: use a trait, and make fns on this generic
 enum ArgAsts<'a> {
 	One(&'a ast::Expr),
-	Many(&'a Arr<ast::Expr>),
+	Many(&'a [ast::Expr]),
 }
 
 //mv

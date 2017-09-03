@@ -3,6 +3,7 @@ use util::path::Path;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
+use super::super::host::document_info::DocumentInfo;
 use super::super::compiler::full_path;
 
 use super::class::ClassDeclaration;
@@ -11,8 +12,7 @@ use super::diag::Diagnostic;
 pub struct ModuleSource {
 	pub logical_path: Ptr<Path>,
 	pub is_index: bool,
-	pub document_version: u32,
-	//pub document: DocumentInfo,
+	pub document: DocumentInfo,
 }
 impl ModuleSource {
 	pub fn full_path(&self) -> Path {
@@ -36,6 +36,13 @@ impl OwnModuleOrFail {
 		match *self {
 			OwnModuleOrFail::Module(ref m) => m.source.as_ref(),
 			OwnModuleOrFail::Fail(ref f) => f.source.as_ref(),
+		}
+	}
+
+	pub fn diagnostics(&self) -> &[Diagnostic] {
+		match *self {
+			OwnModuleOrFail::Module(ref m) => &m.diagnostics,
+			OwnModuleOrFail::Fail(ref f) => &f.diagnostics,
 		}
 	}
 }
@@ -66,27 +73,3 @@ impl Module {
 		self.class.ptr()
 	}
 }
-
-/*
-pub enum Imported {
-	// Not Weak because we want our dependencies to be kept alive.
-	// They can't have pointers back to us.
-	Module(Ptr<Module>),
-	Builtin(Ptr<ClassDeclaration>),
-}
-impl Imported {
-	pub fn name(&self) -> Sym {
-		match *self {
-			Imported::Module(ref m) => m.name(),
-			Imported::Builtin(ref c) => c.name,
-		}
-	}
-
-	pub fn imported_class(&self) -> Ptr<ClassDeclaration> {
-		match *self {
-			Imported::Module(ref m) => m.class.ptr(),
-			Imported::Builtin(ref p) => p.clone_ptr(),
-		}
-	}
-}
-*/

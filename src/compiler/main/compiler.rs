@@ -100,13 +100,13 @@ impl<'a> Compiler<'a> {
 		document: DocumentInfo,
 	) -> IoResult<(CompileSingleResult, bool)> {
 		let own_logical_path = Own::new(logical_path);
-		Ok(match parse(&document.source) {
+		Ok(match parse(&document.text) {
 			Ok(ModuleAst { imports, class }) => {
 				let ptr_logical_path = own_logical_path.ptr();
 				self.modules.add(own_logical_path, ModuleState::Compiling);
 				let (module, is_reused) = self.do_compile_single(
 					&ptr_logical_path,
-					document.version,
+					document,
 					imports,
 					*class,
 					full_path,
@@ -125,7 +125,7 @@ impl<'a> Compiler<'a> {
 				let source = Some(ModuleSource {
 					logical_path: own_logical_path.ptr(),
 					is_index,
-					document_version: document.version,
+					document,
 				});
 				let diagnostics = Arr::_1(parse_diag);
 				let fail = Own::new(FailModule { source, imports: Arr::empty(), diagnostics });
@@ -140,7 +140,7 @@ impl<'a> Compiler<'a> {
 	fn do_compile_single(
 		&mut self,
 		logical_path: &Ptr<Path>,
-		document_version: u32,
+		document: DocumentInfo,
 		import_asts: Arr<ImportAst>,
 		class_ast: ClassAst,
 		full_path: Path,
@@ -154,14 +154,14 @@ impl<'a> Compiler<'a> {
 			if let Some(old_module_or_fail) = self.old_modules.try_extract(&**logical_path) {
 				// old_modules only stores modules from source code, not builtins,
 				// so unwrap() should succeed.
-				if old_module_or_fail.source().unwrap().document_version == document_version {
+				if old_module_or_fail.source().unwrap().document.same_version_as(&document) {
 					return Ok((old_module_or_fail, true))
 				}
 			}
 		}
 
 		let source =
-			Some(ModuleSource { logical_path: logical_path.clone_ptr(), is_index, document_version });
+			Some(ModuleSource { logical_path: logical_path.clone_ptr(), is_index, document });
 		let res = match resolved_imports {
 			ResolvedImports::Success(imports) => {
 				let module =

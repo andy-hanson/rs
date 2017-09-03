@@ -5,7 +5,7 @@ use util::path::Path;
 mod test_document_provider;
 use super::compiler::{compile, CompileResult, CompiledProgram, EXTENSION};
 use super::host::file_input::Error as IoError;
-use super::model::module::{Module, PtrModuleOrFail};
+use super::model::module::{Module, PtrModuleOrFail, OwnModuleOrFail};
 
 use self::test_document_provider::{ExpectedDiagnostic, TestDocumentProvider};
 
@@ -86,10 +86,22 @@ fn test_with_diagnostics(
 	expected_diagnostics_by_path: &mut MutDict<Path, Arr<ExpectedDiagnostic>>,
 ) {
 	for module_or_fail in program.modules.values() {
-		let module_full_path = module_or_fail.source().unwrap().full_path();
+		let source = module_or_fail.source().unwrap();
+		let module_full_path = source.full_path();
 		let module_path = module_full_path.without_extension(&EXTENSION);
 		unused!(baselines_directory, expected_baselines, expected_diagnostics_by_path, module_path);
+
+		if let OwnModuleOrFail::Module(ref m) = *module_or_fail {
+			//assert_baseline(baselinesDirectory, modulePath, ".model", module.klass.toDat(), expectedBaselines, updateBaselines);
+			unused!(m);
+			unimplemented!()
+		}
+
+		let text = &source.document.text;
+		let actual_diagnostics = module_or_fail.diagnostics();
+		unused!(text, actual_diagnostics);
 		unimplemented!()
+
 	}
 }
 

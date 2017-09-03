@@ -1,4 +1,3 @@
-use util::arr::Arr;
 use util::dict::Dict;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -71,38 +70,38 @@ pub enum Token {
 	Underscore,
 }
 impl Token {
-	pub fn token_name(self) -> &'static str {
+	pub fn token_name(self) -> &'static [u8] {
 		match TOKEN_TO_NAME.get(&self) {
 			Some(name) => name,
 			None =>
 				match self {
 					Token::Diagnostic => panic!(),
-					Token::Name => "name",
-					Token::TyName => "type name",
-					Token::Operator => "operator",
-					Token::NatLiteral => "Nat literal",
-					Token::IntLiteral => "Int literal",
-					Token::FloatLiteral => "Float literal",
-					Token::StringLiteral => "String literal",
-					Token::QuoteStart => "Quote start",
-					Token::Backslash => "\\",
-					Token::BracketL => "[",
-					Token::BracketR => "]",
-					Token::Colon => ":",
-					Token::ColonEquals => ":=",
-					Token::Comma => ",",
-					Token::CurlyL => "{",
-					Token::CurlyR => "}",
-					Token::Dedent => "dedent",
-					Token::Dot => ".",
-					Token::EOF => "EOF",
-					Token::Equals => "=",
-					Token::Indent => "indent",
-					Token::Newline => "newline",
-					Token::ParenL => "(",
-					Token::ParenR => ")",
-					Token::Space => " ",
-					Token::Underscore => "_",
+					Token::Name => b"name",
+					Token::TyName => b"type name",
+					Token::Operator => b"operator",
+					Token::NatLiteral => b"Nat literal",
+					Token::IntLiteral => b"Int literal",
+					Token::FloatLiteral => b"Float literal",
+					Token::StringLiteral => b"String literal",
+					Token::QuoteStart => b"Quote start",
+					Token::Backslash => b"\\",
+					Token::BracketL => b"[",
+					Token::BracketR => b"]",
+					Token::Colon => b":",
+					Token::ColonEquals => b":=",
+					Token::Comma => b",",
+					Token::CurlyL => b"{",
+					Token::CurlyR => b"}",
+					Token::Dedent => b"dedent",
+					Token::Dot => b".",
+					Token::EOF => b"EOF",
+					Token::Equals => b"=",
+					Token::Indent => b"indent",
+					Token::Newline => b"newline",
+					Token::ParenL => b"(",
+					Token::ParenR => b")",
+					Token::Space => b" ",
+					Token::Underscore => b"_",
 					_ => panic!(), // Should be handled by TOKEN_TO_NAME
 				},
 		}
@@ -111,48 +110,44 @@ impl Token {
 
 lazy_static! {
 // TODO: use a static map? https://github.com/cbreeden/static-map
-	static ref NAME_TO_TOKEN: Dict<Arr<u8>, Token> = dict!(
-		a("abstract") => Token::Abstract,
-		a("array") => Token::Array,
-		a("assert") => Token::Assert,
-		a("builtin") => Token::Builtin,
-		a("catch") => Token::Catch,
-		a("def") => Token::Def,
-		a("do") => Token::Do,
-		a("enum") => Token::Enum,
-		a("else") => Token::Else,
-		a("false") => Token::False,
-		a("finally") => Token::Finally,
-		a("for") => Token::For,
-		a("fun") => Token::Fun,
-		a("generic") => Token::Generic,
-		a("get") => Token::Get,
-		a("if") => Token::If,
-		a("io") => Token::Io,
-		a("import") => Token::Import,
-		a("in") => Token::In,
-		a("is") => Token::Is,
-		a("new") => Token::New,
-		a("pass") => Token::Pass,
-		a("recur") => Token::Recur,
-		a("self") => Token::SelfKw,
-		a("set") => Token::Set,
-		a("slots") => Token::Slots,
-		a("then") => Token::Then,
-		a("true") => Token::True,
-		a("try") => Token::Try,
-		a("val") => Token::Val,
-		a("var") => Token::Var,
-		a("when") => Token::When,
+	static ref NAME_TO_TOKEN: Dict<&'static [u8], Token> = dict!(
+		b"abstract" => Token::Abstract,
+		b"array" => Token::Array,
+		b"assert" => Token::Assert,
+		b"builtin" => Token::Builtin,
+		b"catch" => Token::Catch,
+		b"def" => Token::Def,
+		b"do" => Token::Do,
+		b"enum" => Token::Enum,
+		b"else" => Token::Else,
+		b"false" => Token::False,
+		b"finally" => Token::Finally,
+		b"for" => Token::For,
+		b"fun" => Token::Fun,
+		b"generic" => Token::Generic,
+		b"get" => Token::Get,
+		b"if" => Token::If,
+		b"io" => Token::Io,
+		b"import" => Token::Import,
+		b"in" => Token::In,
+		b"is" => Token::Is,
+		b"new" => Token::New,
+		b"pass" => Token::Pass,
+		b"recur" => Token::Recur,
+		b"self" => Token::SelfKw,
+		b"set" => Token::Set,
+		b"slots" => Token::Slots,
+		b"then" => Token::Then,
+		b"true" => Token::True,
+		b"try" => Token::Try,
+		b"val" => Token::Val,
+		b"var" => Token::Var,
+		b"when" => Token::When,
 	);
 
-	static ref TOKEN_TO_NAME: Dict<Token, String> =
+	static ref TOKEN_TO_NAME: Dict<Token, &'static [u8]> =
 		Dict::from_iterator(NAME_TO_TOKEN.iter().map(|(k, v)|
-			(*v, String::from_utf8(k.clone().into_vec()).unwrap())));
-}
-
-fn a(k: &'static str) -> Arr<u8> {
-	Arr::copy_from_str(k)
+			(*v, *k)));
 }
 
 impl Token {

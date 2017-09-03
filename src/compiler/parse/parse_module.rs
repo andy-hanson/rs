@@ -109,7 +109,7 @@ fn parse_head(l: &mut Lexer, start: Pos, kw: Token) -> Result<(Option<ast::Class
 			Ok((Some(head), l.pos(), l.take_method_keyword_or_eof()?))
 		}
 		Token::Enum => panic!(), // TODO
-		_ => Err(l.unexpected_token(start, kw, "'abstract', 'static', 'slots', or 'enum'")),
+		_ => Err(l.unexpected_token(start, kw, b"'abstract', 'static', 'slots', or 'enum'")),
 	}
 }
 
@@ -167,7 +167,7 @@ fn parse_methods(l: &mut Lexer, mut start: Pos, mut next: MethodKw) -> Result<Ar
 				next = l.take_method_keyword_or_eof()?
 			}
 			MethodKw::Eof => break Ok(methods.finish()),
-			MethodKw::Is => break Err(l.unexpected_token(start, Token::Is, "'def' or 'fun'")),
+			MethodKw::Is => break Err(l.unexpected_token(start, Token::Is, b"'def' or 'fun'")),
 		}
 	}
 }

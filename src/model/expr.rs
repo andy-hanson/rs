@@ -31,14 +31,16 @@ impl LiteralValue {
 }
 impl Serialize for LiteralValue {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S : Serializer {
+	where
+		S: Serializer,
+	{
 		match *self {
 			LiteralValue::Pass => serializer.serialize_str("pass"),
 			LiteralValue::Bool(b) => serializer.serialize_bool(b),
 			LiteralValue::Nat(n) => serializer.serialize_u32(n),
 			LiteralValue::Int(i) => serializer.serialize_i32(i),
 			LiteralValue::Float(f) => serializer.serialize_f64(f),
-			LiteralValue::String(ref s) => serializer.serialize_str(&s.clone_to_utf8_string())
+			LiteralValue::String(ref s) => serializer.serialize_str(&s.clone_to_utf8_string()),
 		}
 	}
 }
@@ -59,7 +61,9 @@ pub struct Local {
 }
 impl SerializeAsPtr for Local {
 	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S : Serializer {
+	where
+		S: Serializer,
+	{
 		self.name.serialize(serializer)
 	}
 }
@@ -177,7 +181,7 @@ impl ExprData {
 					None =>
 						match *finally { Some(ref f) => Arr::_2(body, f), None => Arr::_1(body) }
 				},
-			ExprData::For { ref looper, ref body, .. } => Arr::_2(&looper, &body),
+			ExprData::For { ref looper, ref body, .. } => Arr::_2(looper, body),
 			ExprData::InstanceMethodCall(ref target, _, ref args, _) => {
 				let mut b = ArrBuilder::<&Expr>::new();
 				b.add(target);

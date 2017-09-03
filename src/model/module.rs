@@ -3,11 +3,24 @@ use util::path::Path;
 use util::ptr::{LateOwn, Own, Ptr};
 use util::sym::Sym;
 
-use super::super::host::document_info::DocumentInfo;
 use super::super::compiler::full_path;
+use super::super::host::document_info::DocumentInfo;
 
 use super::class::ClassDeclaration;
 use super::diag::Diagnostic;
+
+pub enum ModuleSourceEnum {
+	Normal(ModuleSource),
+	Builtin(Sym),
+}
+impl ModuleSourceEnum {
+	pub fn assert_normal(&self) -> &ModuleSource {
+		match *self {
+			ModuleSourceEnum::Normal(ref source) => source,
+			ModuleSourceEnum::Builtin(_) => unreachable!(),
+		}
+	}
+}
 
 pub struct ModuleSource {
 	pub logical_path: Ptr<Path>,
@@ -32,10 +45,17 @@ impl OwnModuleOrFail {
 		}
 	}
 
-	pub fn source(&self) -> Option<&ModuleSource> {
+	pub fn name(&self) -> Sym {
 		match *self {
-			OwnModuleOrFail::Module(ref m) => m.source.as_ref(),
-			OwnModuleOrFail::Fail(ref f) => f.source.as_ref(),
+			OwnModuleOrFail::Module(ref m) => m.name(),
+			OwnModuleOrFail::Fail(ref f) => f.name(),
+		}
+	}
+
+	pub fn source(&self) -> &ModuleSourceEnum {
+		match *self {
+			OwnModuleOrFail::Module(ref m) => &m.source,
+			OwnModuleOrFail::Fail(ref f) => &f.source,
 		}
 	}
 
@@ -53,13 +73,18 @@ pub enum PtrModuleOrFail {
 }
 
 pub struct FailModule {
-	pub source: Option<ModuleSource>,
+	pub source: ModuleSourceEnum,
 	pub imports: Arr<PtrModuleOrFail>,
 	pub diagnostics: Arr<Diagnostic>,
 }
+impl FailModule {
+	fn name(&self) -> Sym {
+		unimplemented!()
+	}
+}
 
 pub struct Module {
-	pub source: Option<ModuleSource>, // missing for builtins
+	pub source: ModuleSourceEnum,
 	pub imports: Arr<Ptr<Module>>,
 	pub class: LateOwn<ClassDeclaration>,
 	pub diagnostics: LateOwn<Arr<Diagnostic>>,

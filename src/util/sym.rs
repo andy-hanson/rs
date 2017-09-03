@@ -45,7 +45,9 @@ impl Show for Sym {
 }
 impl Serialize for Sym {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S : Serializer {
+	where
+		S: Serializer,
+	{
 		let map = SYMBOL_TO_STRING.lock().unwrap();
 		let st = map.get(self).unwrap(); // TODO: duplicate code...
 		serializer.serialize_str(&st.clone_to_utf8_string())

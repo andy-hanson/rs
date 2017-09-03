@@ -4,7 +4,7 @@ use util::path::{Path, RelPath};
 use super::super::super::host::document_info::DocumentInfo;
 use super::super::super::host::document_provider::DocumentProvider;
 
-pub fn get_document_from_logical_path<D : DocumentProvider>(
+pub fn get_document_from_logical_path<D: DocumentProvider>(
 	document_provider: &D,
 	logical_path: &Path,
 ) -> Result<GetDocumentResult, D::Error> {
@@ -40,14 +40,12 @@ pub fn full_path(logical_path: &Path, is_index: bool) -> Path {
 }
 
 fn regular_path(logical_path: &Path) -> Path {
-	logical_path.add_extension(&EXTENSION)
+	logical_path.add_extension(EXTENSION)
 }
 
 fn index_path(logical_path: &Path) -> Path {
-	logical_path.child(INDEX_NZ.clone())
+	logical_path.child(Arr::copy_from_slice(INDEX_NZ))
 }
 
-lazy_static! {
-	pub static ref EXTENSION: Arr<u8> = Arr::copy_from_str(".nz");
-	static ref INDEX_NZ: Arr<u8> = Arr::copy_from_str("index.nz");
-}
+pub const EXTENSION: &[u8] = b".nz";
+const INDEX_NZ: &[u8] = b"index.nz";

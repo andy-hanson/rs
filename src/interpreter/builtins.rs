@@ -1,14 +1,19 @@
 use util::dict::Dict;
 use util::sym::Sym;
 
-use super::super::model::module::Module;
+use super::super::model::module::{Module, ModuleSourceEnum};
 
 use super::emitted_model::BuiltinCode;
 use super::value::Value;
 
 pub fn get_builtin(module: &Module, implemented: Sym) -> BuiltinCode {
-	assert!(module.source.is_none()); // Should be a builtin module
-	let x = PATH_TO_IMPLS.get(&module.name()).unwrap();
+	let name = match module.source {
+		ModuleSourceEnum::Normal(_) =>
+			// Error: only builtins can have builtin implementations
+			unimplemented!(),
+		ModuleSourceEnum::Builtin(name) => name,
+	};
+	let x = PATH_TO_IMPLS.get(&name).unwrap();
 	let y = x.get(&implemented).unwrap();
 	(*y).clone()
 }

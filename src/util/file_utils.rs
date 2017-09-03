@@ -1,7 +1,6 @@
 use std::fs::File;
-use std::io::{Error, Result, ErrorKind, Read, Write};
+use std::io::{Error, ErrorKind, Read, Result, Write};
 
-use super::arr::Arr;
 use super::dict::MutDict;
 use super::path::Path;
 use super::string_maker::Show;
@@ -10,23 +9,23 @@ pub type IoError = Error;
 pub type IoResult<T> = Result<T>;
 
 //mv
-pub fn read_files_in_directory_recursive_if_exists(dir: &Path) -> MutDict<Path, Arr<u8>> {
+pub fn read_files_in_directory_recursive_if_exists(dir: &Path) -> MutDict<Path, Vec<u8>> {
 	let _ = dir;
 	unimplemented!()
 }
 
-pub fn read_file(path: &Path) -> Result<Option<Arr<u8>>> {
+pub fn read_file(path: &Path) -> Result<Option<Vec<u8>>> {
 	match File::open(path.to_string()) {
 		Ok(mut f) => {
 			let mut v = Vec::<u8>::new();
 			f.read_to_end(&mut v)?;
-			Ok(Some(Arr::from_vec(v)))
+			Ok(Some(v))
 		}
 		Err(e) =>
 			match e.kind() {
 				ErrorKind::NotFound => Ok(None),
 				_ => Err(e),
-			}
+			},
 	}
 }
 
@@ -38,8 +37,7 @@ pub fn write_file(path: &Path, content: &[u8]) -> Result<()> {
 
 pub fn write_file_and_ensure_directory(path: &Path, content: &[u8]) -> Result<()> {
 	match File::create(path.to_string()) {
-		Ok(mut file) =>
-			file.write_all(content),
+		Ok(mut file) => file.write_all(content),
 		Err(e) => {
 			let _ = e;
 			//TODO: https://doc.rust-lang.org/std/fs/struct.DirBuilder.html may come in useful
@@ -47,5 +45,3 @@ pub fn write_file_and_ensure_directory(path: &Path, content: &[u8]) -> Result<()
 		}
 	}
 }
-
-

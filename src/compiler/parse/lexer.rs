@@ -1,6 +1,4 @@
-use std::cell::Cell;
 use std::mem::replace;
-use std::slice::Iter;
 
 use util::arr::{Arr, ArrBuilder};
 use util::loc::{Loc, Pos};
@@ -9,59 +7,11 @@ use util::sym::Sym;
 use super::super::super::model::diag::{Diag, Diagnostic};
 
 use super::ast::{Expr, ExprData};
+use super::reader::Reader;
 use super::token::Token;
 
 pub type Result<T> = ::std::result::Result<T, Diagnostic>;
 
-struct Reader<'a> {
-	source: &'a [u8],
-	iter: Iter<'a, u8>,
-	peek: u8,
-	pos_cell: Cell<Pos>,
-}
-impl<'a> Reader<'a> {
-	fn new(source: &'a [u8]) -> Self {
-		let len = source.len();
-		assert!(len >= 2);
-
-		assert_eq!(source[len - 1], b'\0');
-		assert_eq!(source[len - 2], b'\n');
-
-		let mut iter = source.iter();
-		let peek = *iter.next().unwrap();
-		Reader { source, iter, peek, pos_cell: Cell::new(Pos::ZERO) }
-	}
-
-	fn pos(&self) -> Pos {
-		self.pos_cell.get()
-	}
-
-	fn peek(&self) -> u8 {
-		self.peek
-	}
-
-	fn skip(&mut self) {
-		let x = self.iter.next();
-		self.peek = if let Some(ch) = x { *ch } else { b'\0' }
-	}
-
-	fn skip2(&mut self) {
-		self.skip();
-		self.skip();
-	}
-
-	fn read_char(&mut self) -> u8 {
-		let res = self.peek;
-		self.skip();
-		res
-	}
-
-	fn slice_from(&self, start_pos: Pos) -> &[u8] {
-		let a = start_pos.index as usize;
-		let b = self.pos_cell.get().index as usize;
-		&self.source[a..b]
-	}
-}
 
 pub struct Next {
 	pub pos: Pos,
@@ -439,7 +389,7 @@ impl<'a> Lexer<'a> {
 		if x == Token::Dedent {
 			Ok(true)
 		} else {
-			Err(self.unexpected_token(start, x, "dedent"))
+			Err(self.unexpected_token(start, x, b"dedent"))
 		}
 	}
 
@@ -574,17 +524,17 @@ impl<'a> Lexer<'a> {
 		Ok(Sym::from_slice(v))
 	}
 
-	pub fn unexpected_token(&self, start_pos: Pos, actual: Token, expected_desc: &'static str) -> Diagnostic {
+	pub fn unexpected_token(
+		&self,
+		start_pos: Pos,
+		actual: Token,
+		expected_desc: &'static [u8],
+	) -> Diagnostic {
 		self.unexpected(start_pos, expected_desc, actual.token_name())
 	}
 
-	pub fn unexpected(
-		&self,
-		start_pos: Pos,
-		actual_desc: &'static str,
-		expected_desc: &'static str,
-	) -> Diagnostic {
-		Diagnostic(self.loc_from(start_pos), Diag::UnexpectedToken(expected_desc, actual_desc))
+	pub fn unexpected(&self, start_pos: Pos, actual: &'static [u8], expected: &'static [u8]) -> Diagnostic {
+		Diagnostic(self.loc_from(start_pos), Diag::UnexpectedToken { expected, actual })
 	}
 
 	pub fn take_catch_or_finally(&mut self) -> Result<CatchOrFinally> {

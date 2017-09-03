@@ -27,7 +27,9 @@ impl ClassDeclaration {
 }
 impl SerializeAsPtr for ClassDeclaration {
 	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S : Serializer {
+	where
+		S: Serializer,
+	{
 		self.name.serialize(serializer)
 	}
 }
@@ -50,7 +52,9 @@ pub struct SlotDeclaration {
 }
 impl SerializeAsPtr for SlotDeclaration {
 	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S : Serializer {
+	where
+		S: Serializer,
+	{
 		self.name.serialize(serializer)
 	}
 }
@@ -69,7 +73,9 @@ pub enum MemberDeclaration {
 }
 impl Serialize for MemberDeclaration {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S : Serializer {
+	where
+		S: Serializer,
+	{
 		let name = match *self {
 			MemberDeclaration::Slot(ref s) => s.name,
 			MemberDeclaration::Method(ref m) => m.name(),

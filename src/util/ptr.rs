@@ -57,9 +57,11 @@ impl<T: Hash> Hash for Own<T> {
 		inner.hash(hasher)
 	}
 }
-impl<T : Serialize> Serialize for Own<T> {
+impl<T: Serialize> Serialize for Own<T> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer {
+	where
+		S: Serializer,
+	{
 		self.deref().serialize(serializer)
 	}
 }
@@ -99,9 +101,11 @@ impl<T> Hash for Ptr<T> {
 		hasher.write_usize(self.0 as usize)
 	}
 }
-impl<T : SerializeAsPtr> Serialize for Ptr<T> {
+impl<T: SerializeAsPtr> Serialize for Ptr<T> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer {
+	where
+		S: Serializer,
+	{
 		(*self).serialize_as_ptr(serializer)
 	}
 }
@@ -110,7 +114,8 @@ impl<T : SerializeAsPtr> Serialize for Ptr<T> {
 // don't serialize everything, just e.g. the name.
 pub trait SerializeAsPtr {
 	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S : Serializer;
+	where
+		S: Serializer;
 }
 
 pub struct Late<T>(UnsafeCell<Option<T>>);
@@ -131,7 +136,12 @@ impl<T> Late<T> {
 	}
 
 	pub fn into_value(self) -> T {
-		unsafe { self.0.into_inner().unwrap() }
+		self.into_option().unwrap()
+	}
+
+	// Like `into_value`, but returns `None` if this was never initialized.
+	pub fn into_option(self) -> Option<T> {
+		unsafe { self.0.into_inner() }
 	}
 
 	pub fn init(&self, value: T) {
@@ -163,9 +173,11 @@ impl<T> Deref for LateOwn<T> {
 		self.0.get()
 	}
 }
-impl<T : Serialize> Serialize for LateOwn<T> {
+impl<T: Serialize> Serialize for LateOwn<T> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer {
+	where
+		S: Serializer,
+	{
 		self.deref().serialize(serializer)
 	}
 }

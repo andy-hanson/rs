@@ -1,6 +1,5 @@
 use util::file_utils::{read_file, IoError};
 
-use util::arr::Arr;
 use util::path::Path;
 use util::sym::Sym;
 
@@ -12,7 +11,7 @@ pub trait FileInput {
 	None for file not found.
 	Result::Err for any other problems reading.
 	*/
-	fn read(&self, path: &Path) -> Result<Option<Arr<u8>>, Self::Error>;
+	fn read(&self, path: &Path) -> Result<Option<Vec<u8>>, Self::Error>;
 }
 
 pub struct NativeFileInput {
@@ -30,7 +29,7 @@ impl FileInput for NativeFileInput {
 		Sym::from_slice(self.root_dir.last().unwrap())
 	}
 
-	fn read(&self, path: &Path) -> Result<Option<Arr<u8>>, Self::Error> {
+	fn read(&self, path: &Path) -> Result<Option<Vec<u8>>, Self::Error> {
 		read_file(&Path::resolve_with_root(&self.root_dir, path))
 	}
 }

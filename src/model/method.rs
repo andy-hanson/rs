@@ -56,7 +56,9 @@ impl AbstractMethod {
 }
 impl SerializeAsPtr for AbstractMethod {
 	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S : Serializer {
+	where
+		S: Serializer,
+	{
 		self.name().serialize(serializer)
 	}
 }
@@ -103,7 +105,9 @@ impl MethodWithBody {
 }
 impl SerializeAsPtr for MethodWithBody {
 	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S : Serializer {
+	where
+		S: Serializer,
+	{
 		self.name().serialize(serializer)
 	}
 }
@@ -117,7 +121,8 @@ pub struct Parameter {
 }
 impl SerializeAsPtr for Parameter {
 	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S : Serializer
+	where
+		S: Serializer,
 	{
 		self.name.serialize(serializer)
 	}
@@ -169,7 +174,9 @@ impl MethodOrImpl {
 }
 impl Serialize for MethodOrImpl {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S : Serializer {
+	where
+		S: Serializer,
+	{
 		match *self {
 			MethodOrImpl::Method(ref m) => m.serialize(serializer),
 			MethodOrImpl::Impl(ref i) => i.serialize(serializer),
@@ -227,7 +234,9 @@ impl MethodOrAbstract {
 }
 impl Serialize for MethodOrAbstract {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S : Serializer {
+	where
+		S: Serializer,
+	{
 		match *self {
 			MethodOrAbstract::Method(ref m) => m.serialize(serializer),
 			MethodOrAbstract::Abstract(ref a) => a.serialize(serializer),

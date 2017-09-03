@@ -24,7 +24,7 @@ pub enum Diag {
 	PrecedingEquals,
 	UnrecognizedCharacter(char),
 	UnexpectedCharacter(char, &'static str),
-	UnexpectedToken(&'static str, &'static str),
+	UnexpectedToken { expected: &'static [u8], actual: &'static [u8] },
 
 	CantCombineTypes(Ty, Ty),
 	NotAssignable(/*expected*/ Ty, /*actual*/ Ty),

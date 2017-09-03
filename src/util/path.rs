@@ -16,8 +16,13 @@ impl Path {
 		Path(self.0.clone())
 	}
 
-	pub fn from_string(s: &[u8]) -> Self {
-		Path(s.split_on_char(|ch| ch == b'/' || ch == b'\\'))
+	pub fn single_part(part: &[u8]) -> Self {
+		assert!(is_path_part(part));
+		Path(Arr::_1(Arr::copy_from_slice(part)))
+	}
+
+	pub fn parse(string: &[u8]) -> Self {
+		Path(string.split_on_char(|ch| ch == b'/' || ch == b'\\'))
 	}
 
 	pub fn from_parts(strings: Arr<&'static str>) -> Self {
@@ -88,9 +93,13 @@ impl Path {
 
 	pub fn add_extension(&self, extension: &[u8]) -> Self {
 		let parts = &self.0;
+		if !parts.any() {
+			// Silly, but create a path that's just e.g. ".txt"
+			return Path(Arr::_1(Arr::copy_from_slice(extension)))
+		}
 		assert!(parts.any());
 		let mut b = ArrBuilder::<Arr<u8>>::new();
-		for part in self.0.slice_rtail() {
+		for part in parts.slice_rtail() {
 			b.add(part.clone())
 		}
 		b.add(self.last().unwrap().concat(extension));
@@ -124,7 +133,9 @@ impl PartialEq for Path {
 impl Eq for Path {}
 impl Serialize for Path {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer {
+	where
+		S: Serializer,
+	{
 		serializer.serialize_str(&self.to_string())
 	}
 }

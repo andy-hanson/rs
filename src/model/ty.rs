@@ -139,14 +139,18 @@ impl TypeParameter {
 }
 impl Serialize for TypeParameter {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S : Serializer {
+	where
+		S: Serializer,
+	{
 		// We just seralized the origin, so skip that.
 		self.name.serialize(serializer)
 	}
 }
 impl SerializeAsPtr for TypeParameter {
 	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S : Serializer {
+	where
+		S: Serializer,
+	{
 		self.name.serialize(serializer)
 	}
 }

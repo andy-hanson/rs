@@ -19,4 +19,10 @@ mod interpreter;
 mod model;
 mod test;
 
-fn main() {}
+use test::do_test_single;
+use util::path::Path;
+
+fn main() {
+	let path = Path::parse(b"Main-Pass");
+	do_test_single(&path, /*update_baselines*/ true)
+}

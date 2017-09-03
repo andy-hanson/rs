@@ -31,7 +31,7 @@ pub fn parse_self_effect_or_ty(l: &mut Lexer) -> Result<SelfEffectOrTy> {
 					let ty = finish_parse_ty(l, start, effect, name)?;
 					Ok(SelfEffectOrTy::Ty(ty))
 				}
-				other => Err(l.unexpected_token(start, other, "'self', or type name")),
+				other => Err(l.unexpected_token(start, other, b"'self', or type name")),
 			}
 		}
 		Token::TyName => {
@@ -39,7 +39,7 @@ pub fn parse_self_effect_or_ty(l: &mut Lexer) -> Result<SelfEffectOrTy> {
 			let ty = finish_parse_ty(l, start, Effect::Pure, name)?;
 			Ok(SelfEffectOrTy::Ty(ty))
 		}
-		other => Err(l.unexpected_token(start, other, "'get', 'set', 'io', or type name")),
+		other => Err(l.unexpected_token(start, other, b"'get', 'set', 'io', or type name")),
 	}
 }
 
@@ -62,7 +62,7 @@ pub fn parse_ty(l: &mut Lexer) -> Result<ast::Ty> {
 			let name = l.token_sym(start);
 			finish_parse_ty(l, start, Effect::Pure, name)
 		}
-		other => Err(l.unexpected_token(start, other, "'get', 'set', 'io', or type name")),
+		other => Err(l.unexpected_token(start, other, b"'get', 'set', 'io', or type name")),
 	}
 }
 

@@ -7,7 +7,8 @@ use util::sym::Sym;
 use super::super::super::host::document_info::DocumentInfo;
 use super::super::super::host::document_provider::DocumentProvider;
 use super::super::super::model::diag::{Diag, Diagnostic};
-use super::super::super::model::module::{FailModule, Module, ModuleSource, OwnModuleOrFail, PtrModuleOrFail};
+use super::super::super::model::module::{FailModule, Module, ModuleSource, ModuleSourceEnum,
+                                         OwnModuleOrFail, PtrModuleOrFail};
 
 use super::super::builtins::{get_builtins, BuiltinsOwn};
 use super::super::check::check_module;
@@ -17,7 +18,7 @@ use super::super::parse::parse;
 use super::{CompileResult, CompiledProgram};
 use super::module_resolver::{get_document_from_logical_path, GetDocumentResult};
 
-pub fn compile<D : DocumentProvider>(
+pub fn compile<D: DocumentProvider>(
 	path: Path,
 	document_provider: &D,
 	old_program: Option<CompiledProgram>,
@@ -60,7 +61,7 @@ Therefore, we will always ask the CompileHost for the latest versions of all fil
 The CompilerHost may implement caching. (In a command-line scenario this should not be necessary.)
 Whether a document may be reused is indicated by its version vs the version the compiler used.
 */
-struct Compiler<'a, D : DocumentProvider + 'a> {
+struct Compiler<'a, D: DocumentProvider + 'a> {
 	builtins: &'a BuiltinsOwn,
 	document_provider: &'a D,
 	// We consume the old program, so we module values out of its map when we reuse them.
@@ -68,7 +69,7 @@ struct Compiler<'a, D : DocumentProvider + 'a> {
 	// Keys are logical paths.
 	modules: MutDict<Own<Path>, ModuleState>,
 }
-impl<'a, D : DocumentProvider> Compiler<'a, D> {
+impl<'a, D: DocumentProvider> Compiler<'a, D> {
 	fn compile_single(&mut self, logical_path: Path) -> Result<(CompileSingleResult, bool), D::Error> {
 		if let Some(already_compiled) = self.modules.get(&logical_path) {
 			return Ok(match *already_compiled {
@@ -121,11 +122,9 @@ impl<'a, D : DocumentProvider> Compiler<'a, D> {
 				(CompileSingleResult::Found(module_ptr), is_reused)
 			}
 			Err(parse_diag) => {
-				let source = Some(ModuleSource {
-					logical_path: own_logical_path.ptr(),
-					is_index,
-					document,
-				});
+				let source = ModuleSourceEnum::Normal(
+					ModuleSource { logical_path: own_logical_path.ptr(), is_index, document },
+				);
 				let diagnostics = Arr::_1(parse_diag);
 				let fail = Own::new(FailModule { source, imports: Arr::empty(), diagnostics });
 				let fail_ptr = fail.ptr();
@@ -153,14 +152,20 @@ impl<'a, D : DocumentProvider> Compiler<'a, D> {
 			if let Some(old_module_or_fail) = self.old_modules.try_extract(&**logical_path) {
 				// old_modules only stores modules from source code, not builtins,
 				// so unwrap() should succeed.
-				if old_module_or_fail.source().unwrap().document.same_version_as(&document) {
+				if old_module_or_fail
+					.source()
+					.assert_normal()
+					.document
+					.same_version_as(&document)
+				{
 					return Ok((old_module_or_fail, true))
 				}
 			}
 		}
 
-		let source =
-			Some(ModuleSource { logical_path: logical_path.clone_ptr(), is_index, document });
+		let source = ModuleSourceEnum::Normal(
+			ModuleSource { logical_path: logical_path.clone_ptr(), is_index, document },
+		);
 		let res = match resolved_imports {
 			ResolvedImports::Success(imports) => {
 				let module =

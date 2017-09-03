@@ -70,10 +70,8 @@ impl<T> Deref for Arr<T> {
 	}
 }
 impl<T: Clone> Arr<T> {
-	pub fn into_vec(self) -> Vec<T> {
-		let mut v = Vec::new();
-		v.clone_from_slice(&self.0);
-		v
+	pub fn clone_to_vec(&self) -> Vec<T> {
+		self.0.to_vec()
 	}
 
 	pub fn copy_slice(&self, lo: usize, hi: usize) -> Self {
@@ -104,10 +102,8 @@ impl<T: Clone> Arr<T> {
 }
 impl<T: Copy> Arr<T> {
 	pub fn copy_from_slice(slice: &[T]) -> Self {
-		// TODO: better way?
-		let mut v = Vec::new();
-		v.copy_from_slice(slice);
-		Arr(v.into_boxed_slice())
+		// TODO:PERF better way?
+		Arr(slice.to_owned().into_boxed_slice())
 	}
 
 	pub fn map_on_copies<U, F: Fn(T) -> U>(&self, f: F) -> Arr<U> {
@@ -134,9 +130,11 @@ impl<T: Eq> Arr<T> {
 		true
 	}
 }
-impl<T : Serialize> Serialize for Arr<T> {
+impl<T: Serialize> Serialize for Arr<T> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S : Serializer {
+	where
+		S: Serializer,
+	{
 		let mut seq = serializer.serialize_seq(Some(self.len()))?;
 		for e in self.iter() {
 			seq.serialize_element(e)?;
@@ -186,8 +184,8 @@ pub trait U8SliceOps: SliceOps<u8> {
 		parts.finish()
 	}
 
-	fn without_end_if_ends_with(&self, s: &[u8]) -> &[u8] {
-		if self.len() < s.len() {
+	fn without_end_if_ends_with(&self, end: &[u8]) -> &[u8] {
+		if self.len() < end.len() {
 			self.as_slice()
 		} else {
 			unimplemented!()
@@ -334,7 +332,7 @@ pub trait SliceOps<T>: Index<usize, Output = T> {
 	}
 
 	fn any(&self) -> bool {
-		self.len() == 0
+		self.len() != 0
 	}
 
 	fn last(&self) -> Option<&T> {

@@ -114,7 +114,7 @@ impl<'a> Ctx<'a> {
 			}
 		}
 
-		for b in self.builtins.all.iter() {
+		for b in self.builtins.all_successes.iter() {
 			if b.name() == name {
 				return Some(b.class())
 			}

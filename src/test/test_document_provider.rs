@@ -52,12 +52,12 @@ impl DocumentProvider for TestDocumentProvider {
 	}
 }
 
-fn parse_expected_errors(code: Arr<u8>) -> (Arr<u8>, Arr<ExpectedDiagnostic>) {
+fn parse_expected_errors(code: Vec<u8>) -> (Vec<u8>, Arr<ExpectedDiagnostic>) {
 	if !code.contains(&b'~') {
 		return (code, Arr::empty())
 	}
 
-	let mut good_lines = ArrBuilder::<u8>::new();
+	let mut good_lines = Vec::<u8>::new();
 	let mut expected_diagnostics = ArrBuilder::<ExpectedDiagnostic>::new();
 
 	let mut good_line_number = 0;
@@ -107,7 +107,7 @@ fn parse_expected_errors(code: Arr<u8>) -> (Arr<u8>, Arr<ExpectedDiagnostic>) {
 				let diagnostic_width = usize_to_u32(i - start);
 				i += 1; // Past the '\n'
 
-				good_lines.add_slice(code.slice(last_good_start_index, last_good_line_end));
+				good_lines.extend(&code[last_good_start_index..last_good_line_end]);
 
 				let total_indent = tab_indent + spaces_indent;
 				if good_line_number == 0 {
@@ -177,6 +177,6 @@ fn parse_expected_errors(code: Arr<u8>) -> (Arr<u8>, Arr<ExpectedDiagnostic>) {
 		}
 	}
 
-	good_lines.add_slice(code.slice(last_good_start_index, code.len()));
-	(good_lines.finish(), expected_diagnostics.finish())
+	good_lines.extend(&code[last_good_start_index..code.len()]);
+	(good_lines, expected_diagnostics.finish())
 }

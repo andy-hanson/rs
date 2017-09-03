@@ -3,12 +3,13 @@ use serde_json::to_string as to_json_string;
 
 use util::arr::{Arr, SliceOps};
 use util::dict::{Dict, MutDict};
-use util::file_utils::{IoError, write_file, write_file_and_ensure_directory, read_files_in_directory_recursive_if_exists};
+use util::file_utils::{read_files_in_directory_recursive_if_exists, write_file,
+                       write_file_and_ensure_directory, IoError};
 use util::path::Path;
 
 mod test_document_provider;
 use super::compiler::{compile, CompileResult, CompiledProgram, EXTENSION};
-use super::model::module::{Module, PtrModuleOrFail, OwnModuleOrFail};
+use super::model::module::{Module, OwnModuleOrFail, PtrModuleOrFail};
 
 use self::test_document_provider::{ExpectedDiagnostic, TestDocumentProvider};
 
@@ -24,12 +25,20 @@ enum TestFailure {
 	ExtraBaselines(Arr<Path>),
 	ExpectedDiagnostics(Dict<Path, Arr<ExpectedDiagnostic>>),
 	NoSuchBaseline(Path),
-	UnexpectedOutput {
-		actual: Arr<u8>,
-		expected: Arr<u8>,
-	}
+	UnexpectedOutput { actual: Arr<u8>, expected: Arr<u8> },
 }
 type TestResult<T> = ::std::result::Result<T, TestFailure>;
+
+pub fn do_test_single(test_path: &Path, update_baselines: bool) {
+	match test_single(test_path, update_baselines) {
+		Ok(()) => {}
+		Err(e) => {
+			let _ = e;
+			//TODO: need to describe the error
+			unimplemented!()
+		}
+	}
+}
 
 fn test_single(test_path: &Path, update_baselines: bool) -> TestResult<()> {
 	//let test_data = run_compiler_test(Path::from_parts(arr![test_name]));
@@ -45,7 +54,10 @@ fn test_single(test_path: &Path, update_baselines: bool) -> TestResult<()> {
 	};
 
 	let mut expected_diagnostics = document_provider.get_expected_diagnostics();
-	let mut expected_baselines = read_files_in_directory_recursive_if_exists(&baselines_directory);
+	let mut expected_baselines =
+		read_files_in_directory_recursive_if_exists(&baselines_directory).map_values(Arr::from_vec);
+
+	check_builtin_diagnostics(&program);
 
 	match root {
 		PtrModuleOrFail::Module(m) =>
@@ -88,9 +100,7 @@ fn test_single(test_path: &Path, update_baselines: bool) -> TestResult<()> {
 	}
 }
 
-lazy_static! {
-	static ref EXT_MODEL: Arr<u8> = Arr::copy_from_str(".model");
-}
+const EXT_MODEL: &[u8] = b".model";
 
 fn test_with_diagnostics(
 	baselines_directory: &Path,
@@ -100,19 +110,20 @@ fn test_with_diagnostics(
 	update_baselines: bool,
 ) -> TestResult<()> {
 	for module_or_fail in program.modules.values() {
-		let source = module_or_fail.source().unwrap();
+		let source = module_or_fail.source().assert_normal();
 		let module_full_path = source.full_path();
-		let module_path = module_full_path.without_extension(&EXTENSION);
+		let module_path = module_full_path.without_extension(EXTENSION);
 		unused!(baselines_directory, expected_baselines, expected_diagnostics_by_path, module_path);
 
 		if let OwnModuleOrFail::Module(ref module) = *module_or_fail {
 			assert_baseline(
 				baselines_directory,
 				&module_path,
-				&EXT_MODEL,
+				EXT_MODEL,
 				&module.class,
 				expected_baselines,
-				update_baselines)?
+				update_baselines,
+			)?
 		}
 
 		let text = &source.document.text;
@@ -123,20 +134,34 @@ fn test_with_diagnostics(
 	unimplemented!()
 }
 
-fn assert_baseline<T : Serialize>(
+//TODO:Should only have to do this once...
+fn check_builtin_diagnostics(program: &CompiledProgram) {
+	let b = &program.builtins;
+	for builtin_module in b.all.iter() {
+		for diag in builtin_module.diagnostics() {
+			let _ = diag;
+			// TODO: show the diagnostic (must implement diagnostic show)
+			unimplemented!()
+		}
+	}
+}
+
+fn assert_baseline<T: Serialize>(
 	test_directory: &Path,
 	module_path: &Path,
 	extension: &[u8],
 	actual: &T,
 	baselines: &mut MutDict<Path, Arr<u8>>,
-	update_baselines: bool) -> TestResult<()> {
+	update_baselines: bool,
+) -> TestResult<()> {
 	assert_baseline_worker(
 		test_directory,
 		module_path,
 		extension,
 		Arr::from_string(to_json_string(actual).unwrap()),
 		baselines,
-		update_baselines)
+		update_baselines,
+	)
 }
 
 fn assert_baseline_worker(
@@ -145,21 +170,20 @@ fn assert_baseline_worker(
 	extension: &[u8],
 	actual: Arr<u8>,
 	baselines: &mut MutDict<Path, Arr<u8>>,
-	update_baselines: bool) -> TestResult<()> {
-
+	update_baselines: bool,
+) -> TestResult<()> {
 	let baseline_path = module_path.add_extension(extension);
 	let full_baseline_path = Path::resolve_with_root(test_directory, &baseline_path);
 
 	match baselines.try_extract(&baseline_path) {
-		Some(expected) => {
+		Some(expected) =>
 			if actual == expected {
 				Ok(())
 			} else if update_baselines {
 				io_result_to_result(write_file(&full_baseline_path, &actual))
 			} else {
 				Err(TestFailure::UnexpectedOutput { actual, expected })
-			}
-		}
+			},
 		None => {
 			// This baseline didn't exist before.
 			if update_baselines {
@@ -172,7 +196,7 @@ fn assert_baseline_worker(
 }
 
 fn io_result_to_result<T>(io_result: Result<T, IoError>) -> Result<T, TestFailure> {
-	io_result.map_err(|e| TestFailure::IoError(e))
+	io_result.map_err(TestFailure::IoError)
 }
 
 fn test_with_no_diagnostics(

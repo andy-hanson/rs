@@ -6,7 +6,6 @@ use util::sym::Sym;
 
 use super::super::super::host::document_info::DocumentInfo;
 use super::super::super::host::document_provider::DocumentProvider;
-use super::super::super::host::file_input::Result as IoResult;
 use super::super::super::model::diag::{Diag, Diagnostic};
 use super::super::super::model::module::{FailModule, Module, ModuleSource, OwnModuleOrFail, PtrModuleOrFail};
 
@@ -18,11 +17,11 @@ use super::super::parse::parse;
 use super::{CompileResult, CompiledProgram};
 use super::module_resolver::{get_document_from_logical_path, GetDocumentResult};
 
-pub fn compile(
+pub fn compile<D : DocumentProvider>(
 	path: Path,
-	document_provider: &DocumentProvider,
+	document_provider: &D,
 	old_program: Option<CompiledProgram>,
-) -> IoResult<CompileResult> {
+) -> Result<CompileResult, D::Error> {
 	let (builtins, old_modules) = match old_program {
 		Some(CompiledProgram { builtins, modules }) => (builtins, modules),
 		None =>
@@ -61,16 +60,16 @@ Therefore, we will always ask the CompileHost for the latest versions of all fil
 The CompilerHost may implement caching. (In a command-line scenario this should not be necessary.)
 Whether a document may be reused is indicated by its version vs the version the compiler used.
 */
-struct Compiler<'a> {
+struct Compiler<'a, D : DocumentProvider + 'a> {
 	builtins: &'a BuiltinsOwn,
-	document_provider: &'a DocumentProvider,
+	document_provider: &'a D,
 	// We consume the old program, so we module values out of its map when we reuse them.
 	old_modules: MutDict<Own<Path>, OwnModuleOrFail>,
 	// Keys are logical paths.
 	modules: MutDict<Own<Path>, ModuleState>,
 }
-impl<'a> Compiler<'a> {
-	fn compile_single(&mut self, logical_path: Path) -> IoResult<(CompileSingleResult, bool)> {
+impl<'a, D : DocumentProvider> Compiler<'a, D> {
+	fn compile_single(&mut self, logical_path: Path) -> Result<(CompileSingleResult, bool), D::Error> {
 		if let Some(already_compiled) = self.modules.get(&logical_path) {
 			return Ok(match *already_compiled {
 				ModuleState::Compiling =>
@@ -98,7 +97,7 @@ impl<'a> Compiler<'a> {
 		full_path: Path,
 		is_index: bool,
 		document: DocumentInfo,
-	) -> IoResult<(CompileSingleResult, bool)> {
+	) -> Result<(CompileSingleResult, bool), D::Error> {
 		let own_logical_path = Own::new(logical_path);
 		Ok(match parse(&document.text) {
 			Ok(ModuleAst { imports, class }) => {
@@ -145,7 +144,7 @@ impl<'a> Compiler<'a> {
 		class_ast: ClassAst,
 		full_path: Path,
 		is_index: bool,
-	) -> IoResult<(OwnModuleOrFail, bool)> {
+	) -> Result<(OwnModuleOrFail, bool), D::Error> {
 		let (resolved_imports, all_dependencies_reused) = self.resolve_imports(&full_path, import_asts)?;
 
 		// We will only bother looking at the old module if all of our dependencies were safely reused.
@@ -187,7 +186,7 @@ impl<'a> Compiler<'a> {
 		&mut self,
 		full_path: &Path,
 		import_asts: Arr<ImportAst>,
-	) -> IoResult<(ResolvedImports, bool)> {
+	) -> Result<(ResolvedImports, bool), D::Error> {
 		let mut diagnostics = ArrBuilder::<Diagnostic>::new();
 		let mut all_imports_reused = true;
 		//TODO:PERF probably, all imports will succeed, so allocate whole array.
@@ -226,7 +225,7 @@ impl<'a> Compiler<'a> {
 		import_diagnostics: &mut ArrBuilder<Diagnostic>,
 		full_path: &Path,
 		all_dependencies_reused: &mut bool,
-	) -> IoResult<Option<PtrModuleOrFail>> {
+	) -> Result<Option<PtrModuleOrFail>, D::Error> {
 		match import_ast {
 			ImportAst::Global(_loc, _path) => {
 				unimplemented!() // Get the builtin with this name

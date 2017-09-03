@@ -1,8 +1,10 @@
+use serde::{Serialize, Serializer};
+
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use util::arr::Arr;
-use util::string_maker::{Show, Shower};
+use super::arr::{Arr, U8SliceOps};
+use super::string_maker::{Show, Shower};
 
 lazy_static! {
 	static ref STRING_TO_SYMBOL: Mutex<HashMap<Arr<u8>, Sym>> = Mutex::new(HashMap::new());
@@ -39,5 +41,13 @@ impl Show for Sym {
 		let map = SYMBOL_TO_STRING.lock().unwrap();
 		let st = map.get(self).unwrap();
 		s.add_bytes(st);
+	}
+}
+impl Serialize for Sym {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S : Serializer {
+		let map = SYMBOL_TO_STRING.lock().unwrap();
+		let st = map.get(self).unwrap(); // TODO: duplicate code...
+		serializer.serialize_str(&st.clone_to_utf8_string())
 	}
 }

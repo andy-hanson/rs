@@ -3,6 +3,8 @@ use std::cell::UnsafeCell;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
+use serde::{Serialize, Serializer};
+
 pub struct Own<T> {
 	// TODO: #[cfg(debug_assertions)]
 	// Does not include the owning reference, so does not deallocate anything when this reaches 0.
@@ -55,6 +57,12 @@ impl<T: Hash> Hash for Own<T> {
 		inner.hash(hasher)
 	}
 }
+impl<T : Serialize> Serialize for Own<T> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer {
+		self.deref().serialize(serializer)
+	}
+}
 
 pub struct Ptr<T>(*const Own<T>);
 impl<T> Ptr<T> {
@@ -90,6 +98,19 @@ impl<T> Hash for Ptr<T> {
 	fn hash<H: Hasher>(&self, hasher: &mut H) {
 		hasher.write_usize(self.0 as usize)
 	}
+}
+impl<T : SerializeAsPtr> Serialize for Ptr<T> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer {
+		(*self).serialize_as_ptr(serializer)
+	}
+}
+
+// Like Serialize, but since this is jus ta *reference* to the data,
+// don't serialize everything, just e.g. the name.
+pub trait SerializeAsPtr {
+	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S : Serializer;
 }
 
 pub struct Late<T>(UnsafeCell<Option<T>>);
@@ -140,6 +161,12 @@ impl<T> Deref for LateOwn<T> {
 	type Target = T;
 	fn deref(&self) -> &T {
 		self.0.get()
+	}
+}
+impl<T : Serialize> Serialize for LateOwn<T> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer {
+		self.deref().serialize(serializer)
 	}
 }
 

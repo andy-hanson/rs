@@ -1,6 +1,8 @@
-use util::arr::{Arr, ArrBuilder, RcArr};
+use serde::{Serialize, Serializer};
+
+use util::arr::{Arr, ArrBuilder, RcArr, U8SliceOps};
 use util::loc::Loc;
-use util::ptr::{Own, Ptr};
+use util::ptr::{Own, Ptr, SerializeAsPtr};
 use util::sym::Sym;
 
 use super::class::SlotDeclaration;
@@ -27,32 +29,48 @@ impl LiteralValue {
 		}
 	}
 }
+impl Serialize for LiteralValue {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where S : Serializer {
+		match *self {
+			LiteralValue::Pass => serializer.serialize_str("pass"),
+			LiteralValue::Bool(b) => serializer.serialize_bool(b),
+			LiteralValue::Nat(n) => serializer.serialize_u32(n),
+			LiteralValue::Int(i) => serializer.serialize_i32(i),
+			LiteralValue::Float(f) => serializer.serialize_f64(f),
+			LiteralValue::String(ref s) => serializer.serialize_str(&s.clone_to_utf8_string())
+		}
+	}
+}
 
+
+#[derive(Serialize)]
 pub enum Pattern {
 	Ignore,
 	Single(Own<Local>),
 	Destruct(Loc, Arr<Pattern>),
 }
 
+#[derive(Serialize)]
 pub struct Local {
 	pub loc: Loc,
 	pub ty: Ty,
 	pub name: Sym,
 }
-
-pub struct Case(pub Loc, /*test*/ pub Box<Expr>, /*result*/ pub Box<Expr>);
-
-pub struct Catch(pub Loc, /*caught*/ pub Own<Local>, /*result*/ pub Box<Expr>);
-
-pub struct For {
-	local: Own<Local>,
-	looper: Box<Expr>,
-	body: Box<Expr>,
-	provided_ty: Ty,
-	received_ty: Ty,
-	result_ty: Ty,
+impl SerializeAsPtr for Local {
+	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where S : Serializer {
+		self.name.serialize(serializer)
+	}
 }
 
+#[derive(Serialize)]
+pub struct Case(pub Loc, /*test*/ pub Box<Expr>, /*result*/ pub Box<Expr>);
+
+#[derive(Serialize)]
+pub struct Catch(pub Loc, /*caught*/ pub Own<Local>, /*result*/ pub Box<Expr>);
+
+#[derive(Serialize)]
 pub struct Expr(pub Loc, pub ExprData);
 impl Expr {
 	pub fn loc(&self) -> Loc {
@@ -68,6 +86,7 @@ impl Expr {
 	}
 }
 
+#[derive(Serialize)]
 pub enum ExprData {
 	BogusCast(Ty, Box<Expr>),
 	Bogus,
@@ -79,7 +98,14 @@ pub enum ExprData {
 	IfElse { test: Box<Expr>, then: Box<Expr>, elze: Box<Expr>, ty: Ty },
 	WhenTest(Arr<Case>, Box<Expr>, Ty),
 	Try { body: Box<Expr>, catch: Option<Catch>, finally: Option<Box<Expr>>, ty: Ty },
-	For(For),
+	For {
+		local: Own<Local>,
+		looper: Box<Expr>,
+		body: Box<Expr>,
+		provided_ty: Ty,
+		received_ty: Ty,
+		result_ty: Ty,
+	},
 	StaticMethodCall(InstMethod, Arr<Expr>, Ty),
 	InstanceMethodCall(Box<Expr>, InstMethod, Arr<Expr>, Ty),
 	MyInstanceMethodCall(InstMethod, Arr<Expr>, Ty),
@@ -115,7 +141,7 @@ impl ExprData {
 			ExprData::AccessLocal(ref local) => &local.ty,
 			ExprData::Let(_, _, ref then) | ExprData::Seq(_, ref then) => then.ty(),
 			ExprData::Literal(ref v) => v.ty(),
-			ExprData::For(ref f) => &f.result_ty,
+			ExprData::For { ref result_ty, .. } => result_ty,
 			ExprData::ArrayLiteral { .. } => unimplemented!(), //array[array type]
 			ExprData::SetSlot(_, _) => unimplemented!(),       //void
 			ExprData::Assert(_) => unimplemented!(),           //void
@@ -151,7 +177,7 @@ impl ExprData {
 					None =>
 						match *finally { Some(ref f) => Arr::_2(body, f), None => Arr::_1(body) }
 				},
-			ExprData::For(ref f) => Arr::_2(&f.looper, &f.body),
+			ExprData::For { ref looper, ref body, .. } => Arr::_2(&looper, &body),
 			ExprData::InstanceMethodCall(ref target, _, ref args, _) => {
 				let mut b = ArrBuilder::<&Expr>::new();
 				b.add(target);

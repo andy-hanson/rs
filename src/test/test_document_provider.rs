@@ -3,13 +3,14 @@ use std::cell::RefCell;
 use util::arith::usize_to_u32;
 use util::arr::{Arr, ArrBuilder, SliceOps};
 use util::dict::MutDict;
+use util::file_utils::IoError;
 use util::loc::LineAndColumnLoc;
 use util::path::Path;
 use util::sym::Sym;
 
 use super::super::host::document_info::DocumentInfo;
 use super::super::host::document_provider::DocumentProvider;
-use super::super::host::file_input::{FileInput, NativeFileInput, Result};
+use super::super::host::file_input::{FileInput, NativeFileInput};
 
 pub struct ExpectedDiagnostic(LineAndColumnLoc, Arr<u8>);
 
@@ -30,11 +31,13 @@ impl TestDocumentProvider {
 	}
 }
 impl DocumentProvider for TestDocumentProvider {
+	type Error = IoError;
+
 	fn root_name(&self) -> Sym {
 		self.file_input.root_name()
 	}
 
-	fn get_document(&self, path: &Path) -> Result<Option<DocumentInfo>> {
+	fn get_document(&self, path: &Path) -> Result<Option<DocumentInfo>, Self::Error> {
 		self.file_input.read(path).map(|op| {
 			op.map(|content| {
 				let (text_without_errors, errors) = parse_expected_errors(content);

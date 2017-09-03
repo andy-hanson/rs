@@ -1,6 +1,7 @@
 pub mod arith;
 pub mod arr;
 pub mod dict;
+pub mod file_utils;
 pub mod path;
 pub mod loc;
 #[macro_use]

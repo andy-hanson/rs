@@ -1,5 +1,7 @@
+use serde::{Serialize, Serializer};
+
 use util::arr::{Arr, SliceOps};
-use util::ptr::{LateOwn, Own, Ptr};
+use util::ptr::{LateOwn, Own, Ptr, SerializeAsPtr};
 use util::sym::Sym;
 
 use super::class::ClassDeclaration;
@@ -11,6 +13,7 @@ static BOGUS: UnsafeSync<Ty> = UnsafeSync(Ty::Bogus);
 struct UnsafeSync<T>(T);
 unsafe impl<T> Sync for UnsafeSync<T> {}
 
+#[derive(Serialize)]
 pub enum Ty {
 	Bogus,
 	Plain(Effect, InstCls),
@@ -60,7 +63,24 @@ impl Clone for Ty {
 		}
 	}
 }
+/*impl Serialize for Ty {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer
+	{
+		match *self {
+			Ty::Bogus => serializer.serialize_unit_variant("Ty", 0, "Bogus"),
+			Ty::Plain(_, _) => {
+				unimplemented!()
+			}
+			Ty::Param(_) => {
+				//Don't serialize the param normally, we're just referencing it!
+				unimplemented!()
+			}
+		}
+	}
+}*/
 
+#[derive(Serialize)]
 pub struct InstCls(pub Ptr<ClassDeclaration>, pub Arr<Ty>);
 impl InstCls {
 	pub fn generic_self_reference(cls: Ptr<ClassDeclaration>) -> Self {
@@ -115,5 +135,18 @@ impl TypeParameter {
 		// See https://www.reddit.com/r/rust/comments/2dmzf6/why_do_equality_tests_of_references_seem_to/
 		unused!(other);
 		unimplemented!()
+	}
+}
+impl Serialize for TypeParameter {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S : Serializer {
+		// We just seralized the origin, so skip that.
+		self.name.serialize(serializer)
+	}
+}
+impl SerializeAsPtr for TypeParameter {
+	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S : Serializer {
+		self.name.serialize(serializer)
 	}
 }

@@ -1,7 +1,9 @@
+use serde::{Serialize, Serializer};
+
 use util::arith::to_u8;
 use util::arr::Arr;
 use util::loc::Loc;
-use util::ptr::{LateOwn, Own, Ptr};
+use util::ptr::{LateOwn, Own, Ptr, SerializeAsPtr};
 use util::sym::Sym;
 
 use super::class::ClassDeclaration;
@@ -9,6 +11,7 @@ use super::effect::Effect;
 use super::expr::Expr;
 use super::ty::{Ty, TypeParameter};
 
+#[derive(Serialize)]
 pub struct MethodSignature {
 	pub class: Ptr<ClassDeclaration>,
 	pub loc: Loc,
@@ -24,6 +27,7 @@ impl MethodSignature {
 	}
 }
 
+#[derive(Serialize)]
 pub struct AbstractMethod(MethodSignature);
 impl AbstractMethod {
 	pub fn loc(&self) -> Loc {
@@ -50,7 +54,14 @@ impl AbstractMethod {
 		&self.0.parameters
 	}
 }
+impl SerializeAsPtr for AbstractMethod {
+	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where S : Serializer {
+		self.name().serialize(serializer)
+	}
+}
 
+#[derive(Serialize)]
 pub struct MethodWithBody {
 	pub is_static: bool,
 	pub signature: MethodSignature,
@@ -90,16 +101,32 @@ impl MethodWithBody {
 		self.signature.arity()
 	}
 }
+impl SerializeAsPtr for MethodWithBody {
+	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where S : Serializer {
+		self.name().serialize(serializer)
+	}
+}
 
+#[derive(Serialize)]
 pub struct Parameter {
 	pub loc: Loc,
 	pub ty: Ty,
 	pub name: Sym,
 	pub index: u8,
 }
+impl SerializeAsPtr for Parameter {
+	fn serialize_as_ptr<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S : Serializer
+	{
+		self.name.serialize(serializer)
+	}
+}
 
+#[derive(Serialize)]
 pub struct InstMethod(pub MethodOrAbstract, pub Arr<Ty>);
 
+#[derive(Serialize)]
 pub struct Impl {
 	pub loc: Loc,
 	pub implemented: Ptr<AbstractMethod>,
@@ -140,6 +167,16 @@ impl MethodOrImpl {
 		self.signature().arity()
 	}
 }
+impl Serialize for MethodOrImpl {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where S : Serializer {
+		match *self {
+			MethodOrImpl::Method(ref m) => m.serialize(serializer),
+			MethodOrImpl::Impl(ref i) => i.serialize(serializer),
+		}
+	}
+}
+
 
 pub enum MethodOrAbstract {
 	Method(Ptr<MethodWithBody>),
@@ -185,6 +222,15 @@ impl MethodOrAbstract {
 		match *self {
 			MethodOrAbstract::Method(ref m) => m.parameters(),
 			MethodOrAbstract::Abstract(ref a) => a.parameters(),
+		}
+	}
+}
+impl Serialize for MethodOrAbstract {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where S : Serializer {
+		match *self {
+			MethodOrAbstract::Method(ref m) => m.serialize(serializer),
+			MethodOrAbstract::Abstract(ref a) => a.serialize(serializer),
 		}
 	}
 }

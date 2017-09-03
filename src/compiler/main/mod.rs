@@ -1,10 +1,10 @@
 use util::arr::U8SliceOps;
 use util::dict::MutDict;
+use util::file_utils::IoError;
 use util::path::Path;
 use util::ptr::Own;
 
-use super::super::host::document_provider::DocumentProvider;
-use super::super::host::file_input::Result;
+use super::super::host::document_provider::file_system_document_provider;
 use super::super::model::module::{OwnModuleOrFail, PtrModuleOrFail};
 
 use super::builtins::BuiltinsOwn;
@@ -24,16 +24,16 @@ pub enum CompileResult {
 	RootFound(CompiledProgram, PtrModuleOrFail),
 }
 
-pub fn compile_dir(dir: Path) -> Result<CompileResult> {
-	compile(Path::empty(), &DocumentProvider::file_system(dir), None)
+pub fn compile_dir(dir: Path) -> Result<CompileResult, IoError> {
+	compile(Path::empty(), &file_system_document_provider(dir), None)
 }
 
-pub fn compile_file(path: &Path) -> Result<CompileResult> {
+pub fn compile_file(path: &Path) -> Result<CompileResult, IoError> {
 	let file_name = path.last().unwrap().without_end_if_ends_with(&EXTENSION); //TODO: magic constant
 	let file_path = if file_name.equals_str("index") {
 		Path::empty()
 	} else {
 		Path::from_string(file_name)
 	};
-	compile(file_path, &DocumentProvider::file_system(path.directory()), None)
+	compile(file_path, &file_system_document_provider(path.directory()), None)
 }

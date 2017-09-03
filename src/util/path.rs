@@ -1,3 +1,5 @@
+use serde::{Serialize, Serializer};
+
 use std::cmp::min;
 use std::hash::{Hash, Hasher};
 
@@ -120,6 +122,12 @@ impl PartialEq for Path {
 	}
 }
 impl Eq for Path {}
+impl Serialize for Path {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer {
+		serializer.serialize_str(&self.to_string())
+	}
+}
 
 fn is_path_part(s: &[u8]) -> bool {
 	s.iter().all(|ch| match *ch {
@@ -128,6 +136,7 @@ fn is_path_part(s: &[u8]) -> bool {
 	})
 }
 
+#[derive(Serialize)]
 pub struct RelPath {
 	pub n_parents: usize,
 	pub rel_to_parent: Path,

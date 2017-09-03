@@ -95,7 +95,7 @@ impl StringMaker {
 		StringMaker(String::new())
 	}
 
-	pub fn stringify<T: Show>(t: &T) -> String {
+	fn stringify<T: Show>(t: &T) -> String {
 		let mut s = StringMaker::new();
 		t.show(&mut s);
 		s.0

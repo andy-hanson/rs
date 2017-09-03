@@ -1,6 +1,9 @@
 clean:
 	rustup run nightly cargo clean
 
+check:
+	rustup run nightly cargo check
+
 build:
 	rustup run nightly cargo build
 

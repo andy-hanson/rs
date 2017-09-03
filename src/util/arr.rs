@@ -1,3 +1,6 @@
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeSeq;
+
 use std::borrow::Borrow;
 use std::iter::Iterator;
 use std::mem::replace;
@@ -131,18 +134,34 @@ impl<T: Eq> Arr<T> {
 		true
 	}
 }
+impl<T : Serialize> Serialize for Arr<T> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S : Serializer {
+		let mut seq = serializer.serialize_seq(Some(self.len()))?;
+		for e in self.iter() {
+			seq.serialize_element(e)?;
+		}
+		seq.end()
+	}
+}
 
 //TODO: kill?
 impl Arr<u8> {
 	pub fn copy_from_str(s: &str) -> Self {
+		//TODO:PERF
 		Arr(s.as_bytes().to_owned().into_boxed_slice())
+	}
+
+	pub fn from_string(s: String) -> Self {
+		//TODO:PERF
+		Arr(s.into_boxed_str().as_bytes().to_owned().into_boxed_slice())
 	}
 }
 pub trait U8SliceOps: SliceOps<u8> {
 	fn clone_to_utf8_string(&self) -> String {
+		//TODO:PERF
 		let x = ::std::str::from_utf8(self.as_slice()).unwrap();
 		String::from_str(x).unwrap()
-		//String::from_utf8(self.clone().into_vec()).unwrap()
 	}
 
 	fn as_slice(&self) -> &[u8];

@@ -47,5 +47,13 @@ macro_rules! unused {
 		let _ = $c;
 		let _ = $d;
 		let _ = $e;
+	};
+	($a: ident, $b: ident, $c: ident, $d: ident, $e: ident, $f: ident) => {
+		let _ = $a;
+		let _ = $b;
+		let _ = $c;
+		let _ = $d;
+		let _ = $e;
+		let _ = $f;
 	}
 }

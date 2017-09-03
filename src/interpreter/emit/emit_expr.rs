@@ -123,7 +123,7 @@ impl ExprEmitter {
 			ExprData::IfElse { .. } => unimplemented!(),
 			ExprData::WhenTest(_, _, _) => unimplemented!(),
 			ExprData::Try { .. } => unimplemented!(),
-			ExprData::For(_) => unimplemented!(),
+			ExprData::For { .. } => unimplemented!(),
 			ExprData::StaticMethodCall(_, _, _) => unimplemented!(),
 			ExprData::InstanceMethodCall(_, _, _, _) => unimplemented!(),
 			ExprData::MyInstanceMethodCall(_, _, _) => unimplemented!(),

@@ -1,3 +1,5 @@
+use serde::{Serialize, Serializer};
+
 use std::ops::{Add, Sub};
 
 use util::arr::{Arr, ArrBuilder, SliceOps};
@@ -30,8 +32,14 @@ impl Sub<Pos> for Pos {
 		self.index - rhs.index
 	}
 }
+impl Serialize for Pos {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer {
+		serializer.serialize_u32(self.index)
+	}
+}
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize)]
 pub struct Loc {
 	pub start: Pos,
 	pub end: Pos,

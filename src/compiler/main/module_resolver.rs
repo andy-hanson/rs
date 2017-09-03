@@ -3,12 +3,11 @@ use util::path::{Path, RelPath};
 
 use super::super::super::host::document_info::DocumentInfo;
 use super::super::super::host::document_provider::DocumentProvider;
-use super::super::super::host::file_input::Result;
 
-pub fn get_document_from_logical_path(
-	document_provider: &DocumentProvider,
+pub fn get_document_from_logical_path<D : DocumentProvider>(
+	document_provider: &D,
 	logical_path: &Path,
-) -> Result<GetDocumentResult> {
+) -> Result<GetDocumentResult, D::Error> {
 	let regular = regular_path(logical_path);
 	if let Some(document) = document_provider.get_document(&regular)? {
 		return Ok(GetDocumentResult::Found { full_path: regular, is_index: false, document })

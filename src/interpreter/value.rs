@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use util::arr::Arr;
+use util::arr::{Arr, RcArr};
 use util::ptr::Ptr;
 
 use super::super::model::class::ClassDeclaration;
@@ -12,7 +12,7 @@ pub enum Value {
 	Nat(u32),
 	Int(i32),
 	Float(f64),
-	String(Rc<Arr<u8>>),
+	String(RcArr<u8>),
 }
 impl Clone for Value {
 	fn clone(&self) -> Self {
@@ -23,7 +23,7 @@ impl Clone for Value {
 			Value::Nat(n) => Value::Nat(n),
 			Value::Int(i) => Value::Int(i),
 			Value::Float(f) => Value::Float(f),
-			Value::String(ref s) => Value::String(Rc::clone(s)),
+			Value::String(ref s) => Value::String(RcArr::clone(s)),
 		}
 	}
 }

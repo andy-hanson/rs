@@ -1,5 +1,4 @@
 use util::arr::{Arr, ArrBuilder, SliceOps};
-use util::either::Either;
 use util::loc::Pos;
 use util::path::{Path, RelPath};
 use util::sym::Sym;
@@ -9,7 +8,7 @@ use super::super::super::model::effect::Effect;
 use super::ast;
 use super::lexer::{Lexer, MethodKw, NewlineOrDedent, NewlineOrIndent, Result, SlotKw};
 use super::parse_expr::parse_block;
-use super::parse_ty::{parse_self_effect_or_ty, parse_ty, try_take_type_parameters};
+use super::parse_ty::{parse_self_effect_or_ty, parse_ty, try_take_type_parameters, SelfEffectOrTy};
 use super::token::Token;
 
 pub fn parse_module(l: &mut Lexer) -> Result<ast::Module> {
@@ -184,7 +183,7 @@ fn parse_method_head(l: &mut Lexer) -> Result<(ast::Ty, Sym, Effect, Arr<ast::Pa
 	} else {
 		let first_start = l.pos();
 		match parse_self_effect_or_ty(l)? {
-			Either::Left(self_effect) => {
+			SelfEffectOrTy::SelfEffect(self_effect) => {
 				let parameters = if l.try_take_parenr() {
 					Arr::empty()
 				} else {
@@ -192,7 +191,7 @@ fn parse_method_head(l: &mut Lexer) -> Result<(ast::Ty, Sym, Effect, Arr<ast::Pa
 				};
 				(self_effect, parameters)
 			}
-			Either::Right(first_ty) => {
+			SelfEffectOrTy::Ty(first_ty) => {
 				l.take_space()?;
 				let first_name = l.take_name()?;
 				let first = ast::Parameter { loc: l.loc_from(first_start), ty: first_ty, name: first_name };

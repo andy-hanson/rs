@@ -1,5 +1,4 @@
 use util::arr::{Arr, ArrBuilder};
-use util::either::Either;
 use util::loc::Pos;
 use util::sym::Sym;
 
@@ -9,7 +8,11 @@ use super::ast;
 use super::lexer::{Lexer, Result};
 use super::token::Token;
 
-pub fn parse_self_effect_or_ty(l: &mut Lexer) -> Result<Either<Effect, ast::Ty>> {
+pub enum SelfEffectOrTy {
+	SelfEffect(Effect),
+	Ty(ast::Ty),
+}
+pub fn parse_self_effect_or_ty(l: &mut Lexer) -> Result<SelfEffectOrTy> {
 	let start = l.pos();
 	let token = l.next_token();
 	match token {
@@ -22,11 +25,11 @@ pub fn parse_self_effect_or_ty(l: &mut Lexer) -> Result<Either<Effect, ast::Ty>>
 				_ => panic!(),
 			};
 			match l.next_token() {
-				Token::SelfKw => Ok(Either::Left(effect)),
+				Token::SelfKw => Ok(SelfEffectOrTy::SelfEffect(effect)),
 				Token::TyName => {
 					let name = l.token_sym(start);
 					let ty = finish_parse_ty(l, start, effect, name)?;
-					Ok(Either::Right(ty))
+					Ok(SelfEffectOrTy::Ty(ty))
 				}
 				other => Err(l.unexpected_token(start, other, "'self', or type name")),
 			}
@@ -34,7 +37,7 @@ pub fn parse_self_effect_or_ty(l: &mut Lexer) -> Result<Either<Effect, ast::Ty>>
 		Token::TyName => {
 			let name = l.token_sym(start);
 			let ty = finish_parse_ty(l, start, Effect::Pure, name)?;
-			Ok(Either::Right(ty))
+			Ok(SelfEffectOrTy::Ty(ty))
 		}
 		other => Err(l.unexpected_token(start, other, "'get', 'set', 'io', or type name")),
 	}

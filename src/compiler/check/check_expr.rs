@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use util::arr::{Arr, SliceOps};
+use util::arr::{single_as_slice, Arr, SliceOps};
 use util::loc::Loc;
 use util::ptr::{Own, Ptr};
 use util::sym::Sym;
@@ -108,7 +108,7 @@ impl<'a> CheckExprContext<'a> {
 			}
 			ast::ExprData::OperatorCall(ref left, operator, ref right) => {
 				let ty_args = Arr::<ast::Ty>::empty(); // No way to provide these to an operator call.
-				self.call_method(&mut e, loc, left, operator, &ty_args, ArgAsts::One(right.as_ref()))
+				self.call_method(&mut e, loc, left, operator, &ty_args, single_as_slice(right))
 			}
 			ast::ExprData::Call(ref target, ref args) =>
 				self.check_call_ast_worker(&mut e, loc, target, args),
@@ -120,7 +120,7 @@ impl<'a> CheckExprContext<'a> {
 				// implementing an abstract method where the superclass took type arguments.
 				let moa = &self.method_or_impl.method_or_abstract();
 				let inst = self.method_instantiator;
-				let args = unwrap_or_return!(self.check_arguments(loc, moa, inst, ArgAsts::Many(arg_asts)), bogus(loc));
+				let args = unwrap_or_return!(self.check_arguments(loc, moa, inst, arg_asts), bogus(loc));
 				self.handle(&mut e, loc, ExprData::Recur(self.method_or_impl.copy(), args))
 			}
 			ast::ExprData::New(ref ty_arg_asts, ref arg_asts) => {
@@ -351,14 +351,7 @@ impl<'a> CheckExprContext<'a> {
 				self.call_static_method(&mut expected, loc, cls, static_method_name, ty_arg_asts, args)
 			}
 			ast::ExprData::GetProperty(ref property_target, property_name) =>
-				self.call_method(
-					&mut expected,
-					loc,
-					property_target,
-					property_name,
-					ty_arg_asts,
-					ArgAsts::Many(args),
-				),
+				self.call_method(&mut expected, loc, property_target, property_name, ty_arg_asts, args),
 			ast::ExprData::Access(name) => self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
 			_ => {
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
@@ -390,7 +383,7 @@ impl<'a> CheckExprContext<'a> {
 		// No need to check selfEffect, because this is a static method.
 		// Static methods can't look at their class' type arguments
 		let args = unwrap_or_return!(
-			self.check_call_arguments(loc, &inst_method, &Instantiator::nil(), ArgAsts::Many(arg_asts)),
+			self.check_call_arguments(loc, &inst_method, &Instantiator::nil(), arg_asts),
 			bogus(loc)
 		);
 
@@ -432,7 +425,7 @@ impl<'a> CheckExprContext<'a> {
 			unwrap_or_return!(self.ctx.instantiate_method(&method_decl, ty_arg_asts), bogus(loc));
 
 		let args = unwrap_or_return!(
-			self.check_call_arguments(loc, &inst_method, &member_instantiator, ArgAsts::Many(arg_asts)),
+			self.check_call_arguments(loc, &inst_method, &member_instantiator, arg_asts),
 			bogus(loc)
 		);
 
@@ -464,7 +457,7 @@ impl<'a> CheckExprContext<'a> {
 		target_ast: &ast::Expr,
 		method_name: Sym,
 		ty_arg_asts: &[ast::Ty],
-		arg_asts: ArgAsts,
+		arg_asts: &[ast::Expr],
 	) -> Handled {
 		let target = self.check_infer(target_ast);
 		let (inst_method, args, ty) = match *target.ty() {
@@ -519,7 +512,7 @@ impl<'a> CheckExprContext<'a> {
 		loc: Loc,
 		inst_method: &InstMethod,
 		extra_instantiator: &Instantiator,
-		arg_asts: ArgAsts,
+		arg_asts: &[ast::Expr],
 	) -> Option<Arr<Expr>> {
 		let instantiator = Instantiator::of_inst_method(inst_method).combine(extra_instantiator);
 		self.check_arguments(loc, &inst_method.0, &instantiator, arg_asts)
@@ -530,33 +523,16 @@ impl<'a> CheckExprContext<'a> {
 		loc: Loc,
 		method_decl: &MethodOrAbstract,
 		instantiator: &Instantiator,
-		arg_asts: ArgAsts,
+		arg_asts: &[ast::Expr],
 	) -> Option<Arr<Expr>> {
 		let parameters = method_decl.parameters();
-		match arg_asts {
-			ArgAsts::One(arg_ast) =>
-				match parameters.only() {
-					Some(parameter) => {
-						let ty = instantiate_type(&parameter.ty, instantiator);
-						Some(Arr::_1(self.check_subtype(ty, arg_ast)))
-					}
-					None => {
-						self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl.copy(), 1));
-						None
-					}
-				},
-			ArgAsts::Many(arg_asts_array) =>
-				if parameters.len() != arg_asts_array.len() {
-					self.add_diagnostic(
-						loc,
-						Diag::ArgumentCountMismatch(method_decl.copy(), arg_asts_array.len()),
-					);
-					None
-				} else {
-					Some(parameters.zip(arg_asts_array, |parameter, arg_ast| {
-						self.check_subtype(instantiate_type(&parameter.ty, instantiator), arg_ast)
-					}))
-				},
+		if parameters.len() != arg_asts.len() {
+			self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl.copy(), arg_asts.len()));
+			None
+		} else {
+			Some(parameters.zip(arg_asts, |parameter, arg_ast| {
+				self.check_subtype(instantiate_type(&parameter.ty, instantiator), arg_ast)
+			}))
 		}
 	}
 
@@ -661,13 +637,6 @@ impl Expected {
 			_ => false,
 		}
 	}
-}
-
-// Needed to make check_call work in both cases
-// TODO: use a trait, and make fns on this generic
-enum ArgAsts<'a> {
-	One(&'a ast::Expr),
-	Many(&'a [ast::Expr]),
 }
 
 //mv

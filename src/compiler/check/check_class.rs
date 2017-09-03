@@ -99,7 +99,7 @@ fn fill_method_bodies(ctx: &mut Ctx, method_asts: &[ast::Method]) {
 				)),
 			None => None,
 		};
-		method.set_body(body)
+		method.body.init(body)
 	}
 }
 

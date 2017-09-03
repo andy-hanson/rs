@@ -1,7 +1,12 @@
-use std::u8;
+use std::{u32, u8};
 
 pub fn u8_to_usize(u: u8) -> usize {
 	u as usize
+}
+
+pub fn usize_to_u32(u: usize) -> u32 {
+	assert!(u <= u32::MAX as usize);
+	u as u32
 }
 
 pub fn u8_add_mut(a: &mut u8, b: u8) {

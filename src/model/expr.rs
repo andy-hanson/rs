@@ -1,6 +1,4 @@
-use std::rc::Rc;
-
-use util::arr::{Arr, ArrBuilder};
+use util::arr::{Arr, ArrBuilder, RcArr};
 use util::loc::Loc;
 use util::ptr::{Own, Ptr};
 use util::sym::Sym;
@@ -15,7 +13,7 @@ pub enum LiteralValue {
 	Nat(u32),
 	Int(i32),
 	Float(f64),
-	String(Rc<Arr<u8>>),
+	String(RcArr<u8>),
 }
 impl LiteralValue {
 	fn ty(&self) -> &Ty {

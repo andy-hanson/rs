@@ -5,7 +5,7 @@ use util::arr::Arr;
 use util::string_maker::{Show, Shower};
 
 lazy_static! {
-	static ref STRING_TO_SYMBOL: Mutex<HashMap<Box<[u8]>, Sym>> = Mutex::new(HashMap::new());
+	static ref STRING_TO_SYMBOL: Mutex<HashMap<Arr<u8>, Sym>> = Mutex::new(HashMap::new());
 	static ref SYMBOL_TO_STRING: Mutex<HashMap<Sym, Arr<u8>>> = Mutex::new(HashMap::new());
 	static ref NEXT_SYMBOL_ID: Mutex<i32> = Mutex::new(0);
 }
@@ -25,7 +25,7 @@ impl Sym {
 			let mut next_id = NEXT_SYMBOL_ID.lock().unwrap();
 			let sym = Sym(*next_id);
 			*next_id += 1;
-			string_to_symbol.insert(Arr::copy_from_slice(input).into_box(), sym);
+			string_to_symbol.insert(Arr::copy_from_slice(input), sym);
 			SYMBOL_TO_STRING
 				.lock()
 				.unwrap()

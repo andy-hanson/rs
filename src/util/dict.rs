@@ -1,8 +1,10 @@
 use std::borrow::Borrow;
 use std::collections::HashMap;
-use std::collections::hash_map::{IntoIter, Iter};
+use std::collections::hash_map::{IntoIter, Iter, Values};
 use std::hash::Hash;
 use std::iter::FromIterator;
+
+use super::arr::Arr;
 
 // TODO:PERF don't use HashMap
 
@@ -22,7 +24,7 @@ impl<K: Hash + Eq, V> Dict<K, V> {
 	}
 
 	pub fn from_iterator<T: IntoIterator<Item = (K, V)>>(i: T) -> Self {
-		Dict(HashMap::from_iter(i))
+		MutDict::from_iterator(i).freeze()
 	}
 
 	pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
@@ -38,6 +40,18 @@ pub struct MutDict<K: Hash + Eq, V>(HashMap<K, V>);
 impl<K: Hash + Eq, V> MutDict<K, V> {
 	pub fn new() -> Self {
 		MutDict(HashMap::new())
+	}
+
+	pub fn from_iterator<T: IntoIterator<Item = (K, V)>>(i: T) -> Self {
+		MutDict(HashMap::from_iter(i))
+	}
+
+	pub fn values(&self) -> Values<K, V> {
+		self.0.values()
+	}
+
+	pub fn any(&self) -> bool {
+		!self.0.is_empty()
 	}
 
 	pub fn add(&mut self, key: K, value: V) {
@@ -92,6 +106,10 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 
 	fn move_into_iter(self) -> IntoIter<K, V> {
 		self.0.into_iter()
+	}
+
+	pub fn into_keys(self) -> Arr<K> {
+		Arr::from_iterator(self.move_into_iter().map(|(k, _)| k))
 	}
 }
 

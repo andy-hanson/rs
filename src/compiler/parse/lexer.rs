@@ -568,6 +568,7 @@ impl<'a> Lexer<'a> {
 		let v = self.take_name_slice()?;
 		Ok(Sym::from_slice(v))
 	}
+
 	pub fn take_ty_name(&mut self) -> Result<Sym> {
 		let v = self.take_ty_name_slice()?;
 		Ok(Sym::from_slice(v))

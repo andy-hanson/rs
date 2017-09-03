@@ -1,6 +1,4 @@
-use std::rc::Rc;
-
-use util::arr::Arr;
+use util::arr::{Arr, RcArr};
 use util::dict::Dict;
 use util::ptr::{Own, Ptr};
 
@@ -69,7 +67,7 @@ pub enum Instruction {
 	LiteralNat(u32),
 	LiteralInt(i32),
 	LiteralFloat(f64),
-	LiteralString(Rc<Arr<u8>>),
+	LiteralString(RcArr<u8>),
 	/** Fetch a value from N values up the stack. */
 	Fetch(u8),
 	/**

@@ -11,12 +11,12 @@ use super::builtins::BuiltinsOwn;
 
 mod compiler;
 mod module_resolver;
-use self::compiler::compile;
-pub use self::module_resolver::full_path;
+pub use self::compiler::compile;
+pub use self::module_resolver::{full_path, EXTENSION};
 
 pub struct CompiledProgram {
 	builtins: BuiltinsOwn,
-	modules: MutDict<Own<Path>, OwnModuleOrFail>,
+	pub modules: MutDict<Own<Path>, OwnModuleOrFail>,
 }
 
 pub enum CompileResult {
@@ -29,7 +29,7 @@ pub fn compile_dir(dir: Path) -> Result<CompileResult> {
 }
 
 pub fn compile_file(path: &Path) -> Result<CompileResult> {
-	let file_name = path.last().unwrap().without_end_if_ends_with(".nz"); //TODO: magic constant
+	let file_name = path.last().unwrap().without_end_if_ends_with(&EXTENSION); //TODO: magic constant
 	let file_path = if file_name.equals_str("index") {
 		Path::empty()
 	} else {

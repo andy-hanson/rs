@@ -1,6 +1,6 @@
 use std::fs::File;
+pub use std::io::{Error, Result};
 use std::io::{ErrorKind, Read};
-pub use std::io::Result;
 
 use util::arr::Arr;
 use util::path::Path;

@@ -1,6 +1,8 @@
 use std::borrow::Borrow;
+use std::iter::Iterator;
 use std::mem::replace;
 use std::ops::{Deref, Index, Range};
+use std::rc::Rc;
 use std::slice::Iter;
 use std::str::FromStr;
 use std::vec::IntoIter as VecIntoIter;
@@ -9,13 +11,18 @@ use std::vec::IntoIter as VecIntoIter;
 pub struct Arr<T>(Box<[T]>);
 
 impl<T> Arr<T> {
+	pub fn from_iterator<I: IntoIterator<Item = T>>(i: I) -> Self {
+		//TODO:PERF
+		let mut b = ArrBuilder::<T>::new();
+		for em in i {
+			b.add(em)
+		}
+		b.finish()
+	}
+
 	pub fn slice(&self, lo: usize, hi: usize) -> &[T] {
 		let borrow: &[T] = &*self.0;
 		&borrow[lo..hi]
-	}
-
-	pub fn into_box(self) -> Box<[T]> {
-		self.0
 	}
 
 	pub fn _1(a: T) -> Self {
@@ -40,7 +47,8 @@ impl<T> Arr<T> {
 	}
 
 	pub fn empty() -> Self {
-		Arr(Vec::new().into_boxed_slice())
+		// TODO:PERF should be able to do this without allocating...
+		Arr(Box::new([]))
 	}
 
 	pub fn move_into_iter(self) -> VecIntoIter<T> {
@@ -159,12 +167,12 @@ pub trait U8SliceOps: SliceOps<u8> {
 		parts.finish()
 	}
 
-	fn without_end_if_ends_with(&self, s: &str) -> &[u8] {
+	fn without_end_if_ends_with(&self, s: &[u8]) -> &[u8] {
 		if self.len() < s.len() {
-			return self.as_slice()
+			self.as_slice()
+		} else {
+			unimplemented!()
 		}
-		let _ = Arr::copy_from_str(s);
-		panic!()
 	}
 }
 impl U8SliceOps for Arr<u8> {
@@ -220,6 +228,14 @@ impl<T> ArrBuilder<T> {
 		Arr::from_vec(self.0)
 	}
 }
+impl<T: Copy> ArrBuilder<T> {
+	pub fn add_slice(&mut self, slice: &[T]) {
+		// TODO:PERF: memcpy?
+		for em in slice.iter() {
+			self.add(*em)
+		}
+	}
+}
 impl<T> Deref for ArrBuilder<T> {
 	type Target = [T];
 	fn deref(&self) -> &[T] {
@@ -238,6 +254,15 @@ pub trait SliceOps<T>: Index<usize, Output = T> {
 		} else {
 			None
 		}
+	}
+
+	fn some<F: Fn(&T) -> bool>(&self, pred: F) -> bool {
+		for x in self.iter() {
+			if pred(x) {
+				return true
+			}
+		}
+		false
 	}
 
 	fn map<U, F: FnMut(&T) -> U>(&self, mut f: F) -> Arr<U> {
@@ -377,3 +402,11 @@ impl<T> SliceOps<T> for [T] {
 	}
 }
 impl<T: Clone> CloneSliceOps<T> for [T] {}
+
+// TODO: would be nice to avoid the double indirection.
+// https://www.reddit.com/r/rust/comments/4jfjad/does_rct_work/
+pub type RcArr<T> = Rc<Arr<T>>;
+
+pub fn single_as_slice<T>(item: &T) -> &[T] {
+	unsafe { ::std::slice::from_raw_parts(item, 1) }
+}

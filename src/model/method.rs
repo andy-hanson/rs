@@ -86,10 +86,6 @@ impl MethodWithBody {
 		&self.body
 	}
 
-	pub fn set_body(&self, expr: Option<Expr>) {
-		self.body.init(expr)
-	}
-
 	pub fn arity(&self) -> u8 {
 		self.signature.arity()
 	}

@@ -1,8 +1,7 @@
 mod builtins;
 mod check;
-mod compile;
+mod main;
 mod parse;
 
-pub use self::compile::compile_dir;
-pub use self::compile::compile_file;
-pub use self::compile::full_path;
+pub use self::main::{compile, compile_dir, compile_file, full_path, CompileResult, CompiledProgram,
+                     EXTENSION};

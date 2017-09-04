@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use std::io::Write as IoWrite;
 use std::iter::Iterator;
 use std::marker::Sized;
 
@@ -14,25 +15,65 @@ where
 		StringMaker::stringify(self)
 	}
 }
+impl Show for char {
+	fn show<S: Shower>(&self, s: &mut S) {
+		s._add_char(*self);
+	}
+}
+impl<'a> Show for &'a [u8] {
+	fn show<S: Shower>(&self, s: &mut S) {
+		s._add_bytes(*self);
+	}
+}
+impl<'a> Show for Arr<u8> {
+	fn show<S: Shower>(&self, s: &mut S) {
+		s._add_bytes(&*self);
+	}
+}
+impl<'a> Show for &'a str {
+	fn show<S: Shower>(&self, s: &mut S) {
+		s._add_bytes(self.as_bytes());
+	}
+}
+impl Show for u32 {
+	fn show<S: Shower>(&self, s: &mut S) {
+		s._add_uint(*self);
+	}
+}
+impl Show for i32 {
+	fn show<S: Shower>(&self, s: &mut S) {
+		s._add_int(*self);
+	}
+}
+impl Show for f64 {
+	fn show<S: Shower>(&self, s: &mut S) {
+		s._add_float(*self);
+	}
+}
+
 
 pub trait Shower
 where
 	Self: Sized,
 {
 	fn nl(&mut self) -> &mut Self;
-	fn add_char(&mut self, char: char) -> &mut Self;
-	fn add_bytes(&mut self, bytes: &[u8]) -> &mut Self;
-	fn add_str(&mut self, str: &'static str) -> &mut Self;
-	fn add_uint(&mut self, u: u32) -> &mut Self;
-	fn add_int(&mut self, i: i32) -> &mut Self;
-	fn add_float(&mut self, f: f64) -> &mut Self;
+	fn _add_char(&mut self, char: char) -> &mut Self;
+	fn _add_bytes(&mut self, bytes: &[u8]) -> &mut Self;
+	fn _add_uint(&mut self, u: u32) -> &mut Self;
+	fn _add_int(&mut self, i: i32) -> &mut Self;
+	fn _add_float(&mut self, f: f64) -> &mut Self;
+
+	fn add<T: Show>(&mut self, value: &T) -> &mut Self {
+		value.show(self);
+		self
+	}
 
 	fn join<T: Show>(&mut self, arr: &[T]) -> &mut Self {
 		if arr.any() {
 			arr[0].show(self);
 			for x in arr.iter().skip(1) {
-				self.add_char(',');
-				self.add_char(' ');
+				self.add(&',');
+				self.add(&' ');
 				x.show(self)
 			}
 		}
@@ -40,14 +81,56 @@ where
 	}
 
 	fn join_arrs(&mut self, arr: &[Arr<u8>]) -> &mut Self {
+		self.join_arrs_with(arr, ", ")
+	}
+
+	fn join_arrs_with(&mut self, arr: &[Arr<u8>], joiner: &str) -> &mut Self {
 		if arr.any() {
-			self.add_bytes(&arr[0]);
+			self.add(&arr[0]);
 			for x in arr.iter().skip(1) {
-				self.add_char(',');
-				self.add_char(' ');
-				self.add_bytes(x);
+				self._add_bytes(joiner.as_bytes());
+				self.add(x);
 			}
 		}
+		self
+	}
+}
+
+//mv
+pub struct WriteShower<W: IoWrite>(W);
+impl<W: IoWrite> WriteShower<W> {
+	pub fn new(w: W) -> Self {
+		WriteShower(w)
+	}
+}
+impl<W: IoWrite> Shower for WriteShower<W> {
+	fn nl(&mut self) -> &mut Self {
+		self.0.write_all(b"\n").unwrap();
+		self
+	}
+
+	fn _add_char(&mut self, char: char) -> &mut Self {
+		write!(&mut self.0, "{}", char).unwrap();
+		self
+	}
+
+	fn _add_bytes(&mut self, bytes: &[u8]) -> &mut Self {
+		self.0.write_all(bytes).unwrap();
+		self
+	}
+
+	fn _add_uint(&mut self, u: u32) -> &mut Self {
+		write!(&mut self.0, "{}", u).unwrap();
+		self
+	}
+
+	fn _add_int(&mut self, i: i32) -> &mut Self {
+		write!(&mut self.0, "{}", i).unwrap();
+		self
+	}
+
+	fn _add_float(&mut self, f: f64) -> &mut Self {
+		write!(&mut self.0, "{}", f).unwrap();
 		self
 	}
 }
@@ -59,33 +142,28 @@ impl Shower for StringMaker {
 		self
 	}
 
-	fn add_char(&mut self, ch: char) -> &mut Self {
+	fn _add_char(&mut self, ch: char) -> &mut Self {
 		self.0.push(ch);
 		self
 	}
 
-	fn add_bytes(&mut self, bytes: &[u8]) -> &mut Self {
+	fn _add_bytes(&mut self, bytes: &[u8]) -> &mut Self {
 		//TODO:PERF
 		self.0.push_str(&bytes.clone_to_utf8_string());
 		self
 	}
 
-	fn add_str(&mut self, s: &'static str) -> &mut Self {
-		self.0.push_str(s);
-		self
-	}
-
-	fn add_uint(&mut self, u: u32) -> &mut Self {
+	fn _add_uint(&mut self, u: u32) -> &mut Self {
 		write!(&mut self.0, "{}", u).unwrap();
 		self
 	}
 
-	fn add_int(&mut self, i: i32) -> &mut Self {
+	fn _add_int(&mut self, i: i32) -> &mut Self {
 		write!(&mut self.0, "{}", i).unwrap();
 		self
 	}
 
-	fn add_float(&mut self, f: f64) -> &mut Self {
+	fn _add_float(&mut self, f: f64) -> &mut Self {
 		write!(&mut self.0, "{}", f).unwrap();
 		self
 	}

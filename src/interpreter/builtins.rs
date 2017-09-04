@@ -11,7 +11,7 @@ pub fn get_builtin(module: &Module, implemented: Sym) -> BuiltinCode {
 		ModuleSourceEnum::Normal(_) =>
 			// Error: only builtins can have builtin implementations
 			unimplemented!(),
-		ModuleSourceEnum::Builtin(name) => name,
+		ModuleSourceEnum::Builtin { name, .. } => name,
 	};
 	let x = PATH_TO_IMPLS.get(&name).unwrap();
 	let y = x.get(&implemented).unwrap();

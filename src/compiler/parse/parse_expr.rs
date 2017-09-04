@@ -241,7 +241,7 @@ fn parse_for(l: &mut Lexer, start: Pos) -> Result<Expr> {
 	l.take_space()?;
 	let local_name = l.take_name()?;
 	l.take_space()?;
-	l.take_specific_keyword("in")?;
+	l.take_specific_keyword(b"in")?;
 	l.take_space()?;
 	let looper = parse_expr_and_expect_next(l, Ctx::YesOperators, Token::Indent)?;
 	let body = parse_block(l)?;
@@ -382,7 +382,7 @@ fn parse_try(l: &mut Lexer, start_pos: Pos) -> Result<Expr> {
 			...
 	*/
 	l.take_indent()?;
-	l.take_specific_keyword("do")?;
+	l.take_specific_keyword(b"do")?;
 	l.take_indent()?;
 	let do_ = parse_block(l)?;
 	let mut catch: Option<Catch> = None;
@@ -409,7 +409,7 @@ fn parse_try(l: &mut Lexer, start_pos: Pos) -> Result<Expr> {
 			});
 
 			if !l.try_take_dedent()? {
-				l.take_specific_keyword("finally")?;
+				l.take_specific_keyword(b"finally")?;
 				finally = Some(parse_finally(l)?);
 			}
 		}

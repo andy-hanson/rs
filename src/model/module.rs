@@ -11,19 +11,26 @@ use super::diag::Diagnostic;
 
 pub enum ModuleSourceEnum {
 	Normal(ModuleSource),
-	Builtin(Sym),
+	Builtin { name: Sym, text: &'static [u8] },
 }
 impl ModuleSourceEnum {
 	pub fn assert_normal(&self) -> &ModuleSource {
 		match *self {
 			ModuleSourceEnum::Normal(ref source) => source,
-			ModuleSourceEnum::Builtin(_) => unreachable!(),
+			ModuleSourceEnum::Builtin { .. } => unreachable!(),
+		}
+	}
+
+	pub fn text(&self) -> &[u8] {
+		match *self {
+			ModuleSourceEnum::Normal(ref source) => &source.document.text,
+			ModuleSourceEnum::Builtin { text, .. } => text,
 		}
 	}
 }
 
 pub struct ModuleSource {
-	pub logical_path: Ptr<Path>,
+	pub logical_path: Path,
 	pub is_index: bool,
 	pub document: DocumentInfo,
 }
@@ -45,31 +52,70 @@ impl OwnModuleOrFail {
 		}
 	}
 
-	pub fn name(&self) -> Sym {
+	fn to_ref(&self) -> RefModuleOrFail {
 		match *self {
-			OwnModuleOrFail::Module(ref m) => m.name(),
-			OwnModuleOrFail::Fail(ref f) => f.name(),
+			OwnModuleOrFail::Module(ref m) => RefModuleOrFail::Module(m),
+			OwnModuleOrFail::Fail(ref f) => RefModuleOrFail::Fail(f),
 		}
 	}
 
 	pub fn source(&self) -> &ModuleSourceEnum {
-		match *self {
-			OwnModuleOrFail::Module(ref m) => &m.source,
-			OwnModuleOrFail::Fail(ref f) => &f.source,
-		}
+		self.to_ref().source()
 	}
 
 	pub fn diagnostics(&self) -> &[Diagnostic] {
-		match *self {
-			OwnModuleOrFail::Module(ref m) => &m.diagnostics,
-			OwnModuleOrFail::Fail(ref f) => &f.diagnostics,
-		}
+		self.to_ref().diagnostics()
 	}
 }
 
 pub enum PtrModuleOrFail {
 	Module(Ptr<Module>),
 	Fail(Ptr<FailModule>),
+}
+impl PtrModuleOrFail {
+	fn to_ref(&self) -> RefModuleOrFail {
+		match *self {
+			PtrModuleOrFail::Module(ref m) => RefModuleOrFail::Module(m),
+			PtrModuleOrFail::Fail(ref f) => RefModuleOrFail::Fail(f),
+		}
+	}
+
+	pub fn name(&self) -> Sym {
+		self.to_ref().name()
+	}
+	pub fn source(&self) -> &ModuleSourceEnum {
+		self.to_ref().source()
+	}
+	pub fn diagnostics(&self) -> &[Diagnostic] {
+		self.to_ref().diagnostics()
+	}
+}
+
+enum RefModuleOrFail<'a> {
+	Module(&'a Module),
+	Fail(&'a FailModule),
+}
+impl<'a> RefModuleOrFail<'a> {
+	pub fn name(self) -> Sym {
+		match self {
+			RefModuleOrFail::Module(m) => m.name(),
+			RefModuleOrFail::Fail(f) => f.name(),
+		}
+	}
+
+	pub fn source(self) -> &'a ModuleSourceEnum {
+		match self {
+			RefModuleOrFail::Module(m) => &m.source,
+			RefModuleOrFail::Fail(f) => &f.source,
+		}
+	}
+
+	pub fn diagnostics(self) -> &'a [Diagnostic] {
+		match self {
+			RefModuleOrFail::Module(m) => &m.diagnostics,
+			RefModuleOrFail::Fail(f) => &f.diagnostics,
+		}
+	}
 }
 
 pub struct FailModule {

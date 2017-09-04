@@ -116,7 +116,7 @@ impl Path {
 }
 impl Show for Path {
 	fn show<S: Shower>(&self, s: &mut S) {
-		s.join_arrs(&self.0);
+		s.join_arrs_with(&self.0, "/");
 	}
 }
 impl Hash for Path {

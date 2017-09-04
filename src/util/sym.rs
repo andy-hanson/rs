@@ -7,6 +7,7 @@ use super::arr::{Arr, U8SliceOps};
 use super::string_maker::{Show, Shower};
 
 lazy_static! {
+	//TODO:PERF compare perf to https://github.com/kinghajj/shawshank
 	static ref STRING_TO_SYMBOL: Mutex<HashMap<Arr<u8>, Sym>> = Mutex::new(HashMap::new());
 	static ref SYMBOL_TO_STRING: Mutex<HashMap<Sym, Arr<u8>>> = Mutex::new(HashMap::new());
 	static ref NEXT_SYMBOL_ID: Mutex<i32> = Mutex::new(0);
@@ -39,8 +40,7 @@ impl Sym {
 impl Show for Sym {
 	fn show<S: Shower>(&self, s: &mut S) {
 		let map = SYMBOL_TO_STRING.lock().unwrap();
-		let st = map.get(self).unwrap();
-		s.add_bytes(st);
+		s.add(map.get(self).unwrap());
 	}
 }
 impl Serialize for Sym {

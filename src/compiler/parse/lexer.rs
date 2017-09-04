@@ -261,14 +261,14 @@ impl<'a> Lexer<'a> {
 	}
 
 	pub fn expect_newline_character(&mut self) -> Result<()> {
-		self.expect_character(b'\n', "newline")
+		self.expect_character(b'\n', b"newline")
 	}
 
 	pub fn expect_tab_character(&mut self) -> Result<()> {
-		self.expect_character(b'\t', "tab")
+		self.expect_character(b'\t', b"tab")
 	}
 
-	fn expect_character(&mut self, expected: u8, expected_desc: &'static str) -> Result<()> {
+	fn expect_character(&mut self, expected: u8, expected_desc: &'static [u8]) -> Result<()> {
 		let actual = self.read_char();
 		if actual == expected {
 			Ok(())
@@ -283,7 +283,7 @@ impl<'a> Lexer<'a> {
 	fn expect_character_by_predicate<F: Fn(u8) -> bool>(
 		&mut self,
 		pred: F,
-		expected_desc: &'static str,
+		expected_desc: &'static [u8],
 	) -> Result<()> {
 		let actual = self.read_char();
 		if pred(actual) {
@@ -449,28 +449,28 @@ impl<'a> Lexer<'a> {
 	}
 
 	pub fn take_equals(&mut self) -> Result<()> {
-		self.expect_character(b'=', "'='")
+		self.expect_character(b'=', b"'='")
 	}
 	pub fn take_space(&mut self) -> Result<()> {
-		self.expect_character(b' ', "space")
+		self.expect_character(b' ', b"space")
 	}
 	pub fn take_parenl(&mut self) -> Result<()> {
-		self.expect_character(b'(', "'('")
+		self.expect_character(b'(', b"'('")
 	}
 	pub fn take_parenr(&mut self) -> Result<()> {
-		self.expect_character(b')', "')'")
+		self.expect_character(b')', b"')'")
 	}
 	pub fn take_bracketl(&mut self) -> Result<()> {
-		self.expect_character(b'[', "'['")
+		self.expect_character(b'[', b"'['")
 	}
 	pub fn take_bracketr(&mut self) -> Result<()> {
-		self.expect_character(b']', "']'")
+		self.expect_character(b']', b"']'")
 	}
 	pub fn take_comma(&mut self) -> Result<()> {
-		self.expect_character(b',', "','")
+		self.expect_character(b',', b"','")
 	}
 	pub fn take_dot(&mut self) -> Result<()> {
-		self.expect_character(b'.', "'.'")
+		self.expect_character(b'.', b"'.'")
 	}
 
 	pub fn try_take_equals(&mut self) -> bool {
@@ -492,7 +492,7 @@ impl<'a> Lexer<'a> {
 		self.try_take(b']')
 	}
 
-	pub fn take_specific_keyword(&mut self, kw: &'static str) -> Result<()> {
+	pub fn take_specific_keyword(&mut self, kw: &'static [u8]) -> Result<()> {
 		self.must_read(kw, kw)
 	}
 
@@ -502,14 +502,14 @@ impl<'a> Lexer<'a> {
 
 	pub fn take_ty_name_slice(&mut self) -> Result<&[u8]> {
 		let start_pos = self.pos();
-		self.expect_character_by_predicate(is_upper_case_letter, "type name")?;
+		self.expect_character_by_predicate(is_upper_case_letter, b"type name")?;
 		self.skip_while(is_name_char);
 		Ok(self.slice_from(start_pos))
 	}
 
 	fn take_name_slice(&mut self) -> Result<&[u8]> {
 		let start_pos = self.pos();
-		self.expect_character_by_predicate(is_lower_case_letter, "(non-type) name")?;
+		self.expect_character_by_predicate(is_lower_case_letter, b"(non-type) name")?;
 		self.skip_while(is_name_char);
 		Ok(self.slice_from(start_pos))
 	}
@@ -540,23 +540,23 @@ impl<'a> Lexer<'a> {
 	pub fn take_catch_or_finally(&mut self) -> Result<CatchOrFinally> {
 		match self.read_char() {
 			b'c' => {
-				self.must_read("atch", "catch")?;
+				self.must_read(b"atch", b"catch")?;
 				Ok(CatchOrFinally::Catch)
 			}
 			b'f' => {
-				self.must_read("inally", "finally")?;
+				self.must_read(b"inally", b"finally")?;
 				Ok(CatchOrFinally::Finally)
 			}
-			ch => Err(self.unexpected_char(ch, "'catch' or 'finally'")),
+			ch => Err(self.unexpected_char(ch, b"'catch' or 'finally'")),
 		}
 	}
 
 	pub fn take_slot_keyword(&mut self) -> Result<SlotKw> {
-		self.must_read("va", "'val' or 'var'")?;
+		self.must_read(b"va", b"'val' or 'var'")?;
 		match self.read_char() {
 			b'l' => Ok(SlotKw::Val),
 			b'r' => Ok(SlotKw::Var),
-			ch => Err(self.unexpected_char(ch, "'val' or 'var'")),
+			ch => Err(self.unexpected_char(ch, b"'val' or 'var'")),
 		}
 	}
 
@@ -567,29 +567,29 @@ impl<'a> Lexer<'a> {
 
 		match self.read_char() {
 			b'd' => {
-				self.must_read("ef", "def")?;
+				self.must_read(b"ef", b"def")?;
 				Ok(MethodKw::Def)
 			}
 			b'f' => {
-				self.must_read("un", "fun")?;
+				self.must_read(b"un", b"fun")?;
 				Ok(MethodKw::Fun)
 			}
 			b'i' => {
-				self.must_read_char(b's', "is")?;
+				self.must_read_char(b's', b"is")?;
 				Ok(MethodKw::Is)
 			}
-			ch => Err(self.unexpected_char(ch, "'def' or 'fun' or 'is'")),
+			ch => Err(self.unexpected_char(ch, b"'def' or 'fun' or 'is'")),
 		}
 	}
 
-	fn must_read(&mut self, must_read_me: &'static str, expected_desc: &'static str) -> Result<()> {
-		for byte in must_read_me.as_bytes() {
+	fn must_read(&mut self, must_read_me: &'static [u8], expected_desc: &'static [u8]) -> Result<()> {
+		for byte in must_read_me {
 			self.must_read_char(*byte, expected_desc)?
 		}
 		Ok(())
 	}
 
-	fn must_read_char(&mut self, must_read_me: u8, expected_desc: &'static str) -> Result<()> {
+	fn must_read_char(&mut self, must_read_me: u8, expected_desc: &'static [u8]) -> Result<()> {
 		let ch = self.read_char();
 		if ch == must_read_me {
 			Ok(())
@@ -598,7 +598,7 @@ impl<'a> Lexer<'a> {
 		}
 	}
 
-	fn unexpected_char(&self, actual: u8, expected_desc: &'static str) -> Diagnostic {
+	fn unexpected_char(&self, actual: u8, expected_desc: &'static [u8]) -> Diagnostic {
 		Diagnostic(self.single_char_loc(), Diag::UnexpectedCharacter(char::from(actual), expected_desc))
 	}
 }

@@ -1,26 +1,61 @@
 use std::borrow::Borrow;
-use std::cell::UnsafeCell;
+use std::cell::{Cell, UnsafeCell};
 use std::hash::{Hash, Hasher};
+use std::intrinsics::type_name;
 use std::ops::Deref;
 
 use serde::{Serialize, Serializer};
 
+use std::sync::Mutex;
+
+//TODO:KILL
+lazy_static! {
+	static ref NEXT_OWN_ID: Mutex<usize> = Mutex::new(100);
+	static ref NEXT_PTR_ID: Mutex<usize> = Mutex::new(200);
+}
+
+fn get_and_incr(m: &Mutex<usize>) -> usize {
+	let mut next_id = m.lock().unwrap();
+	let id = *next_id;
+	*next_id += 1;
+	id
+}
+
 pub struct Own<T> {
+	//TODO:KILL
+	id: usize,
 	// TODO: #[cfg(debug_assertions)]
 	// Does not include the owning reference, so does not deallocate anything when this reaches 0.
-	ref_count: UnsafeCell<usize>,
+	//TODO:UnsafeCell
+	ref_count: Cell<usize>,
 	value: T,
 }
 impl<T> Own<T> {
-	pub fn new(value: T) -> Own<T> {
-		Own { ref_count: UnsafeCell::new(0), value }
+	pub fn new(value: T) -> Self {
+		let id = get_and_incr(&NEXT_OWN_ID);
+		let o = Own { id, ref_count: Cell::new(0), value };
+		println!("{}: Created", o.desc());
+		o
 	}
 
 	pub fn ptr(&self) -> Ptr<T> {
-		unsafe {
-			*self.ref_count.get() += 1;
-			Ptr(self as *const Own<T>)
+		//*self.ref_count.as_ptr() += 1;
+		self.ref_count.set(self.ref_count.get() + 1);
+		Ptr::new(self as *const Own<T>)
+	}
+
+	fn decr_ref_count(&self) {
+		println!("{}: Dropping a Ptr", self.desc());
+		if self.ref_count.get() == 0 {
+			let msg = format!("{}: Dropping a Ptr, but ref_count is already 0", self.desc());
+			println!("{}", msg);
+			panic!(msg)
 		}
+		self.ref_count.set(self.ref_count.get() - 1)
+	}
+
+	fn desc(&self) -> String {
+		format!("Own<{}>(id={}, ref_count={})", unsafe { type_name::<T>() }, self.id, self.ref_count.get())
 	}
 }
 impl<T> Deref for Own<T> {
@@ -31,11 +66,12 @@ impl<T> Deref for Own<T> {
 }
 impl<T> Drop for Own<T> {
 	fn drop(&mut self) {
-		unsafe {
-			if *self.ref_count.get() != 0 {
-				panic!("Ptr points to Own which has been dropped")
-			}
+		if self.ref_count.get() != 0 {
+			let msg = format!("{}: Trying to drop, but there is some Ptr to it", self.desc());
+			println!("{}", msg);
+			panic!(msg)
 		}
+		println!("{}: Dropped", self.desc());
 	}
 }
 impl<T> Borrow<T> for Own<T> {
@@ -62,31 +98,42 @@ impl<T: Serialize> Serialize for Own<T> {
 	where
 		S: Serializer,
 	{
-		self.deref().serialize(serializer)
+		self.value.serialize(serializer)
 	}
 }
 
-pub struct Ptr<T>(*const Own<T>);
+pub struct Ptr<T> {
+	id: usize,
+	value: *const Own<T>,
+}
 impl<T> Ptr<T> {
+	fn new(value: *const Own<T>) -> Self {
+		let id = get_and_incr(&NEXT_PTR_ID);
+		unsafe {
+			println!("{}: Attained a Ptr {}", (*value).desc(), id);
+		}
+		Ptr { id, value }
+	}
+
 	pub fn clone_ptr(&self) -> Ptr<T> {
-		unsafe { (*self.0).ptr() }
+		unsafe { (*self.value).ptr() }
 	}
 
 	pub fn ptr_equals(&self, other: &Ptr<T>) -> bool {
-		self.0 == other.0
+		self.value == other.value
 	}
 }
 impl<T> Deref for Ptr<T> {
 	type Target = T;
 	fn deref(&self) -> &T {
-		unsafe { &(*self.0).value }
+		unsafe { &(*self.value).value }
 	}
 }
 impl<T> Drop for Ptr<T> {
 	fn drop(&mut self) {
 		unsafe {
-			assert_eq!(*(*self.0).ref_count.get(), 0);
-			*(*self.0).ref_count.get() -= 1
+			println!("Drop ptr {}", self.id);
+			(*self.value).decr_ref_count();
 		}
 	}
 }
@@ -98,7 +145,7 @@ impl<T> PartialEq for Ptr<T> {
 }
 impl<T> Hash for Ptr<T> {
 	fn hash<H: Hasher>(&self, hasher: &mut H) {
-		hasher.write_usize(self.0 as usize)
+		hasher.write_usize(self.value as usize)
 	}
 }
 impl<T: SerializeAsPtr> Serialize for Ptr<T> {
@@ -118,7 +165,7 @@ pub trait SerializeAsPtr {
 		S: Serializer;
 }
 
-pub struct Late<T>(UnsafeCell<Option<T>>);
+pub struct Late<T>(UnsafeCell<Option<T>>); //TODO:UnsafeCell
 impl<T> Late<T> {
 	pub fn new() -> Late<T> {
 		Late(UnsafeCell::new(None))

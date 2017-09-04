@@ -15,7 +15,7 @@ pub trait FileInput {
 }
 
 pub struct NativeFileInput {
-	root_dir: Path,
+	pub root_dir: Path,
 }
 impl NativeFileInput {
 	pub fn new(root_dir: Path) -> Self {

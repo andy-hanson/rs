@@ -19,6 +19,10 @@ pub struct TestDocumentProvider {
 	expected_diagnostics: RefCell<MutDict<Path, Arr<ExpectedDiagnostic>>>,
 }
 impl TestDocumentProvider {
+	pub fn into_root_dir(self) -> Path {
+		self.file_input.root_dir
+	}
+
 	pub fn new(test_directory: Path) -> Self {
 		TestDocumentProvider {
 			file_input: NativeFileInput::new(test_directory),

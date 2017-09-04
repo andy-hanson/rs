@@ -1,14 +1,19 @@
 use serde::Serialize;
 use serde_json::to_string as to_json_string;
 
+use std::io::stderr;
+
 use util::arr::{Arr, SliceOps};
 use util::dict::{Dict, MutDict};
 use util::file_utils::{read_files_in_directory_recursive_if_exists, write_file,
                        write_file_and_ensure_directory, IoError};
+use util::loc::LineAndColumnGetter;
 use util::path::Path;
+use util::string_maker::{Show, Shower, WriteShower};
 
 mod test_document_provider;
 use super::compiler::{compile, CompileResult, CompiledProgram, EXTENSION};
+use super::model::diag::Diagnostic;
 use super::model::module::{Module, OwnModuleOrFail, PtrModuleOrFail};
 
 use self::test_document_provider::{ExpectedDiagnostic, TestDocumentProvider};
@@ -20,22 +25,51 @@ lazy_static! {
 }
 
 enum TestFailure {
-	NoIndex,
+	NoIndex(Path),
 	IoError(IoError),
 	ExtraBaselines(Arr<Path>),
 	ExpectedDiagnostics(Dict<Path, Arr<ExpectedDiagnostic>>),
+	UnexpectedDiagnostics(PtrModuleOrFail),
 	NoSuchBaseline(Path),
 	UnexpectedOutput { actual: Arr<u8>, expected: Arr<u8> },
 }
+impl Show for TestFailure {
+	fn show<S: Shower>(&self, s: &mut S) {
+		match *self {
+			TestFailure::NoIndex(ref path) => {
+				s.add(&"Could not find an index file at ").add(path);
+			}
+			TestFailure::IoError(_) => unimplemented!(),
+			TestFailure::ExtraBaselines(_) => unimplemented!(),
+			TestFailure::ExpectedDiagnostics(_) => unimplemented!(),
+			TestFailure::UnexpectedDiagnostics(ref m) => show_unexpected_diagnostics(m, s),
+			TestFailure::NoSuchBaseline(_) => unimplemented!(),
+			TestFailure::UnexpectedOutput { .. } => unimplemented!(),
+		}
+	}
+}
+
+fn show_unexpected_diagnostics<S: Shower>(module: &PtrModuleOrFail, s: &mut S) {
+	let diags = module.diagnostics();
+	assert!(diags.any()); // Else we shouldn't have thrown the error
+
+	let text = module.source().text();
+	let lc = LineAndColumnGetter::new(text);
+	for &Diagnostic(loc, ref data) in diags {
+		let lc_loc = lc.line_and_column_at_loc(loc);
+		s.add(&lc_loc).add(&" ").add(data);
+	}
+}
+
 type TestResult<T> = ::std::result::Result<T, TestFailure>;
 
-pub fn do_test_single(test_path: &Path, update_baselines: bool) {
+pub fn do_test_single(test_path: &Path, update_baselines: bool) -> i32 {
 	match test_single(test_path, update_baselines) {
-		Ok(()) => {}
+		Ok(()) => 0,
 		Err(e) => {
-			let _ = e;
-			//TODO: need to describe the error
-			unimplemented!()
+			let mut shower = WriteShower::new(stderr());
+			shower.add(&e).nl();
+			1
 		}
 	}
 }
@@ -46,18 +80,24 @@ fn test_single(test_path: &Path, update_baselines: bool) -> TestResult<()> {
 	let test_directory = Path::resolve_with_root(&CASES_ROOT_DIR, test_path);
 	let baselines_directory = Path::resolve_with_root(&BASELINES_ROOT_DIR, test_path);
 
-	let document_provider = TestDocumentProvider::new(test_directory);
-	let compile_result = io_result_to_result(compile(Path::empty(), &document_provider, None))?;
-	let (program, root) = match compile_result {
-		CompileResult::RootMissing => return Err(TestFailure::NoIndex),
-		CompileResult::RootFound(program, root) => (program, root),
+	let (program, root, mut expected_diagnostics, mut expected_baselines) = {
+		let document_provider = TestDocumentProvider::new(test_directory);
+		let (program, root) = {
+			let compile_result = io_result_to_result(compile(Path::empty(), &document_provider, None))?;
+			match compile_result {
+				CompileResult::RootMissing =>
+					return Err(TestFailure::NoIndex(document_provider.into_root_dir())),
+				CompileResult::RootFound(program, root) => (program, root),
+			}
+		};
+		let expected_diagnostics = document_provider.get_expected_diagnostics();
+		let expected_baselines = io_result_to_result(
+			read_files_in_directory_recursive_if_exists(&baselines_directory),
+		)?.map_values(Arr::from_vec);
+		(program, root, expected_diagnostics, expected_baselines)
 	};
 
-	let mut expected_diagnostics = document_provider.get_expected_diagnostics();
-	let mut expected_baselines =
-		read_files_in_directory_recursive_if_exists(&baselines_directory).map_values(Arr::from_vec);
-
-	check_builtin_diagnostics(&program);
+	check_builtin_diagnostics(&program)?;
 
 	match root {
 		PtrModuleOrFail::Module(m) =>
@@ -92,12 +132,17 @@ fn test_single(test_path: &Path, update_baselines: bool) -> TestResult<()> {
 			),
 	}?;
 
-	unused!(update_baselines);
-	if expected_baselines.any() {
+	let res = if expected_baselines.any() {
 		Err(TestFailure::ExtraBaselines(expected_baselines.into_keys()))
 	} else {
 		Ok(())
-	}
+	};
+
+	//TODO:KILL (and rely on implicit drop order)
+	drop(expected_diagnostics);
+	drop(program);
+
+	res
 }
 
 const EXT_MODEL: &[u8] = b".model";
@@ -135,15 +180,14 @@ fn test_with_diagnostics(
 }
 
 //TODO:Should only have to do this once...
-fn check_builtin_diagnostics(program: &CompiledProgram) {
+fn check_builtin_diagnostics(program: &CompiledProgram) -> TestResult<()> {
 	let b = &program.builtins;
 	for builtin_module in b.all.iter() {
-		for diag in builtin_module.diagnostics() {
-			let _ = diag;
-			// TODO: show the diagnostic (must implement diagnostic show)
-			unimplemented!()
+		if builtin_module.diagnostics().any() {
+			return Err(TestFailure::UnexpectedDiagnostics(builtin_module.to_ptr()))
 		}
 	}
+	Ok(())
 }
 
 fn assert_baseline<T: Serialize>(

@@ -132,7 +132,10 @@ impl<'a> CheckExprContext<'a> {
 					}
 				};
 				if arg_asts.len() != slots.len() {
-					self.add_diagnostic(loc, Diag::NewArgumentCountMismatch(slots.len(), arg_asts.len()));
+					self.add_diagnostic(loc, Diag::NewArgumentCountMismatch {
+						expected: slots.len(),
+						actual: arg_asts.len(),
+					});
 					return bogus(loc)
 				}
 
@@ -441,7 +444,10 @@ impl<'a> CheckExprContext<'a> {
 			}
 
 			if !self.self_effect.contains(method_decl.self_effect()) {
-				self.add_diagnostic(loc, Diag::IllegalEffect(self.self_effect, method_decl.self_effect()))
+				self.add_diagnostic(
+					loc,
+					Diag::IllegalEffect { allowed: self.self_effect, required: method_decl.self_effect() },
+				)
 			}
 
 			ExprData::MyInstanceMethodCall(inst_method, args, ty)
@@ -485,7 +491,7 @@ impl<'a> CheckExprContext<'a> {
 					}
 
 					if !target_effect.contains(m.self_effect()) {
-						self.add_diagnostic(loc, Diag::IllegalEffect(target_effect, m.self_effect()))
+						self.add_diagnostic(loc, Diag::IllegalEffect { allowed: target_effect, required: m.self_effect() })
 					}
 				}
 
@@ -593,7 +599,10 @@ impl<'a> CheckExprContext<'a> {
 		if is_assignable(expected_ty, e.ty()) {
 			Handled(Expr(loc, e))
 		} else {
-			self.add_diagnostic(loc, Diag::NotAssignable(expected_ty.clone(), e.ty().clone()));
+			self.add_diagnostic(
+				loc,
+				Diag::NotAssignable { expected: expected_ty.clone(), actual: e.ty().clone() },
+			);
 			Handled(Expr(loc, ExprData::BogusCast(expected_ty.clone(), Box::new(Expr(loc, e)))))
 		}
 	}

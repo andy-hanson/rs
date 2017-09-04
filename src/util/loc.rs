@@ -2,7 +2,8 @@ use serde::{Serialize, Serializer};
 
 use std::ops::{Add, Sub};
 
-use util::arr::{Arr, ArrBuilder, SliceOps};
+use super::arr::{Arr, ArrBuilder, SliceOps};
+use super::string_maker::{Show, Shower};
 
 #[derive(Copy, Clone)]
 pub struct Pos {
@@ -61,6 +62,11 @@ pub struct LineAndColumn {
 	pub line: u32,
 	pub column: u32,
 }
+impl Show for LineAndColumn {
+	fn show<S: Shower>(&self, s: &mut S) {
+		s.add(&self.line).add(&":").add(&self.column);
+	}
+}
 
 pub struct LineAndColumnLoc {
 	pub start: LineAndColumn,
@@ -72,6 +78,11 @@ impl LineAndColumnLoc {
 			start: LineAndColumn { line, column: start_column },
 			end: LineAndColumn { line, column: end_column },
 		}
+	}
+}
+impl Show for LineAndColumnLoc {
+	fn show<S: Shower>(&self, s: &mut S) {
+		s.add(&self.start).add(&"-").add(&self.end);
 	}
 }
 

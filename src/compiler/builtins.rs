@@ -56,7 +56,7 @@ pub fn get_builtins() -> BuiltinsOwn {
 	let sym_bool = Sym::of("bool");
 
 	for &(name, ref text) in BUILTINS_FILES.iter() {
-		let source = ModuleSourceEnum::Builtin(name);
+		let source = ModuleSourceEnum::Builtin { name, text };
 		builtins.add(match parse(text) {
 			Ok(ModuleAst { imports, class }) => {
 				let module = Own::new(Module {
@@ -83,11 +83,9 @@ pub fn get_builtins() -> BuiltinsOwn {
 				OwnModuleOrFail::Module(module)
 			}
 			Err(e) =>
-				OwnModuleOrFail::Fail(Own::new(FailModule {
-					source: ModuleSourceEnum::Builtin(name),
-					imports: Arr::empty(),
-					diagnostics: Arr::_1(e),
-				})),
+				OwnModuleOrFail::Fail(
+					Own::new(FailModule { source, imports: Arr::empty(), diagnostics: Arr::_1(e) }),
+				),
 		});
 	}
 

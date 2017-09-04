@@ -123,7 +123,8 @@ impl<'a, D: DocumentProvider> Compiler<'a, D> {
 			}
 			Err(parse_diag) => {
 				let source = ModuleSourceEnum::Normal(
-					ModuleSource { logical_path: own_logical_path.ptr(), is_index, document },
+					//TODO:PERF avoid path clone?
+					ModuleSource { logical_path: own_logical_path.clone_path(), is_index, document },
 				);
 				let diagnostics = Arr::_1(parse_diag);
 				let fail = Own::new(FailModule { source, imports: Arr::empty(), diagnostics });
@@ -164,7 +165,7 @@ impl<'a, D: DocumentProvider> Compiler<'a, D> {
 		}
 
 		let source = ModuleSourceEnum::Normal(
-			ModuleSource { logical_path: logical_path.clone_ptr(), is_index, document },
+			ModuleSource { logical_path: logical_path.clone_path(), is_index, document },
 		);
 		let res = match resolved_imports {
 			ResolvedImports::Success(imports) => {

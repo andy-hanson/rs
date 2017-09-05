@@ -18,10 +18,10 @@ impl Path {
 		Path(self.0.clone())
 	}
 
-	pub fn clone_from_slices(slices: &List<&[u8]>) -> Self {
+	pub fn clone_from_slices<'a>(slices: &'a List<&'a [u8]>) -> Self {
 		//TODO:PERF
 		let mut b = ArrBuilder::<Arr<u8>>::new();
-		for slice in slices {
+		for slice in slices.iter() {
 			b.add(Arr::copy_from_slice(slice))
 		}
 		Path(b.finish())
@@ -164,7 +164,7 @@ pub struct RelPath {
 	pub rel_to_parent: Path,
 }
 impl RelPath {
-	pub fn clone_from_slices(n_parents: usize, slices: &List<&[u8]>) -> Self {
+	pub fn clone_from_slices<'a>(n_parents: usize, slices: &'a List<&'a [u8]>) -> Self {
 		RelPath { n_parents, rel_to_parent: Path::clone_from_slices(slices) }
 	}
 	//pub fn clone_path(&self) -> RelPath {

@@ -54,41 +54,41 @@ impl<'a> Ctx<'a> {
 		unimplemented!()
 	}
 
-	pub fn instantiate_class_from_ast(
+	pub fn instantiate_class_from_ast<'ast>(
 		&self,
 		loc: Loc,
 		name: Sym,
-		ty_arg_asts: &List<ast::Ty>,
+		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
 	) -> Option<InstCls> {
 		self.access_class_declaration_or_add_diagnostic(loc, name)
 			.and_then(|class| self.instantiate_class(class, ty_arg_asts))
 	}
 
-	pub fn instantiate_class(
+	pub fn instantiate_class<'ast>(
 		&self,
 		class: Ptr<ClassDeclaration>,
-		ty_arg_asts: &List<ast::Ty>,
+		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
 	) -> Option<InstCls> {
-		if ty_arg_asts.len() != class.type_parameters.len() {
+		if ty_arg_asts.len != class.type_parameters.len() {
 			unimplemented!()
 		} else {
 			Some(InstCls(class.clone_ptr(), self.get_ty_args(ty_arg_asts)))
 		}
 	}
 
-	pub fn instantiate_method(
+	pub fn instantiate_method<'ast>(
 		&self,
 		method_decl: &MethodOrAbstract,
-		ty_arg_asts: &List<ast::Ty>,
+		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
 	) -> Option<InstMethod> {
-		if ty_arg_asts.len() != method_decl.type_parameters().len() {
+		if ty_arg_asts.len != method_decl.type_parameters().len() {
 			unimplemented!()
 		} else {
 			Some(InstMethod(method_decl.copy(), self.get_ty_args(ty_arg_asts)))
 		}
 	}
 
-	fn get_ty_args(&self, ty_arg_asts: &List<ast::Ty>) -> Arr<Ty> {
+	fn get_ty_args<'ast>(&self, ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>) -> Arr<Ty> {
 		ty_arg_asts.map(|ty_ast| self.get_ty(ty_ast))
 	}
 

@@ -353,11 +353,11 @@ pub trait SliceOps<T>: Index<usize, Output = T> {
 	}
 
 	//TODO:PERF (only iterate once)
-	fn each_corresponds_list<U, F: Fn(&T, &U) -> bool>(&self, other: &List<U>, f: F) -> bool {
-		if self.len() != other.len() {
+	fn each_corresponds_list<'a, U, F: Fn(&T, &U) -> bool>(&self, other: &'a List<'a, U>, f: F) -> bool {
+		if self.len() != other.len {
 			return false
 		}
-		for (i, o) in other.into_iter().enumerate() {
+		for (i, o) in other.iter().enumerate() {
 			if !f(&self[i], o) {
 				return false
 			}

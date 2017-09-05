@@ -17,7 +17,7 @@ use super::check_expr::check_method_body;
 use super::ctx::Ctx;
 use super::instantiator::Instantiator;
 
-pub fn check_module(module: &Module, builtins: &BuiltinsCtx, ast: &ast::Class, name: Sym) {
+pub fn check_module<'a>(module: &Module, builtins: &BuiltinsCtx, ast: &'a ast::Class<'a>, name: Sym) {
 	let type_parameters = ast.type_parameters.map_on_clones(TypeParameter::create);
 	let class = &module.class;
 	// Create the class early and assign its properties later.
@@ -36,7 +36,7 @@ pub fn check_module(module: &Module, builtins: &BuiltinsCtx, ast: &ast::Class, n
 	module.diagnostics.init(ctx.finish())
 }
 
-fn do_check(ctx: &mut Ctx, ast: &ast::Class) {
+fn do_check<'a>(ctx: &mut Ctx, ast: &'a ast::Class<'a>) {
 	// type parameters already handled before calling this.
 	let &ast::Class { head: ref head_ast, supers: ref super_asts, methods: ref method_asts, .. } = ast;
 
@@ -57,18 +57,19 @@ fn do_check(ctx: &mut Ctx, ast: &ast::Class) {
 }
 
 //mv
-fn fill_impl_bodies(ctx: &mut Ctx, super_asts: &List<ast::Super>) {
+fn fill_impl_bodies<'a>(ctx: &mut Ctx, super_asts: &'a List<ast::Super<'a>>) {
 	// There may be fewer supers than super_asts.
 	// TODO: but we can check that they correspond using the `loc`.
 
 	let supers = &ctx.current_class.supers;
-	if super_asts.len() != supers.len() {
+	if super_asts.len != supers.len() {
 		unimplemented!()
 	}
 
 	super_asts.do_zip(supers, |super_ast, zuper| {
 		let instantiator = Instantiator::of_inst_cls(&zuper.super_class);
-		super_ast.impls.do_zip(&zuper.impls, |impl_ast, real_impl| {
+		let impl_asts: &'a List<ast::Impl<'a>> = &super_ast.impls;
+		impl_asts.do_zip(&zuper.impls, |impl_ast, real_impl| {
 			let body = match impl_ast.body {
 				Some(ref body_ast) =>
 					Some(check_method_body(
@@ -87,7 +88,7 @@ fn fill_impl_bodies(ctx: &mut Ctx, super_asts: &List<ast::Super>) {
 
 fn fill_method_bodies(ctx: &mut Ctx, method_asts: &List<ast::Method>) {
 	// Now that all methods exist, fill in their bodies.
-	for (i, method_ast) in method_asts.into_iter().enumerate() {
+	for (i, method_ast) in method_asts.iter().enumerate() {
 		let method = ctx.current_class.methods[i].ptr();
 		let body = match method_ast.body {
 			Some(ref body_ast) =>
@@ -104,9 +105,9 @@ fn fill_method_bodies(ctx: &mut Ctx, method_asts: &List<ast::Method>) {
 	}
 }
 
-fn check_super_initial(
+fn check_super_initial<'a>(
 	ctx: &mut Ctx,
-	&ast::Super { loc, name, ref ty_args, impls: ref impl_asts }: &ast::Super,
+	&ast::Super { loc, name, ref ty_args, impls: ref impl_asts }: &'a ast::Super<'a>,
 ) -> Option<Super> {
 	//let super_inst_cls = unwrap_or_return!(ctx.instantiate_class_from_ast(loc, name, ty_args), None);
 	//let super_class_declaration = super_inst_cls.class();
@@ -135,7 +136,7 @@ fn check_super_initial(
 			);
 			return None
 		}
-		abstract_methods.zip(impl_asts.into_iter(), |implemented, &ast::Impl { loc, ref parameter_names, .. }| {
+		abstract_methods.zip(impl_asts.iter(), |implemented, &ast::Impl { loc, ref parameter_names, .. }| {
 			if !implemented
 				.parameters()
 				.each_corresponds(parameter_names, |p, pn| p.name == *pn)
@@ -152,7 +153,7 @@ fn check_super_initial(
 	Some(Super { loc, super_class: super_inst_cls, impls })
 }
 
-fn check_method_initial(ctx: &mut Ctx, ast: &ast::Method) -> Own<MethodWithBody> {
+fn check_method_initial<'a>(ctx: &mut Ctx, ast: &'a ast::Method<'a>) -> Own<MethodWithBody> {
 	// Don't check method bodies yet, just fill their heads.
 	let &ast::Method {
 		loc,
@@ -184,13 +185,13 @@ fn check_method_initial(ctx: &mut Ctx, ast: &ast::Method) -> Own<MethodWithBody>
 	method
 }
 
-fn check_parameters(
+fn check_parameters<'a>(
 	ctx: &mut Ctx,
-	param_asts: &List<ast::Parameter>,
+	param_asts: &'a List<'a, ast::Parameter<'a>>,
 	type_parameters: &[Own<TypeParameter>],
 ) -> Arr<Own<Parameter>> {
 	param_asts.map_with_index(|&ast::Parameter { loc, ty: ref ty_ast, name }, index| {
-		for prior_param in param_asts.into_iter().take(index) {
+		for prior_param in param_asts.iter().take(index) {
 			if prior_param.name == name {
 				unimplemented!()
 				//ctx.add_diagnostic(loc, )

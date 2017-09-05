@@ -245,7 +245,7 @@ fn parse_for<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<&'a Expr<'a>> 
 	Ok(l.expr_from(start, ExprData::For(local_name, looper, body)))
 }
 
-fn slurp_operators<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, first: &'a Expr) -> Result<(&'a Expr<'a>, Next)> {
+fn slurp_operators<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, first: &'a Expr<'a>) -> Result<(&'a Expr<'a>, Next)> {
 	// Just saw Token::Operator
 	let mut operator = l.token_sym(start);
 	let mut left = first;

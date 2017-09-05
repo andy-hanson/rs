@@ -1,5 +1,5 @@
 use std::cell::UnsafeCell;
-use std::mem::{size_of, replace};
+use std::mem::{size_of};
 use std::ops::{Placer, Place, InPlace};
 use std::marker::PhantomData;
 use std::slice;
@@ -40,18 +40,18 @@ impl Arena {
 		unsafe { *self.next_index.get() }
 	}
 
-	fn alloc_in_array<T : NoDrop>(&self) -> &mut T {
+	fn alloc_in_array<T : NoDrop>(&self) -> *mut T {
 		self.alloc_worker()
 	}
 
-	fn alloc_single<T : NoDrop>(&self) -> &mut T {
+	fn alloc_single<T : NoDrop>(&self) -> *mut T {
 		if unsafe { *self.locked.get() } {
 			panic!("Trying to allocate while in the middle of writing to an array.")
 		}
 		self.alloc_worker()
 	}
 
-	fn alloc_worker<T : NoDrop>(&self) -> &mut T {
+	fn alloc_worker<T : NoDrop>(&self) -> *mut T {
 		let size = size_of::<T>();
 		assert!(size > 0);
 		unsafe {
@@ -88,10 +88,7 @@ impl Arena {
 	}
 
 	pub fn list_builder<'a, T : NoDrop>(&'a self) -> ListBuilder<'a, T> {
-		ListBuilder {
-			arena: self,
-			head: UnsafeCell::new(None),
-		}
+		ListBuilder::new(&self)
 	}
 
 	// Writes to a buffer and copies to the arena when finishing.
@@ -112,21 +109,53 @@ impl<'a, 'arena, T : 'a + Sized + NoDrop> Placer<T> for &'a Arena {
 
 pub struct ListBuilder<'a, T : 'a + Sized + NoDrop> {
 	arena: &'a Arena,
-	head: UnsafeCell<Option<*const ListNode<'a, T>>>,
+	//Returned at the end
+	first: UnsafeCell<Option<*const ListNode<'a, T>>>,
+	//Used to append new elements
+	last: UnsafeCell<Option<*mut ListNode<'a, T>>>,
+	length: UnsafeCell<usize>,
 }
 impl<'a, T : 'a + Sized + NoDrop> ListBuilder<'a, T> {
+	fn new(arena: &'a Arena) -> Self {
+		ListBuilder {
+			arena,
+			first: UnsafeCell::new(None),
+			last: UnsafeCell::new(None),
+			length: UnsafeCell::new(0),
+		}
+	}
+
 	pub fn add(&mut self) -> AddPlacer<T> {
 		//TODO:duplciate code in make_place
-		let node = self.arena.alloc_single::<ListNode<'a, T>>();
-		//TODO:PERF figure out how to do `node.next = self.head; self.head = Some(node)` safely
-		let old_head = replace(unsafe { self.head.get().as_mut() }.unwrap(), None);
-		node.next = old_head.map(|ptr| unsafe { &*ptr });
-		unsafe { *self.head.get() = Some(node); }
-		AddPlacer(&mut node.value)
+		unsafe {
+			*self.length.get().as_mut().unwrap() += 1;
+			let new_last = self.arena.alloc_single::<ListNode<'a, T>>();
+			let first = self.first.get().as_mut().unwrap();
+			let last = self.last.get().as_mut().unwrap();
+			if first.is_none() {
+				//First node
+				*first = Some(new_last);
+				*last = Some(new_last);
+			} else {
+				//If `first` is Some, `last` must be too.
+				*(*last.unwrap()).next.get().as_mut().unwrap() = Some(&*new_last);
+				*last = Some(new_last);
+				//let old_last = replace(unsafe { self.last.get().as_mut() }.unwrap(), None);
+				//old_last.next = new_last;
+				//.next = old_head.map(|ptr| unsafe { &*ptr });
+				//*self.last.get() = Some(node);
+			}
+			AddPlacer(&mut (*new_last).value)
+		}
 	}
 
 	pub fn finish(self) -> List<'a, T> {
-		List(unsafe { *self.head.get() }.map(|ptr| unsafe { &*ptr }))
+		unsafe {
+			List {
+				len: *self.length.get(),
+				head: (*self.first.get()).map(|ptr| &*ptr),
+			}
+		}
 	}
 }
 
@@ -138,43 +167,38 @@ impl<'a, T : 'a + Sized + NoDrop> Placer<T> for AddPlacer<'a, T> {
 	}
 }
 
-
-pub struct List<'a, T : 'a>(Option<&'a ListNode<'a, T>>);
+pub struct List<'a, T : 'a> {
+	pub len: usize,
+	head: Option<&'a ListNode<'a, T>>,
+}
 impl<'a, T : 'a> List<'a, T> {
 	pub fn empty() -> Self {
-		List(None)
+		List { len: 0, head: None }
 	}
 
 	pub fn any(&self) -> bool {
-		self.0.is_some()
-	}
-
-	//TODO:KILL!
-	pub fn len(&self) -> usize {
-		let mut l = 0;
-		for _ in self { l += 1 }
-		l
+		self.len != 0
 	}
 
 	//TODO:KILL
-	pub fn map<U, F : FnMut(&T) -> U>(&self, mut f: F) -> Arr<U> {
+	pub fn map<U, F : FnMut(&'a T) -> U>(&'a self, mut f: F) -> Arr<U> {
 		let mut b = ArrBuilder::<U>::new();
-		for x in self {
+		for x in self.iter() {
 			b.add(f(x))
 		}
 		b.finish()
 	}
 
 	//TODO:KILL
-	pub fn map_defined_probably_all<U, F: FnMut(&T) -> Option<U>>(&self, f: F) -> Arr<U> {
+	pub fn map_defined_probably_all<U, F: FnMut(&'a T) -> Option<U>>(&'a self, f: F) -> Arr<U> {
 		//TODO:PERF we will probably map all, so allocate self.len() space ahead of time
 		self.map_defined(f)
 	}
 
 	//TODO:KILL
-	pub fn map_defined<U, F: FnMut(&T) -> Option<U>>(&self, mut f: F) -> Arr<U> {
+	pub fn map_defined<U, F: FnMut(&'a T) -> Option<U>>(&'a self, mut f: F) -> Arr<U> {
 		let mut b = ArrBuilder::<U>::new();
-		for x in self {
+		for x in self.iter() {
 			if let Some(y) = f(x) {
 				b.add(y)
 			}
@@ -183,10 +207,10 @@ impl<'a, T : 'a> List<'a, T> {
 	}
 
 	//TODO:KILL
-	pub fn do_zip<U, F: Fn(&T, &U) -> ()>(&self, other: &[U], f: F) {
-		assert_eq!(self.len(), other.len());
+	pub fn do_zip<'u, U, F: Fn(&'a T, &'u U) -> ()>(&'a self, other: &'u [U], f: F) {
+		assert_eq!(self.len, other.len());
 		let mut i = 0;
-		for x in self {
+		for x in self.iter() {
 			let o = &other[i];
 			i += 1;
 			f(x, o)
@@ -194,20 +218,16 @@ impl<'a, T : 'a> List<'a, T> {
 	}
 
 	//TODO:KILL
-	pub fn map_with_index<U, F: Fn(&T, usize) -> U>(&self, f: F) -> Arr<U> {
+	pub fn map_with_index<U, F: Fn(&'a T, usize) -> U>(&'a self, f: F) -> Arr<U> {
 		let mut b = ArrBuilder::new();
-		for (i, x) in self.into_iter().enumerate() {
+		for (i, x) in self.iter().enumerate() {
 			b.add(f(x, i))
 		}
 		b.finish()
 	}
-}
-impl<'a, T : 'a> IntoIterator for &'a List<'a, T> {
-	type Item = &'a T;
-	type IntoIter = ListIter<'a, T>;
 
-	fn into_iter(self) -> ListIter<'a, T> {
-		ListIter(self.0)
+	pub fn iter(&self) -> ListIter<'a, T> {
+		ListIter(self.head)
 	}
 }
 impl<'a, T> NoDrop for List<'a, T> {
@@ -221,7 +241,7 @@ impl<'a, T : 'a> Iterator for ListIter<'a, T> {
 	fn next(&mut self) -> Option<&'a T> {
 		self.0.map(|n| {
 			let value = &n.value;
-			self.0 = n.next;
+			self.0 = unsafe { *n.next.get() };
 			value
 		})
 	}
@@ -229,7 +249,7 @@ impl<'a, T : 'a> Iterator for ListIter<'a, T> {
 
 struct ListNode<'a, T : 'a> {
 	value: T,
-	next: Option<&'a ListNode<'a, T>>,
+	next: UnsafeCell<Option<&'a ListNode<'a, T>>>,
 }
 impl<'a, T> NoDrop for ListNode<'a, T> where T : NoDrop {
 	const NO_DROP_MARKER: u8 = 0;

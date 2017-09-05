@@ -5,6 +5,7 @@ use util::arr::{Arr, SliceOps};
 use util::loc::Loc;
 use util::ptr::{Own, Ptr};
 use util::sym::Sym;
+use util::utils::todo;
 
 use super::super::super::model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration};
 use super::super::super::model::diag::Diag;
@@ -20,12 +21,12 @@ use super::ctx::Ctx;
 use super::instantiator::Instantiator;
 use super::type_utils::{common_type, instantiate_and_narrow_effects, instantiate_type, is_assignable};
 
-pub fn check_method_body(
+pub fn check_method_body<'ast>(
 	ctx: &Ctx,
 	method_or_impl: &MethodOrImpl,
 	method_instantiator: &Instantiator,
 	is_static: bool,
-	body: &ast::Expr,
+	body: &'ast ast::Expr<'ast>,
 ) -> Expr {
 	let signature = method_or_impl.signature();
 	let return_ty = instantiate_type(&signature.return_ty, method_instantiator);
@@ -55,32 +56,32 @@ impl<'a> CheckExprContext<'a> {
 		self.ctx.add_diagnostic(loc, data)
 	}
 
-	fn check_return(&self, ty: Ty, a: &ast::Expr) -> Expr {
+	fn check_return<'ast>(&self, ty: Ty, a: &'ast ast::Expr<'ast>) -> Expr {
 		self.check_expr(&mut Expected::Return(ty), a)
 	}
 
-	fn check_subtype(&self, ty: Ty, a: &ast::Expr) -> Expr {
+	fn check_subtype<'ast>(&self, ty: Ty, a: &'ast ast::Expr<'ast>) -> Expr {
 		self.check_expr(&mut Expected::SubTypeOf(ty), a)
 	}
 
-	fn check_void(&self, a: &ast::Expr) -> Expr {
+	fn check_void<'ast>(&self, a: &'ast ast::Expr<'ast>) -> Expr {
 		// Need to access builtins::void
 		self.check_subtype(self.ctx.void(), a)
 	}
 
-	fn check_bool(&self, a: &ast::Expr) -> Expr {
+	fn check_bool<'ast>(&self, a: &'ast ast::Expr<'ast>) -> Expr {
 		self.check_subtype(self.ctx.bool(), a)
 	}
 
-	fn check_infer(&self, a: &ast::Expr) -> Expr {
+	fn check_infer<'ast>(&self, a: &'ast ast::Expr<'ast>) -> Expr {
 		self.check_expr(&mut Expected::Infer(None), a)
 	}
 
-	fn check_expr(&self, mut e: &mut Expected, a: &ast::Expr) -> Expr {
+	fn check_expr<'ast>(&self, mut e: &mut Expected, a: &'ast ast::Expr<'ast>) -> Expr {
 		self.check_expr_worker(&mut e, a).0
 	}
 
-	fn check_expr_worker(&self, mut e: &mut Expected, &ast::Expr(loc, ref ast_data): &ast::Expr) -> Handled {
+	fn check_expr_worker<'ast>(&self, mut e: &mut Expected, &ast::Expr(loc, ref ast_data): &'ast ast::Expr<'ast>) -> Handled {
 		match *ast_data {
 			ast::ExprData::Access(name) => {
 				if let Some(local) = self.locals.borrow().iter().find(|l| l.name == name) {
@@ -108,8 +109,8 @@ impl<'a> CheckExprContext<'a> {
 				bogus(loc)
 			}
 			ast::ExprData::OperatorCall(ref left, operator, ref right) => {
-				let ty_args = List::empty(); // No way to provide these to an operator call.
-				self.call_method(&mut e, loc, left, operator, &ty_args, Some(right).into_iter())
+				let ty_args = todo();//List::empty(); // No way to provide these to an operator call.
+				self.call_method(&mut e, loc, left, operator, ty_args, Some(right).into_iter())
 			}
 			ast::ExprData::Call(ref target, ref args) =>
 				self.check_call_ast_worker(&mut e, loc, target, args),
@@ -121,7 +122,7 @@ impl<'a> CheckExprContext<'a> {
 				// implementing an abstract method where the superclass took type arguments.
 				let moa = &self.method_or_impl.method_or_abstract();
 				let inst = self.method_instantiator;
-				let args = unwrap_or_return!(self.check_arguments(loc, moa, inst, arg_asts.into_iter()), bogus(loc));
+				let args = unwrap_or_return!(self.check_arguments(loc, moa, inst, arg_asts.iter()), bogus(loc));
 				self.handle(&mut e, loc, ExprData::Recur(self.method_or_impl.copy(), args))
 			}
 			ast::ExprData::New(ref ty_arg_asts, ref arg_asts) => {
@@ -132,15 +133,15 @@ impl<'a> CheckExprContext<'a> {
 						return bogus(loc)
 					}
 				};
-				if arg_asts.len() != slots.len() {
+				if arg_asts.len != slots.len() {
 					self.add_diagnostic(loc, Diag::NewArgumentCountMismatch {
 						expected: slots.len(),
-						actual: arg_asts.len(),
+						actual: arg_asts.len,
 					});
 					return bogus(loc)
 				}
 
-				if self.ctx.current_class.type_parameters.len() != ty_arg_asts.len() {
+				if self.ctx.current_class.type_parameters.len() != ty_arg_asts.len {
 					unimplemented!()
 				}
 
@@ -148,7 +149,7 @@ impl<'a> CheckExprContext<'a> {
 					self.ctx.instantiate_class(self.ctx.current_class.ptr(), ty_arg_asts),
 					bogus(loc));
 				let instantiator = Instantiator::of_inst_cls(&inst_cls);
-				let args = slots.zip(arg_asts.into_iter(), |slot, arg|
+				let args = slots.zip(arg_asts.iter(), |slot, arg|
 					self.check_subtype(instantiate_type(&slot.ty, &instantiator), arg));
 				let ty = Ty::Plain(Effect::MAX, inst_cls);
 				self.handle(&mut e, loc, ExprData::New(ty, args))
@@ -331,15 +332,15 @@ impl<'a> CheckExprContext<'a> {
 		assert!(popped.is_some())
 	}
 
-	fn check_call_ast_worker(
+	fn check_call_ast_worker<'ast>(
 		&self,
 		mut expected: &mut Expected,
 		loc: Loc,
-		target: &ast::Expr,
-		args: &List<&ast::Expr>,
+		target: &'ast ast::Expr<'ast>,
+		args: &'ast List<&'ast ast::Expr<'ast>>,
 	) -> Handled {
 		let &ast::Expr(target_loc, ref target_data) = target;
-		let empty_list = List::empty(); //TODO:PERF
+		let empty_list = todo();//List::empty(); //TODO:PERF
 		let (&ast::Expr(real_target_loc, ref real_target_data), ty_arg_asts) = match *target_data {
 			ast::ExprData::TypeArguments(ref real_target, ref ty_arg_asts) => {
 				//TODO:SIMPLIFY
@@ -349,7 +350,7 @@ impl<'a> CheckExprContext<'a> {
 			}
 			_ => {
 				let a: &ast::Expr = target;
-				let b: &List<ast::Ty> = &empty_list;
+				let b: &List<ast::Ty> = empty_list;
 				(a, b)
 			},
 		};
@@ -363,7 +364,7 @@ impl<'a> CheckExprContext<'a> {
 				self.call_static_method(&mut expected, loc, cls, static_method_name, ty_arg_asts, args)
 			}
 			ast::ExprData::GetProperty(ref property_target, property_name) =>
-				self.call_method(&mut expected, loc, property_target, property_name, ty_arg_asts, args.into_iter()),
+				self.call_method(&mut expected, loc, property_target, property_name, ty_arg_asts, args.iter()),
 			ast::ExprData::Access(name) => self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
 			_ => {
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
@@ -372,14 +373,14 @@ impl<'a> CheckExprContext<'a> {
 		}
 	}
 
-	fn call_static_method(
+	fn call_static_method<'ast>(
 		&self,
 		mut expected: &mut Expected,
 		loc: Loc,
 		cls: Ptr<ClassDeclaration>,
 		method_name: Sym,
-		ty_arg_asts: &List<ast::Ty>,
-		arg_asts: &List<&ast::Expr>,
+		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
+		arg_asts: &'ast List<'ast, &'ast ast::Expr<'ast>>,
 	) -> Handled {
 		let method_decl = unwrap_or_return!(cls.find_static_method(method_name), {
 			self.add_diagnostic(loc, Diag::StaticMethodNotFound(cls.clone_ptr(), method_name));
@@ -395,7 +396,7 @@ impl<'a> CheckExprContext<'a> {
 		// No need to check selfEffect, because this is a static method.
 		// Static methods can't look at their class' type arguments
 		let args = unwrap_or_return!(
-			self.check_call_arguments(loc, &inst_method, &Instantiator::nil(), arg_asts.into_iter()),
+			self.check_call_arguments(loc, &inst_method, &Instantiator::nil(), arg_asts.iter()),
 			bogus(loc)
 		);
 
@@ -408,13 +409,13 @@ impl<'a> CheckExprContext<'a> {
 		InstCls::generic_self_reference(self.ctx.current_class.ptr())
 	}
 
-	fn call_own_method(
+	fn call_own_method<'ast>(
 		&self,
 		mut expected: &mut Expected,
 		loc: Loc,
 		method_name: Sym,
-		ty_arg_asts: &List<ast::Ty>,
-		arg_asts: &List<&ast::Expr>,
+		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
+		arg_asts: &'ast List<'ast, &'ast ast::Expr<'ast>>,
 	) -> Handled {
 		// Note: InstCls is still relevent here:
 		// Even if 'self' is not an inst, in a superclass we will fill in type parameters.
@@ -437,7 +438,7 @@ impl<'a> CheckExprContext<'a> {
 			unwrap_or_return!(self.ctx.instantiate_method(&method_decl, ty_arg_asts), bogus(loc));
 
 		let args = unwrap_or_return!(
-			self.check_call_arguments(loc, &inst_method, &member_instantiator, arg_asts.into_iter()),
+			self.check_call_arguments(loc, &inst_method, &member_instantiator, arg_asts.iter()),
 			bogus(loc)
 		);
 
@@ -465,13 +466,13 @@ impl<'a> CheckExprContext<'a> {
 		self.handle(&mut expected, loc, expr)
 	}
 
-	fn call_method<I : Iterator<Item=&'a &'a ast::Expr<'a>>>(
+	fn call_method<'ast, I : Iterator<Item=&'ast &'ast ast::Expr<'ast>>>(
 		&self,
 		mut expected: &mut Expected,
 		loc: Loc,
-		target_ast: &ast::Expr,
+		target_ast: &'ast ast::Expr<'ast>,
 		method_name: Sym,
-		ty_arg_asts: &List<ast::Ty>,
+		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
 		arg_asts: I,
 	) -> Handled {
 		let target = self.check_infer(target_ast);
@@ -522,7 +523,7 @@ impl<'a> CheckExprContext<'a> {
 		self.handle(&mut expected, loc, e)
 	}
 
-	fn check_call_arguments<I : Iterator<Item=&'a &'a ast::Expr<'a>>>(
+	fn check_call_arguments<'ast, I : Iterator<Item=&'ast &'ast ast::Expr<'ast>>>(
 		&self,
 		loc: Loc,
 		inst_method: &InstMethod,
@@ -533,7 +534,7 @@ impl<'a> CheckExprContext<'a> {
 		self.check_arguments(loc, &inst_method.0, &instantiator, arg_asts)
 	}
 
-	fn check_arguments<I : Iterator<Item=&'a &'a ast::Expr<'a>>>(
+	fn check_arguments<'ast, I : Iterator<Item=&'ast &'ast ast::Expr<'ast>>>(
 		&self,
 		loc: Loc,
 		method_decl: &MethodOrAbstract,

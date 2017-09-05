@@ -104,13 +104,13 @@ impl<'a, D: DocumentProvider> Compiler<'a, D> {
 		let arena = Arena::new();
 		let parse_result = parse(&arena, &document.text);
 		Ok(match parse_result {
-			Ok(ModuleAst { imports, class }) => {
+			Ok(ModuleAst { ref imports, ref class }) => {
 				let ptr_logical_path = own_logical_path.ptr();
 				self.modules.add(own_logical_path, ModuleState::Compiling);
 				let (module, is_reused) = self.do_compile_single(
 					&ptr_logical_path,
 					document,
-					&imports,
+					imports,
 					class,
 					full_path,
 					is_index,
@@ -139,12 +139,12 @@ impl<'a, D: DocumentProvider> Compiler<'a, D> {
 		})
 	}
 
-	fn do_compile_single(
+	fn do_compile_single<'ast>(
 		&mut self,
 		logical_path: &Ptr<Path>,
 		document: DocumentInfo,
-		import_asts: &List<ImportAst>,
-		class_ast: &ClassAst,
+		import_asts: &'ast List<'ast, ImportAst<'ast>>,
+		class_ast: &'ast ClassAst<'ast>,
 		full_path: Path,
 		is_index: bool,
 	) -> Result<(OwnModuleOrFail, bool), D::Error> {
@@ -191,10 +191,10 @@ impl<'a, D: DocumentProvider> Compiler<'a, D> {
 		Ok((res, false))
 	}
 
-	fn resolve_imports(
+	fn resolve_imports<'ast>(
 		&mut self,
 		full_path: &Path,
-		import_asts: &List<ImportAst>,
+		import_asts: &'ast List<'ast, ImportAst<'ast>>,
 	) -> Result<(ResolvedImports, bool), D::Error> {
 		let mut diagnostics = ArrBuilder::<Diagnostic>::new();
 		let mut all_imports_reused = true;
@@ -203,7 +203,7 @@ impl<'a, D: DocumentProvider> Compiler<'a, D> {
 		//TODO:PERF probably, this will not be necessary, somehow avoid allocating?
 		let mut all = ArrBuilder::<PtrModuleOrFail>::new();
 		let mut any_failure = false;
-		for import_ast in import_asts {
+		for import_ast in import_asts.iter() {
 			match self.resolve_import(import_ast, &mut diagnostics, full_path, &mut all_imports_reused)? {
 				Some(import) => {
 					if let PtrModuleOrFail::Module(ref module) = import {
@@ -226,9 +226,9 @@ impl<'a, D: DocumentProvider> Compiler<'a, D> {
 		Ok((resolved, all_imports_reused))
 	}
 
-	fn resolve_import(
+	fn resolve_import<'ast>(
 		&mut self,
-		import_ast: &ImportAst,
+		import_ast: &'ast ImportAst<'ast>,
 		import_diagnostics: &mut ArrBuilder<Diagnostic>,
 		full_path: &Path,
 		all_dependencies_reused: &mut bool,

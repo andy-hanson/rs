@@ -8,7 +8,7 @@ build:
 	rustup run nightly cargo build
 
 run:
-	RUST_BACKTRACE=short rustup run nightly cargo run
+	RUST_BACKTRACE=short rustup run nightly cargo run -p main
 
 update_dev_dependencies:
 	rustup update

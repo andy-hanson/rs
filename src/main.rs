@@ -1,6 +1,5 @@
-// TODO
-#![allow(dead_code)]
-#![allow(unknown_lints)] // Clippy lints aren't known to rustc stable
+#![allow(dead_code)] // TODO
+#![allow(unknown_lints)] // Clippy lints aren't known to rustc?
 //#![feature(core_intrinsics)]
 #![feature(custom_attribute)] // Used for serde
 #![feature(placement_in_syntax)]
@@ -13,25 +12,25 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json;
-//extern crate backtrace;
 
+extern crate compiler;
+extern crate host;
+extern crate interpreter;
+extern crate model;
 #[macro_use]
-mod util;
+extern crate util;
 
-mod compiler;
-mod host;
-mod interpreter;
-mod model;
 mod test;
 
 use std::process::exit;
 use test::do_test_single;
 use util::path::Path;
 
+use interpreter::dummy;
+
 fn main() {
+	dummy(1);
 	let exit_code = do_test_single(&Path::of_slice(b"Main-Pass"), /*update_baselines*/ false);
 	exit(exit_code)
 }

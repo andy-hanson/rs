@@ -1,0 +1,9 @@
+[package]
+name = "compiler"
+version = "0.1.0"
+
+[dependencies]
+host = { path = "../host" }
+model = { path = "../model" }
+util = { path = "../util" }
+lazy_static = "0.2"

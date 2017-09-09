@@ -3,10 +3,14 @@ name = "main"
 version = "0.1.0"
 dependencies = [
  "backtrace 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler 0.1.0",
+ "host 0.1.0",
+ "interpreter 0.1.0",
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "model 0.1.0",
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "util 0.1.0",
 ]
 
 [[package]]
@@ -38,6 +42,16 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "compiler"
+version = "0.1.0"
+dependencies = [
+ "host 0.1.0",
+ "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "model 0.1.0",
+ "util 0.1.0",
+]
+
+[[package]]
 name = "dbghelp-sys"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -55,6 +69,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "gcc"
 version = "0.3.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "host"
+version = "0.1.0"
+dependencies = [
+ "model 0.1.0",
+ "util 0.1.0",
+]
+
+[[package]]
+name = "interpreter"
+version = "0.1.0"
+dependencies = [
+ "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "model 0.1.0",
+ "util 0.1.0",
+]
 
 [[package]]
 name = "itoa"
@@ -79,6 +110,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "libc"
 version = "0.2.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "model"
+version = "0.1.0"
+dependencies = [
+ "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "util 0.1.0",
+]
 
 [[package]]
 name = "num-traits"
@@ -152,6 +192,15 @@ dependencies = [
 name = "unicode-xid"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "util"
+version = "0.1.0"
+dependencies = [
+ "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "winapi"

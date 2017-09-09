@@ -9,9 +9,10 @@ use util::loc::LineAndColumnLoc;
 use util::path::Path;
 use util::sym::Sym;
 
-use super::super::host::document_info::DocumentInfo;
-use super::super::host::document_provider::DocumentProvider;
-use super::super::host::file_input::{FileInput, NativeFileInput};
+use host::document_provider::DocumentProvider;
+use host::file_input::{FileInput, NativeFileInput};
+
+use model::document_info::DocumentInfo;
 
 pub struct ExpectedDiagnostic<'a>(LineAndColumnLoc, &'a [u8]);
 impl<'a> NoDrop for ExpectedDiagnostic<'a> {}

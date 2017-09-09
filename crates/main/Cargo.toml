@@ -1,0 +1,16 @@
+[package]
+name = "main"
+version = "0.1.0"
+authors = ["Andy Hanson <andy.pj.hanson@gmail.com>"]
+
+[dependencies]
+compiler = { path = "../compiler" }
+host = { path = "../host" }
+interpreter = { path = "../interpreter" }
+model = { path = "../model" }
+util = { path = "../util" }
+
+backtrace = "0.3"
+lazy_static = "0.2"
+serde = "1.0"
+serde_json = "1.0"

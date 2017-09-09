@@ -1,16 +1,9 @@
-[package]
-name = "main"
-version = "0.1.0"
-authors = ["Andy Hanson <andy.pj.hanson@gmail.com>"]
-
-[dependencies]
-compiler = { path = "crates/compiler" }
-host = { path = "crates/host" }
-interpreter = { path = "crates/interpreter" }
-model = { path = "crates/model" }
-util = { path = "crates/util" }
-
-backtrace = "0.3"
-lazy_static = "0.2"
-serde = "1.0"
-serde_json = "1.0"
+[workspace]
+members = [
+	"crates/compiler",
+	"crates/host",
+	"crates/interpreter",
+	"crates/main",
+	"crates/model",
+	"crates/util"
+]

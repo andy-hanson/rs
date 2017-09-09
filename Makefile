@@ -12,11 +12,11 @@ check:
 build:
 	cargo +nightly build
 
+#  -Zforce-overflow-checks=yes
+# -Zperf-stats
+# `-- -Zincremental=.incremental` didn't seem to improve anything
 run:
-	#  -Zforce-overflow-checks=yes
-	# -Zperf-stats
-	# `-- -Zincremental=.incremental` didn't seem to improve anything
-	RUST_BACKTRACE=short cargo +nightly run
+	RUST_BACKTRACE=short cargo +nightly run -p main
 
 update_dev_dependencies:
 	rustup update

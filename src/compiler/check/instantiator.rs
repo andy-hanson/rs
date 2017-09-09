@@ -10,11 +10,11 @@ impl<'model> Instantiator<'model> {
 		Instantiator(params, args)
 	}
 
-	pub fn of_inst_cls(&InstCls(ref class, ref type_arguments): &InstCls<'model>) -> Self {
-		Self::new(&class.type_parameters, type_arguments)
+	pub fn of_inst_cls(&InstCls(class, type_arguments): &InstCls<'model>) -> Self {
+		Self::new(class.type_parameters, type_arguments)
 	}
 
-	pub fn of_inst_method(&InstMethod(ref decl, ref type_arguments): &InstMethod<'model>) -> Self {
+	pub fn of_inst_method(&InstMethod(ref decl, type_arguments): &InstMethod<'model>) -> Self {
 		Self::new(decl.type_parameters(), type_arguments)
 	}
 

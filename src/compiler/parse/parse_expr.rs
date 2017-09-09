@@ -38,7 +38,7 @@ fn parse_block_with_start<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, first: Toke
 	match next.token {
 		Token::Newline => {
 			let data = match expr.1 {
-				ExprData::LetInProgress(ref pattern, ref value) => {
+				ExprData::LetInProgress(ref pattern, value) => {
 					//TODO: would be nice to destroy the LetInProgress, but we already allocated it in the arena...
 					let then = parse_block(l)?;
 					ExprData::Let(pattern, value, then)

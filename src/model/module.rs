@@ -24,7 +24,7 @@ impl<'a> ModuleSourceEnum<'a> {
 
 	pub fn text(&self) -> &[u8] {
 		match *self {
-			ModuleSourceEnum::Normal(ref source) => &source.document.text,
+			ModuleSourceEnum::Normal(ref source) => source.document.text,
 			ModuleSourceEnum::Builtin { text, .. } => text,
 		}
 	}
@@ -48,7 +48,8 @@ pub enum ModuleOrFail<'a> {
 }
 impl<'a> NoDrop for ModuleOrFail<'a> {}
 impl<'a> ModuleOrFail<'a> {
-	pub fn clone(&self) -> Self {
+	//TODO: just derive Copy
+	pub fn clone_as_ptr(&self) -> Self {
 		match *self {
 			ModuleOrFail::Module(m) => ModuleOrFail::Module(m),
 			ModuleOrFail::Fail(f) => ModuleOrFail::Fail(f),
@@ -76,8 +77,8 @@ impl<'a> ModuleOrFail<'a> {
 
 	pub fn diagnostics(&self) -> &'a List<'a, Diagnostic<'a>> {
 		match *self {
-			ModuleOrFail::Module(ref m) => &*m.diagnostics,
-			ModuleOrFail::Fail(ref f) => &f.diagnostics,
+			ModuleOrFail::Module(m) => &*m.diagnostics,
+			ModuleOrFail::Fail(f) => &f.diagnostics,
 		}
 	}
 }

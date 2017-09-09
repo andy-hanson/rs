@@ -40,7 +40,7 @@ impl<'a> AbstractMethod<'a> {
 	}
 
 	pub fn type_parameters(&self) -> &'a [TypeParameter<'a>] {
-		&self.0.type_parameters
+		self.0.type_parameters
 	}
 
 	pub fn return_ty(&self) -> &Ty<'a> {
@@ -52,7 +52,7 @@ impl<'a> AbstractMethod<'a> {
 	}
 
 	pub fn parameters(&self) -> &'a [Parameter<'a>] {
-		&self.0.parameters
+		self.0.parameters
 	}
 }
 impl<'a> NoDrop for AbstractMethod<'a> {}
@@ -84,7 +84,7 @@ impl<'a> MethodWithBody<'a> {
 	}
 
 	pub fn type_parameters(&self) -> &[TypeParameter<'a>] {
-		&self.signature.type_parameters
+		self.signature.type_parameters
 	}
 
 	pub fn return_ty(&self) -> &Ty<'a> {
@@ -96,7 +96,7 @@ impl<'a> MethodWithBody<'a> {
 	}
 
 	pub fn parameters(&self) -> &[Parameter<'a>] {
-		&self.signature.parameters
+		self.signature.parameters
 	}
 
 	pub fn body(&self) -> Option<&'a Expr<'a>> {

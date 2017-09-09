@@ -28,8 +28,8 @@ pub fn check_module<'ast, 'builtins_ctx, 'model>(module: &'model Module<'model>,
 		supers: Late::new(),
 		methods: Late::new(),
 	});
-	TypeParameter::set_origins(&class.type_parameters, TypeParameterOrigin::Class(Up(class)));
-	let mut ctx: Ctx<'builtins_ctx, 'model> = Ctx::new(class, builtins, &module.imports, arena);
+	TypeParameter::set_origins(class.type_parameters, TypeParameterOrigin::Class(Up(class)));
+	let mut ctx: Ctx<'builtins_ctx, 'model> = Ctx::new(class, builtins, module.imports, arena);
 	do_check(&mut ctx, ast);
 	module.diagnostics.init(ctx.finish());
 }
@@ -67,9 +67,9 @@ fn fill_impl_bodies<'ast, 'builtins_ctx, 'model>(ctx: &mut Ctx<'builtins_ctx, 'm
 	super_asts.do_zip(supers, |super_ast, zuper| {
 		let instantiator = Instantiator::of_inst_cls(&zuper.super_class);
 		let impl_asts = &super_ast.impls;
-		impl_asts.do_zip(&zuper.impls, |impl_ast, real_impl| {
+		impl_asts.do_zip(zuper.impls, |impl_ast, real_impl| {
 			let body = match impl_ast.body {
-				Some(ref body_ast) =>
+				Some(body_ast) =>
 					Some(check_method_body(
 						ctx,
 						MethodOrImpl::Impl(Up(real_impl)),
@@ -89,7 +89,7 @@ fn fill_method_bodies<'ast>(ctx: &mut Ctx, method_asts: &'ast List<'ast, ast::Me
 	for (i, method_ast) in method_asts.iter().enumerate() {
 		let method = &ctx.current_class.methods[i];
 		let body = match method_ast.body {
-			Some(ref body_ast) =>
+			Some(body_ast) =>
 				Some(check_method_body(
 					ctx,
 					MethodOrImpl::Method(Up(method)),
@@ -134,7 +134,7 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 			);
 			return None
 		}
-		abstract_methods.zip(impl_asts.iter(), ctx.arena, |implemented, &ast::Impl { loc, ref parameter_names, .. }| {
+		abstract_methods.zip(impl_asts.iter(), ctx.arena, |implemented, &ast::Impl { loc, parameter_names, .. }| {
 			let x: &'model AbstractMethod<'model> = implemented;
 			if !implemented
 				.parameters()
@@ -158,7 +158,7 @@ fn check_method_initial<'ast, 'builtins_ctx, 'model>(ctx: &mut Ctx<'builtins_ctx
 	let &ast::Method {
 		loc,
 		is_static,
-		type_parameters: ref type_parameter_asts,
+		type_parameters: type_parameter_asts,
 		return_ty: ref return_ty_ast,
 		name,
 		self_effect,
@@ -166,8 +166,8 @@ fn check_method_initial<'ast, 'builtins_ctx, 'model>(ctx: &mut Ctx<'builtins_ctx
 		..
 	} = ast;
 	let type_parameters = type_parameter_asts.map(ctx.arena, |name| TypeParameter::create(*name));
-	let return_ty = ctx.get_ty_or_type_parameter(return_ty_ast, &type_parameters);
-	let parameters = check_parameters(ctx, parameter_asts, &type_parameters);
+	let return_ty = ctx.get_ty_or_type_parameter(return_ty_ast, type_parameters);
+	let parameters = check_parameters(ctx, parameter_asts, type_parameters);
 	let method = ctx.arena <- MethodWithBody {
 		signature: MethodSignature {
 			class: Up(ctx.current_class),

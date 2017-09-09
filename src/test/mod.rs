@@ -104,13 +104,13 @@ fn test_single<'a>(test_path: &Path, update_baselines: bool, arena: &'a Arena) -
 
 	for builtin_module in program.builtins.all.iter() {
 		if builtin_module.diagnostics().any() {
-			return Err(TestFailure::UnexpectedDiagnostics(builtin_module.clone()))
+			return Err(TestFailure::UnexpectedDiagnostics(builtin_module.clone_as_ptr()))
 		}
 	}
 
 	match root {
 		ModuleOrFail::Module(m) =>
-			if any_diagnostics(&m) {
+			if any_diagnostics(m) {
 				test_with_diagnostics(
 					&baselines_directory,
 					&program,
@@ -127,7 +127,7 @@ fn test_single<'a>(test_path: &Path, update_baselines: bool, arena: &'a Arena) -
 					test_path,
 					&baselines_directory,
 					&program,
-					&m,
+					m,
 					&mut expected_baselines,
 					update_baselines,
 					arena,
@@ -173,7 +173,7 @@ fn test_with_diagnostics<'a>(
 		let module_path = module_full_path.without_extension(EXTENSION);
 		unused!(baselines_directory, expected_baselines, expected_diagnostics_by_path, module_path);
 
-		if let ModuleOrFail::Module(ref module) = *module_or_fail {
+		if let ModuleOrFail::Module(module) = *module_or_fail {
 			assert_baseline(
 				baselines_directory,
 				&module_path,
@@ -236,14 +236,14 @@ fn assert_baseline_worker<'a>(
 			if actual == expected {
 				Ok(())
 			} else if update_baselines {
-				io_result_to_result(write_file(&full_baseline_path, &actual))
+				io_result_to_result(write_file(&full_baseline_path, actual))
 			} else {
 				Err(TestFailure::UnexpectedOutput { actual, expected })
 			},
 		None => {
 			// This baseline didn't exist before.
 			if update_baselines {
-				io_result_to_result(write_file_and_ensure_directory(&full_baseline_path, &actual))
+				io_result_to_result(write_file_and_ensure_directory(&full_baseline_path, actual))
 			} else {
 				Err(TestFailure::NoSuchBaseline(full_baseline_path))
 			}

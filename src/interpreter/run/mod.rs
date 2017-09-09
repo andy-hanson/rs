@@ -37,7 +37,7 @@ fn exec<'model, 'emit>(first_code: &Code<'model, 'emit>, first_arguments: Vec<Va
 			Instruction::LiteralNat(n) => stack.push(Value::Nat(n)),
 			Instruction::LiteralInt(i) => stack.push(Value::Int(i)),
 			Instruction::LiteralFloat(f) => stack.push(Value::Float(f)),
-			Instruction::LiteralString(ref s) => {
+			Instruction::LiteralString(s) => {
 				unused!(s);
 				unimplemented!()//stack.push(Value::String(Rc::clone(s))),
 			}

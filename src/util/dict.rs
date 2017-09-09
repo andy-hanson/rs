@@ -107,6 +107,7 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 		self.0.into_iter()
 	}
 
+	#[allow(needless_lifetimes)] //TODO: is this a clippy bug?
 	pub fn into_keys<'out>(self, arena: &'out Arena) -> &'out [K] {
 		arena.map_from(self.0.len(), self.move_into_iter(), |(k, _)| k)
 	}

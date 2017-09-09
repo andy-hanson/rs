@@ -41,7 +41,7 @@ impl<'a> Serialize for LiteralValue<'a> {
 			LiteralValue::Nat(n) => serializer.serialize_u32(n),
 			LiteralValue::Int(i) => serializer.serialize_i32(i),
 			LiteralValue::Float(f) => serializer.serialize_f64(f),
-			LiteralValue::String(ref s) => serializer.serialize_str(&s.clone_to_utf8_string()),
+			LiteralValue::String(s) => serializer.serialize_str(&s.clone_to_utf8_string()),
 		}
 	}
 }
@@ -151,7 +151,7 @@ impl<'a> ExprData<'a> {
 			| ExprData::SelfExpr(ref ty) => ty,
 			ExprData::Bogus => Ty::bogus_ref(),
 			ExprData::AccessLocal(ref local) => &local.ty,
-			ExprData::Let(_, _, ref then) | ExprData::Seq(_, ref then) => then.ty(),
+			ExprData::Let(_, _, then) | ExprData::Seq(_, then) => then.ty(),
 			ExprData::Literal(ref v) => v.ty(),
 			ExprData::For { ref result_ty, .. } => result_ty,
 			ExprData::ArrayLiteral { .. } => unimplemented!(), //array[array type]

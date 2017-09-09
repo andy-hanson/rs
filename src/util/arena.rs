@@ -27,6 +27,7 @@ pub struct Arena {
 	locked: UnsafeCell<bool>,
 }
 impl Arena {
+	#[allow(new_without_default_derive)]
 	pub fn new() -> Self {
 		Arena {
 			bytes: UnsafeCell::new(Box::new([0; 1000])),
@@ -118,8 +119,8 @@ impl Arena {
 		}
 	}
 
-	pub fn list_builder<'a, T : NoDrop>(&'a self) -> ListBuilder<'a, T> {
-		ListBuilder::new(&self)
+	pub fn list_builder<T : NoDrop>(&self) -> ListBuilder<T> {
+		ListBuilder::new(self)
 	}
 
 	// Writes to a buffer and copies to the arena when finishing.
@@ -241,11 +242,8 @@ impl<'a, T : NoDrop + 'a> List<'a, T> {
 	//TODO:KILL
 	pub fn do_zip<'u, U, F: Fn(&'a T, &'u U) -> ()>(&'a self, other: &'u [U], f: F) {
 		assert_eq!(self.len, other.len());
-		let mut i = 0;
-		for x in self.iter() {
-			let o = &other[i];
-			i += 1;
-			f(x, o)
+		for (i, x) in self.iter().enumerate() {
+			f(x, &other[i])
 		}
 	}
 
@@ -385,7 +383,7 @@ impl<'a, T : 'a + Sized + NoDrop> DirectArrBuilder<'a, T> {
 
 		let len_bytes = self.arena.cur_index() - self.start_byte_index;
 		let t_size = size_of::<T>();
-		assert!(len_bytes % t_size == 0);
+		assert_eq!(len_bytes % t_size, 0);
 		let len = len_bytes / t_size;
 		unsafe { slice::from_raw_parts_mut(self.start_ptr, len) }
 	}

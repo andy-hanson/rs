@@ -79,9 +79,9 @@ impl<'a> Serialize for MemberDeclaration<'a> {
 		S: Serializer,
 	{
 		let name = match *self {
-			MemberDeclaration::Slot(ref s) => s.name,
-			MemberDeclaration::Method(ref m) => m.name(),
-			MemberDeclaration::AbstractMethod(ref a) => a.name(),
+			MemberDeclaration::Slot(s) => s.name,
+			MemberDeclaration::Method(m) => m.name(),
+			MemberDeclaration::AbstractMethod(a) => a.name(),
 		};
 		name.serialize(serializer)
 	}

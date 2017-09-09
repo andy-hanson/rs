@@ -540,7 +540,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 	}
 
 	pub fn unexpected(&self, start_pos: Pos, actual: &'static [u8], expected: &'static [u8]) -> (Loc, ParseDiag) {
-		((self.loc_from(start_pos), ParseDiag::UnexpectedToken { expected, actual }))
+		(self.loc_from(start_pos), ParseDiag::UnexpectedToken { expected, actual })
 	}
 
 	pub fn take_catch_or_finally(&mut self) -> Result<CatchOrFinally> {

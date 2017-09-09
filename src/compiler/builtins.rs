@@ -78,7 +78,7 @@ pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn<'model>
 						void: own.void.try_get(),
 						bool: own.bool.try_get(),
 					};
-					check_module(module, &cur_builtins, &class, name, &arena);
+					check_module(module, &cur_builtins, class, name, arena);
 				}
 				if name == sym_void {
 					own.void.init(primitive_ty(&module.class));
@@ -91,7 +91,7 @@ pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn<'model>
 			Err((loc, parse_diag)) => {
 				let diag = Diagnostic(loc, Diag::ParseError(parse_diag));
 				ModuleOrFail::Fail(
-					arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, &arena) },
+					arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, arena) },
 				)
 			}
 		};

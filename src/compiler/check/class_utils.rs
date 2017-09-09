@@ -20,19 +20,19 @@ fn get_member_worker<'a>(
 ) -> Option<InstMember<'a>> {
 	for method in cls.methods.iter() {
 		if method.name() == member_name {
-			return Some(InstMember(MemberDeclaration::Method(&method), instantiator))
+			return Some(InstMember(MemberDeclaration::Method(method), instantiator))
 		}
 	}
 
 	match *cls.head {
 		ClassHead::Static | ClassHead::Builtin => {}
-		ClassHead::Slots(_, ref slots) =>
+		ClassHead::Slots(_, slots) =>
 			for slot in slots.iter() {
 				if slot.name == member_name {
 					return Some(InstMember(MemberDeclaration::Slot(slot), instantiator))
 				}
 			},
-		ClassHead::Abstract(_, ref methods) =>
+		ClassHead::Abstract(_, methods) =>
 			for method in methods.iter() {
 				if method.name() == member_name {
 					return Some(InstMember(MemberDeclaration::AbstractMethod(method), instantiator))

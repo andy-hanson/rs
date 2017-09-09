@@ -9,6 +9,8 @@
 #![feature(offset_to)]
 #![feature(collection_placement)]
 
+#![allow(needless_lifetimes)] //TODO
+
 #[macro_use]
 extern crate lazy_static;
 extern crate serde;

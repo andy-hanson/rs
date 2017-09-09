@@ -47,8 +47,8 @@ impl<'a> Ty<'a> {
 					false
 				}
 			}
-			Ty::Param(ref p) =>
-				if let Ty::Param(ref p_b) = *other {
+			Ty::Param(p) =>
+				if let Ty::Param(p_b) = *other {
 					ptr_eq(p, p_b)
 				} else {
 					false
@@ -61,7 +61,7 @@ impl<'a> Clone for Ty<'a> {
 		match *self {
 			Ty::Bogus => Ty::Bogus,
 			Ty::Plain(effect, ref inst_cls) => Ty::Plain(effect, inst_cls.clone()),
-			Ty::Param(ref tp) => Ty::Param(tp),
+			Ty::Param(tp) => Ty::Param(tp),
 		}
 	}
 }
@@ -91,17 +91,17 @@ impl<'a> InstCls<'a> {
 	}
 
 	pub fn class(&self) -> &'a ClassDeclaration<'a> {
-		&self.0
+		self.0
 	}
 
 	pub fn fast_equals(&self, other: &Self) -> bool {
-		ptr_eq(self.0, &other.0) && self.1.each_equals(&other.1, Ty::fast_equals)
+		ptr_eq(self.0, other.0) && self.1.each_equals(other.1, Ty::fast_equals)
 	}
 }
 impl<'a> NoDrop for InstCls<'a> {}
 impl<'a> Clone for InstCls<'a> {
 	fn clone(&self) -> Self {
-		InstCls(self.0, self.1.clone())
+		InstCls(self.0, self.1)
 	}
 }
 

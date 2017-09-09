@@ -34,7 +34,7 @@ pub fn check_method_body<'ast, 'ctx, 'instantiator, 'builtins_ctx : 'ctx, 'model
 		method_instantiator,
 		is_static,
 		self_effect: signature.self_effect,
-		current_parameters: &signature.parameters,
+		current_parameters: signature.parameters,
 		locals: RefCell::new(Vec::new()),
 	};
 	let return_ty = ectx.instantiate_type(&signature.return_ty, method_instantiator);
@@ -112,11 +112,11 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
 				self.bogus(loc)
 			}
-			ast::ExprData::OperatorCall(ref left, operator, ref right) => {
+			ast::ExprData::OperatorCall(left, operator, right) => {
 				let ty_args = todo();//List::empty(); // No way to provide these to an operator call.
 				self.call_method(&mut e, loc, left, operator, ty_args, Some(right).into_iter())
 			}
-			ast::ExprData::Call(ref target, ref args) =>
+			ast::ExprData::Call(target, ref args) =>
 				self.check_call_ast_worker(&mut e, loc, target, args),
 			ast::ExprData::Recur(ref arg_asts) => {
 				if !e.in_tail_call_position() {
@@ -126,12 +126,12 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				// implementing an abstract method where the superclass took type arguments.
 				let moa = &self.method_or_impl.method_or_abstract();
 				let inst = self.method_instantiator;
-				let args = unwrap_or_return!(self.check_arguments(loc, moa, inst, arg_asts.iter()), self.bogus(loc));
+				let args = unwrap_or_return!(self.check_arguments(loc, moa, inst, arg_asts.iter().cloned()), self.bogus(loc));
 				self.handle(&mut e, loc, ExprData::Recur(self.method_or_impl.copy(), args))
 			}
 			ast::ExprData::New(ref ty_arg_asts, ref arg_asts) => {
 				let slots = match *self.ctx.current_class.head {
-					ClassHead::Slots(_, ref slots) => slots,
+					ClassHead::Slots(_, slots) => slots,
 					_ => {
 						self.add_diagnostic(loc, Diag::NewInvalid(Up(self.ctx.current_class)));
 						return self.bogus(loc)
@@ -162,7 +162,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				unused!(element_ty, args);
 				unimplemented!()
 			}
-			ast::ExprData::GetProperty(ref target_ast, property_name) => {
+			ast::ExprData::GetProperty(target_ast, property_name) => {
 				let target = self.check_infer(target_ast);
 				let (slot, slot_ty) = match *target.ty() {
 					Ty::Bogus =>
@@ -190,7 +190,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				};
 				self.handle(&mut e, loc, ExprData::GetSlot(target, Up(slot), slot_ty))
 			}
-			ast::ExprData::SetProperty(property_name, ref value_ast) => {
+			ast::ExprData::SetProperty(property_name, value_ast) => {
 				let InstMember(member_decl, instantiator) =
 					unwrap_or_return!(self.ctx.get_own_member_or_add_diagnostic(loc, property_name), self.bogus(loc));
 				let slot = match member_decl {
@@ -212,10 +212,10 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 			}
 			ast::ExprData::LetInProgress(_, _) =>
 				unreachable!(),
-			ast::ExprData::Let(ref pattern_ast, ref value_ast, ref then_ast) => {
+			ast::ExprData::Let(pattern_ast, value_ast, then_ast) => {
 				let value = self.check_infer(value_ast);
 				let (pattern, n_added) = {//self.start_check_pattern(value.ty(), pattern_ast);
-					let &&ast::Pattern(pattern_loc, ref pattern_data) = pattern_ast;
+					let &ast::Pattern(pattern_loc, ref pattern_data) = pattern_ast;
 					match *pattern_data {
 						ast::PatternData::Ignore =>
 							(Pattern::Ignore, 0),
@@ -236,7 +236,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				// 'expected' was handled in 'then'
 				Handled(self.expr(loc, ExprData::Let(pattern, value, then)))
 			}
-			ast::ExprData::Seq(ref first_ast, ref then_ast) => {
+			ast::ExprData::Seq(first_ast, then_ast) => {
 				let first = self.check_void(first_ast);
 				let then = self.check_expr(&mut e, then_ast);
 				// 'expected' was handled in 'then'
@@ -262,7 +262,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
                 let expr = ExprData::SelfExpr(Ty::Plain(self.self_effect, self.current_inst_cls()));
 				self.handle(&mut e, loc, expr)
 			}
-			ast::ExprData::IfElse(ref test_ast, ref then_ast, ref else_ast) => {
+			ast::ExprData::IfElse(test_ast, then_ast, else_ast) => {
 				let test = self.check_bool(test_ast);
 				let then = self.check_expr(&mut e, then_ast);
 				let elze = self.check_expr(&mut e, else_ast);
@@ -275,8 +275,8 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				// 'expected' was handled in both 'then' and 'else'.
 				Handled(self.expr(loc, ifelse))
 			}
-			ast::ExprData::WhenTest(ref case_asts, ref else_ast) => {
-				let cases = case_asts.map(self.ctx.arena, |&ast::Case(case_loc, ref test_ast, ref result_ast)| {
+			ast::ExprData::WhenTest(ref case_asts, else_ast) => {
+				let cases = case_asts.map(self.ctx.arena, |&ast::Case(case_loc, test_ast, result_ast)| {
 					let test = self.check_bool(test_ast);
 					let result = self.check_expr(&mut e, result_ast);
 					Case(case_loc, test, result)
@@ -285,11 +285,11 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				// 'expected' handled in each case result and in 'elze'.
 				Handled(self.expr(loc, ExprData::WhenTest(cases, elze, e.inferred_ty().clone())))
 			}
-			ast::ExprData::Assert(ref asserted_ast) => {
+			ast::ExprData::Assert(asserted_ast) => {
 				let asserted = self.check_bool(asserted_ast);
 				self.handle(&mut e, loc, ExprData::Assert(asserted))
 			}
-			ast::ExprData::Try(ref do_ast, ref op_catch_ast, ref op_finally_ast) => {
+			ast::ExprData::Try(do_ast, ref op_catch_ast, op_finally_ast) => {
 				let body = self.check_expr(&mut e, do_ast);
 				let catch = op_catch_ast.as_ref().map(|catch| {
                     let &ast::Catch {
@@ -297,7 +297,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 						exception_type: ref exception_type_ast,
 						exception_name_loc,
 						exception_name,
-						then: ref then_ast
+						then: then_ast
 					} = catch;
 					let exception_ty = self.ctx.get_ty(exception_type_ast);
 					let caught = self.ctx.arena <- Local {
@@ -346,7 +346,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		let &ast::Expr(target_loc, ref target_data) = target;
 		let empty_list = todo();//List::empty(); //TODO:PERF
 		let (&ast::Expr(real_target_loc, ref real_target_data), ty_arg_asts) = match *target_data {
-			ast::ExprData::TypeArguments(ref real_target, ref ty_arg_asts) => {
+			ast::ExprData::TypeArguments(real_target, ref ty_arg_asts) => {
 				//TODO:SIMPLIFY
 				let a: &ast::Expr = real_target;
 				let b: &List<ast::Ty> = ty_arg_asts;
@@ -367,8 +367,8 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				);
 				self.call_static_method(&mut expected, loc, cls, static_method_name, ty_arg_asts, args)
 			}
-			ast::ExprData::GetProperty(ref property_target, property_name) =>
-				self.call_method(&mut expected, loc, property_target, property_name, ty_arg_asts, args.iter()),
+			ast::ExprData::GetProperty(property_target, property_name) =>
+				self.call_method(&mut expected, loc, property_target, property_name, ty_arg_asts, args.iter().cloned()),
 			ast::ExprData::Access(name) => self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
 			_ => {
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
@@ -400,11 +400,11 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		// No need to check selfEffect, because this is a static method.
 		// Static methods can't look at their class' type arguments
 		let args = unwrap_or_return!(
-			self.check_call_arguments(loc, inst_method, &Instantiator::NIL, arg_asts.iter()),
+			self.check_call_arguments(loc, inst_method, &Instantiator::NIL, arg_asts.iter().cloned()),
 			self.bogus(loc)
 		);
 
-		let ty = self.instantiate_return_type(&inst_method);
+		let ty = self.instantiate_return_type(inst_method);
 		self.handle(&mut expected, loc, ExprData::StaticMethodCall(inst_method, args, ty))
 	}
 
@@ -442,11 +442,11 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 			unwrap_or_return!(self.ctx.instantiate_method(&method_decl, ty_arg_asts), self.bogus(loc));
 
 		let args = unwrap_or_return!(
-			self.check_call_arguments(loc, &inst_method, &member_instantiator, arg_asts.iter()),
+			self.check_call_arguments(loc, inst_method, &member_instantiator, arg_asts.iter().cloned()),
 			self.bogus(loc)
 		);
 
-		let ty = self.instantiate_return_type(&inst_method);
+		let ty = self.instantiate_return_type(inst_method);
 
 		let expr = if method_decl.is_static() {
 			// Calling own static method is OK.
@@ -470,7 +470,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		self.handle(&mut expected, loc, expr)
 	}
 
-	fn call_method<'ast, I : Iterator<Item=&'ast &'ast ast::Expr<'ast>>>(
+	fn call_method<'ast, I : Iterator<Item=&'ast ast::Expr<'ast>>>(
 		&self,
 		mut expected: &mut Expected<'model>,
 		loc: Loc,
@@ -514,10 +514,10 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				let inst_method = unwrap_or_return!(self.ctx.instantiate_method(&method, ty_arg_asts), self.bogus(loc));
 
 				let args = unwrap_or_return!(
-					self.check_call_arguments(loc, &inst_method, &member_instantiator, arg_asts.into_iter()),
+					self.check_call_arguments(loc, inst_method, &member_instantiator, arg_asts.into_iter()),
 					self.bogus(loc));
 
-				let ty = self.instantiate_return_type_with_extra_instantiator(&inst_method, &member_instantiator);
+				let ty = self.instantiate_return_type_with_extra_instantiator(inst_method, &member_instantiator);
 				(inst_method, args, ty)
 			}
 			Ty::Param(_) =>
@@ -527,7 +527,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		self.handle(&mut expected, loc, e)
 	}
 
-	fn check_call_arguments<'ast, I : Iterator<Item=&'ast &'ast ast::Expr<'ast>>>(
+	fn check_call_arguments<'ast, I : Iterator<Item=&'ast ast::Expr<'ast>>>(
 		&self,
 		loc: Loc,
 		inst_method: &'model InstMethod<'model>,
@@ -538,7 +538,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		self.check_arguments(loc, &inst_method.0, &instantiator, arg_asts)
 	}
 
-	fn check_arguments<'ast, I : Iterator<Item=&'ast &'ast ast::Expr<'ast>>>(
+	fn check_arguments<'ast, I : Iterator<Item=&'ast ast::Expr<'ast>>>(
 		&self,
 		loc: Loc,
 		method_decl: &MethodOrAbstract<'model>,

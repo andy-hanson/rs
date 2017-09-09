@@ -97,7 +97,7 @@ impl<'a> Show for Diag<'a> {
 			Diag::CantReassignParameter(_) => unimplemented!(),
 			Diag::CantReassignLocal(_) => unimplemented!(),
 			Diag::NotAnAbstractClass(_) => unimplemented!(),
-			Diag::ImplsMismatch { ref expected_names } => {
+			Diag::ImplsMismatch { expected_names } => {
 				unused!(expected_names);
 				unimplemented!()
 			}

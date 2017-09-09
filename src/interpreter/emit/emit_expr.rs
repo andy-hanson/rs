@@ -84,11 +84,11 @@ impl<'model, 'emit> ExprEmitter<'model, 'emit> {
 				let local_depth = u8_add(self.n_parameters, to_u8(index));
 				self.fetch(loc, local_depth)
 			}
-			ExprData::Let(ref pattern, ref value, ref then) => {
+			ExprData::Let(ref pattern, value, then) => {
 				self.emit_expr(value);
 				let n_pushed = match *pattern {
 					Pattern::Ignore => unimplemented!(),
-					Pattern::Single(ref local) => {
+					Pattern::Single(local) => {
 						self.locals.push(local);
 						1
 					},
@@ -103,7 +103,7 @@ impl<'model, 'emit> ExprEmitter<'model, 'emit> {
 				}
 				self.stack_depth -= n_pushed
 			}
-			ExprData::Seq(ref first, ref then) => {
+			ExprData::Seq(first, then) => {
 				self.emit_expr(first);
 				self.write(loc, Instruction::PopVoid);
 				self.pops(1);
@@ -117,7 +117,7 @@ impl<'model, 'emit> ExprEmitter<'model, 'emit> {
 					LiteralValue::Nat(n) => Instruction::LiteralNat(n),
 					LiteralValue::Int(i) => Instruction::LiteralInt(i),
 					LiteralValue::Float(f) => Instruction::LiteralFloat(f),
-					LiteralValue::String(ref s) => {
+					LiteralValue::String(s) => {
 						unused!(s);
 						unimplemented!()//Instruction::LiteralString(Rc::clone(s)),
 					}

@@ -157,7 +157,7 @@ pub trait SliceOps<T>: Index<usize, Output = T> {
 			return false
 		}
 		for (i, x) in self.iter().enumerate() {
-			if !f(&x, &other[i]) {
+			if !f(x, &other[i]) {
 				return false
 			}
 		}

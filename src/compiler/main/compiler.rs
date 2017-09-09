@@ -37,7 +37,7 @@ pub fn compile<'a, 'old, D: DocumentProvider<'a>>(
 	// Don't care about isReused for top level
 	let (result, modules_states) = {
 		let mut compiler =
-			Compiler { arena, builtins: &builtins, document_provider, old_modules, modules: MutDict::new() };
+			Compiler { arena, builtins, document_provider, old_modules, modules: MutDict::new() };
 		let res = compiler.compile_single(path)?.0;
 		(res, compiler.modules)
 	};
@@ -86,11 +86,11 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>> Compiler<'do
 					// TODO: attach an error to the calling module
 					(CompileSingleResult::Circular, false),
 				ModuleState::CompiledFresh(ref module_or_fail) =>
-					(CompileSingleResult::Found(module_or_fail.clone()), false),
+					(CompileSingleResult::Found(module_or_fail.clone_as_ptr()), false),
 				ModuleState::CompiledReused(ref module_or_fail) =>
 					// Already compiled in the new program.
 					// This can happen if the same module is a dependency of two other modules.
-					(CompileSingleResult::Found(module_or_fail.clone()), true),
+					(CompileSingleResult::Found(module_or_fail.clone_as_ptr()), true),
 			})
 		}
 
@@ -110,9 +110,9 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>> Compiler<'do
 	) -> Result<(CompileSingleResult<'model>, bool), D::Error> {
 		let logical_path = borrow_logical_path.clone_path_to_arena(self.arena);
 		let parse_arena = Arena::new();
-		let parse_result = parse(&parse_arena, &document.text);
+		let parse_result = parse(&parse_arena, document.text);
 		Ok(match parse_result {
-			Ok(ModuleAst { ref imports, ref class }) => {
+			Ok(ModuleAst { ref imports, class }) => {
 				self.modules.add(logical_path.clone_path_as_ptr(), ModuleState::Compiling);
 				let (module_or_fail, is_reused) = self.do_compile_single(
 					&logical_path,
@@ -123,9 +123,9 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>> Compiler<'do
 					is_index,
 				)?;
 				let module_state = if is_reused {
-					ModuleState::CompiledReused(module_or_fail.clone())
+					ModuleState::CompiledReused(module_or_fail.clone_as_ptr())
 				} else {
-					ModuleState::CompiledFresh(module_or_fail.clone())
+					ModuleState::CompiledFresh(module_or_fail.clone_as_ptr())
 				};
 				self.modules.change(&logical_path, module_state);
 				(CompileSingleResult::Found(module_or_fail), is_reused)
@@ -183,7 +183,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>> Compiler<'do
 				};
 				// Initializes module.class and module.diagnostics.
 				// (There are no parse/import diagnostics or we wouldn't have gotten here.)
-				check_module(module, &self.builtins.as_ctx(), &class_ast, name, self.arena);
+				check_module(module, &self.builtins.as_ctx(), class_ast, name, self.arena);
 				ModuleOrFail::Module(module)
 			}
 			ResolvedImports::Failure(imports, diagnostics) =>
@@ -207,7 +207,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>> Compiler<'do
 		for import_ast in import_asts.iter() {
 			match self.resolve_import(import_ast, &mut diagnostics, full_path, &mut all_imports_reused)? {
 				Some(import) => {
-					if let ModuleOrFail::Module(ref module) = import {
+					if let ModuleOrFail::Module(module) = import {
 						&all_successes <- Up(module);
 					} else {
 						any_failure = true
@@ -271,15 +271,6 @@ enum CompileSingleResult<'model> {
 	Missing,
 	Circular,
 	Found(ModuleOrFail<'model>),
-}
-impl<'model> CompileSingleResult<'model> {
-	pub fn clone(&self) -> Self {
-		match *self {
-			CompileSingleResult::Missing => CompileSingleResult::Missing,
-			CompileSingleResult::Circular => CompileSingleResult::Circular,
-			CompileSingleResult::Found(ref mf) => CompileSingleResult::Found(mf.clone()),
-		}
-	}
 }
 
 // Most modules will not be `Compiling` at any given time,

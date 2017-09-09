@@ -29,9 +29,9 @@ pub fn common_type<'a>(a: &Ty<'a>, b: &Ty<'a>) -> Option<Ty<'a>> {
 pub fn is_assignable<'a>(expected: &Ty<'a>, actual: &Ty<'a>, arena: &'a Arena) -> bool {
 	match *expected {
 		Ty::Bogus => true,
-		Ty::Param(ref tpe) =>
+		Ty::Param(tpe) =>
 			match *actual {
-				Ty::Param(ref tpa) => tpe.fast_equals(tpa),
+				Ty::Param(tpa) => tpe.fast_equals(tpa),
 				_ => false,
 			},
 		Ty::Plain(effect_expected, ref inst_cls_expected) =>
@@ -47,8 +47,8 @@ pub fn is_assignable<'a>(expected: &Ty<'a>, actual: &Ty<'a>, arena: &'a Arena) -
 fn is_subclass<'a>(expected: &InstCls<'a>, actual: &InstCls<'a>, arena: &'a Arena) -> bool {
 	// TODO: generics variance.
 	// Until then, only a subtype if every generic parameter is *exactly* equal.
-	let &InstCls(ref expected_cls, ref expected_ty_arguments) = expected;
-	let &InstCls(ref actual_cls, ref actual_ty_arguments) = actual;
+	let &InstCls(expected_cls, expected_ty_arguments) = expected;
+	let &InstCls(actual_cls, actual_ty_arguments) = actual;
 	if ptr_eq(expected_cls, actual_cls) &&
 		expected_ty_arguments.each_equals(actual_ty_arguments, Ty::fast_equals)
 	{
@@ -109,11 +109,11 @@ pub fn instantiate_and_narrow_effects<'a>(
 					inst_cls,
 					instantiator,
 					loc,
-					&diags,
+					diags,
 					arena,
 				),
 			),
-		Ty::Param(ref p) => instantiator.replace_or_same(p),
+		Ty::Param(p) => instantiator.replace_or_same(p),
 	}
 }
 
@@ -140,7 +140,7 @@ fn instantiate_ty_and_forbid_effects<'a>(
 						inst_cls,
 						instantiator,
 						loc,
-						&diags,
+						diags,
 						arena,
 					),
 				)
@@ -148,7 +148,7 @@ fn instantiate_ty_and_forbid_effects<'a>(
 				//TODO:Diagnostic
 				unimplemented!()
 			},
-		Ty::Param(ref p) => instantiator.replace_or_same(p),
+		Ty::Param(p) => instantiator.replace_or_same(p),
 	}
 }
 
@@ -172,7 +172,7 @@ fn instantiate_inst_cls<'a>(inst_cls: &InstCls<'a>, instantiator: &Instantiator<
 }
 
 fn map_inst_cls<'a, F: FnMut(&Ty<'a>) -> Ty<'a>>(
-	&InstCls(ref decl, ref type_args): &InstCls<'a>,
+	&InstCls(decl, type_args): &InstCls<'a>,
 	arena: &'a Arena,
 	replace_type_arg: F,
 ) -> InstCls<'a> {
@@ -183,7 +183,7 @@ fn map_inst_cls<'a, F: FnMut(&Ty<'a>) -> Ty<'a>>(
 pub fn instantiate_type<'a>(ty: &Ty<'a>, instantiator: &Instantiator<'a>, arena: &'a Arena) -> Ty<'a> {
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
-		Ty::Param(ref p) => instantiator.replace_or_same(p),
+		Ty::Param(p) => instantiator.replace_or_same(p),
 		Ty::Plain(effect, ref inst_cls) => {
 			let cls = instantiate_inst_cls(inst_cls, instantiator, arena);
 			Ty::Plain(effect, cls)

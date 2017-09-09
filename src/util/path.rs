@@ -22,9 +22,9 @@ impl<'a> Path<'a> {
 
 	pub fn resolve_with_root<'out>(root: &Path, path: &Path, arena: &'out Arena) -> Path<'out> {
 		let res = arena.direct_arr_builder();
-		res.add_slice(&root.0);
+		res.add_slice(root.0);
 		&res <- b'/';
-		res.add_slice(&path.0);
+		res.add_slice(path.0);
 		Path(res.finish())
 	}
 
@@ -33,9 +33,9 @@ impl<'a> Path<'a> {
 	}
 
 	pub fn child<'out>(&self, child_name: &[u8], arena: &'out Arena) -> Path<'out> {
-		assert!(is_path_part(&child_name));
+		assert!(is_path_part(child_name));
 		let res = arena.direct_arr_builder();
-		res.add_slice(&self.0);
+		res.add_slice(self.0);
 		&res <- b'/';
 		res.add_slice(child_name);
 		Path(res.finish())

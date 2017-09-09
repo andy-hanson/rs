@@ -20,11 +20,18 @@ pub fn read_dir(dir: &Path) -> Result<Option<ReadDir>> {
 	}
 }
 
-pub fn read_files_in_directory_recursive_if_exists<'a>(dir: &Path, arena: &'a Arena) -> Result<MutDict<Path<'a>, &'a [u8]>> {
+pub fn read_files_in_directory_recursive_if_exists<'a>(
+	dir: &Path,
+	arena: &'a Arena,
+) -> Result<MutDict<Path<'a>, &'a [u8]>> {
 	let mut res = MutDict::<Path, &'a [u8]>::new();
 	readdir_worker(dir, arena, &mut res).map(|()| res)
 }
-pub fn readdir_worker<'a>(dir: &Path, arena: &'a Arena, mut res: &mut MutDict<Path<'a>, &'a [u8]>) -> Result<()> {
+pub fn readdir_worker<'a>(
+	dir: &Path,
+	arena: &'a Arena,
+	mut res: &mut MutDict<Path<'a>, &'a [u8]>,
+) -> Result<()> {
 	if let Some(rd) = read_dir(dir)? {
 		for child_result in rd {
 			let child = child_result?;
@@ -36,8 +43,8 @@ pub fn readdir_worker<'a>(dir: &Path, arena: &'a Arena, mut res: &mut MutDict<Pa
 				let /*mut*/ file_text = Vec::<u8>::new();
 				unused!(file_text);
 				unimplemented!()
-				//File::open(child_path.to_string())?.read_to_end(&mut file_text)?;
-				//res.add(child_path, file_text)
+			//File::open(child_path.to_string())?.read_to_end(&mut file_text)?;
+			//res.add(child_path, file_text)
 			} else {
 				unimplemented!()
 			}

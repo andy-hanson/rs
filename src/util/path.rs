@@ -108,11 +108,11 @@ impl<'a> Path<'a> {
 	}
 
 	pub fn name_of_containing_directory(&self) -> &[u8] {
-		unimplemented!()//self.0.last().unwrap()
+		unimplemented!() //self.0.last().unwrap()
 	}
 
 	pub fn directory(&self) -> Self {
-		unimplemented!()//Path(self.0.copy_rtail())
+		unimplemented!() //Path(self.0.copy_rtail())
 	}
 
 	pub fn clone_path_as_ptr(&self) -> Self {
@@ -162,7 +162,10 @@ pub struct RelPath<'a> {
 	pub rel_to_parent: Path<'a>,
 }
 impl<'a> RelPath<'a> {
-	pub fn clone_path_to_arena<'out>(&RelPath { n_parents, ref rel_to_parent }: &RelPath, arena: &'out Arena) -> RelPath<'out> {
+	pub fn clone_path_to_arena<'out>(
+		&RelPath { n_parents, ref rel_to_parent }: &RelPath,
+		arena: &'out Arena,
+	) -> RelPath<'out> {
 		RelPath { n_parents, rel_to_parent: Path::clone_path_to_arena(rel_to_parent, arena) }
 	}
 	//pub fn clone_path(&self) -> RelPath {

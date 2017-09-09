@@ -1,4 +1,4 @@
-use util::arena::{Arena, Up, List, ListBuilder};
+use util::arena::{Arena, List, ListBuilder, Up};
 use util::loc::Loc;
 use util::sym::Sym;
 
@@ -13,14 +13,14 @@ use super::super::parse::ast;
 
 use super::class_utils::{try_get_member_from_class_declaration, InstMember};
 
-pub struct Ctx<'builtins_ctx, 'model : 'builtins_ctx> {
+pub struct Ctx<'builtins_ctx, 'model: 'builtins_ctx> {
 	pub arena: &'model Arena,
 	pub current_class: &'model ClassDeclaration<'model>,
 	builtins: &'builtins_ctx BuiltinsCtx<'model>,
 	imports: &'model [Up<'model, Module<'model>>],
 	pub diags: ListBuilder<'model, Diagnostic<'model>>,
 }
-impl<'builtins_ctx, 'model : 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
+impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 	pub fn new(
 		current_class: &'model ClassDeclaration<'model>,
 		builtins: &'builtins_ctx BuiltinsCtx<'model>,
@@ -47,7 +47,11 @@ impl<'builtins_ctx, 'model : 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		self.get_ty_or_type_parameter(ty_ast, &[])
 	}
 
-	pub fn get_ty_or_type_parameter(&self, ty_ast: &ast::Ty, type_parameters: &[TypeParameter<'model>]) -> Ty<'model> {
+	pub fn get_ty_or_type_parameter(
+		&self,
+		ty_ast: &ast::Ty,
+		type_parameters: &[TypeParameter<'model>],
+	) -> Ty<'model> {
 		unused!(ty_ast, type_parameters);
 		unimplemented!()
 	}

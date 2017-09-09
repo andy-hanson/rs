@@ -23,8 +23,7 @@ impl<'model> Instantiator<'model> {
 	//}
 
 	pub fn replace_or_same(&self, ty: &'model TypeParameter<'model>) -> Ty<'model> {
-		self.replace(ty)
-			.unwrap_or_else(|| Ty::Param(ty))
+		self.replace(ty).unwrap_or_else(|| Ty::Param(ty))
 	}
 
 	pub fn replace(&self, tp: &'model TypeParameter<'model>) -> Option<Ty<'model>> {
@@ -40,6 +39,6 @@ impl<'model> Instantiator<'model> {
 
 	pub fn combine(&self, other: &Self) -> Self {
 		unused!(other);
-		unimplemented!()//Instantiator(self.0.concat(&other.0))
+		unimplemented!() //Instantiator(self.0.concat(&other.0))
 	}
 }

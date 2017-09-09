@@ -1,6 +1,6 @@
 use util::arena::{Arena, List, NoDrop, Up};
-use util::path::Path;
 use util::late::Late;
+use util::path::Path;
 use util::sym::Sym;
 
 use super::super::compiler::full_path;

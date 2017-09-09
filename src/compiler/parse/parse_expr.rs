@@ -1,9 +1,9 @@
 use util::arena::List;
 use util::loc::Pos;
 
-use super::super::super::model::diag::{ParseDiag};
+use super::super::super::model::diag::ParseDiag;
 
-use super::ast::{Case, Catch, Expr, ExprData, Pattern, PatternData, LiteralValue};
+use super::ast::{Case, Catch, Expr, ExprData, LiteralValue, Pattern, PatternData};
 use super::lexer::{CatchOrFinally, Lexer, Next, Result};
 use super::parse_ty::{parse_ty, take_type_arguments_after_passing_bracketl, try_take_type_argument,
                       try_take_type_arguments};
@@ -55,7 +55,11 @@ fn parse_block_with_start<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, first: Toke
 	}
 }
 
-fn parse_expr_and_expect_next<'a, 't>(l: &mut Lexer<'a, 't>, ctx: Ctx, expected_next: Token) -> Result<&'a Expr<'a>> {
+fn parse_expr_and_expect_next<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	ctx: Ctx,
+	expected_next: Token,
+) -> Result<&'a Expr<'a>> {
 	let start = l.pos();
 	let first_token = l.next_token();
 	parse_expr_and_expect_next_2(l, ctx, expected_next, start, first_token)
@@ -81,7 +85,12 @@ fn parse_expr<'a, 't>(l: &mut Lexer<'a, 't>, ctx: Ctx) -> Result<(&'a Expr<'a>, 
 	parse_expr_2(l, ctx, start, first_token)
 }
 
-fn parse_expr_2<'a, 't>(l: &mut Lexer<'a, 't>, ctx: Ctx, start: Pos, first_token: Token) -> Result<(&'a Expr<'a>, Next)> {
+fn parse_expr_2<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	ctx: Ctx,
+	start: Pos,
+	first_token: Token,
+) -> Result<(&'a Expr<'a>, Next)> {
 	let (first, next) = parse_first_expr(l, start, first_token)?;
 	match next.token {
 		Token::Colon => {
@@ -245,7 +254,11 @@ fn parse_for<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<&'a Expr<'a>> 
 	Ok(l.expr_from(start, ExprData::For(local_name, looper, body)))
 }
 
-fn slurp_operators<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, first: &'a Expr<'a>) -> Result<(&'a Expr<'a>, Next)> {
+fn slurp_operators<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	start: Pos,
+	first: &'a Expr<'a>,
+) -> Result<(&'a Expr<'a>, Next)> {
 	// Just saw Token::Operator
 	let mut operator = l.token_sym(start);
 	let mut left = first;
@@ -265,7 +278,8 @@ fn parse_args<'a, 't>(l: &mut Lexer<'a, 't>, ctx: Ctx) -> Result<(List<'a, &'a E
 	parse_args_2(l, ctx, next)
 }
 
-fn parse_args_2<'a, 't>(l: &mut Lexer<'a, 't>,
+fn parse_args_2<'a, 't>(
+	l: &mut Lexer<'a, 't>,
 	ctx: Ctx,
 	Next { pos: start, token: first_token }: Next,
 ) -> Result<(List<'a, &'a Expr<'a>>, Next)> {
@@ -281,7 +295,11 @@ fn parse_args_2<'a, 't>(l: &mut Lexer<'a, 't>,
 	Ok((args.finish(), next))
 }
 
-fn parse_simple_expr<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, token: Token) -> Result<(&'a Expr<'a>, Next)> {
+fn parse_simple_expr<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	start: Pos,
+	token: Token,
+) -> Result<(&'a Expr<'a>, Next)> {
 	let mut expr = parse_simple_expr_without_suffixes(l, start, token)?;
 	loop {
 		let next = l.next_pos_token();
@@ -304,7 +322,11 @@ fn parse_simple_expr<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, token: Token) ->
 	}
 }
 
-fn parse_simple_expr_without_suffixes<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, token: Token) -> Result<&'a Expr<'a>> {
+fn parse_simple_expr_without_suffixes<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	start: Pos,
+	token: Token,
+) -> Result<&'a Expr<'a>> {
 	if token == Token::ParenL {
 		return parse_expr_and_expect_next(l, Ctx::YesOperators, Token::ParenR)
 	}
@@ -320,8 +342,7 @@ fn parse_simple_expr_without_suffixes<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos,
 		Token::NatLiteral => ExprData::Literal(LiteralValue::Nat(l.token_nat())),
 		Token::IntLiteral => ExprData::Literal(LiteralValue::Int(l.token_int())),
 		Token::FloatLiteral => ExprData::Literal(LiteralValue::Float(l.token_float())),
-		Token::StringLiteral => ExprData::Literal(
-			LiteralValue::String(l.quote_part_value())),
+		Token::StringLiteral => ExprData::Literal(LiteralValue::String(l.quote_part_value())),
 		Token::Pass => ExprData::Literal(LiteralValue::Pass),
 		Token::True => ExprData::Literal(LiteralValue::Bool(true)),
 		Token::False => ExprData::Literal(LiteralValue::Bool(false)),
@@ -406,7 +427,9 @@ fn parse_try<'a, 't>(l: &mut Lexer<'a, 't>, start_pos: Pos) -> Result<&'a Expr<'
 			let finally = if !l.try_take_dedent()? {
 				l.take_specific_keyword(b"finally")?;
 				Some(parse_finally(l)?)
-			} else { None };
+			} else {
+				None
+			};
 
 			(Some(catch), finally)
 		}

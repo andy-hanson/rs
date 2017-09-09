@@ -36,7 +36,7 @@ impl<T> Late<T> {
 		&*self
 	}
 }
-impl<'a, T : NoDrop> NoDrop for Late<&'a T> {}
+impl<'a, T: NoDrop> NoDrop for Late<&'a T> {}
 impl<T> Deref for Late<T> {
 	type Target = T;
 
@@ -44,7 +44,7 @@ impl<T> Deref for Late<T> {
 		self.try_get().unwrap()
 	}
 }
-impl<T : Serialize> Serialize for Late<T> {
+impl<T: Serialize> Serialize for Late<T> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: Serializer,

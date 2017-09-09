@@ -82,7 +82,12 @@ pub fn try_take_type_parameters<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<&'a [Sy
 	}
 }
 
-fn finish_parse_ty<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, effect: Effect, name: Sym) -> Result<ast::Ty<'a>> {
+fn finish_parse_ty<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	start: Pos,
+	effect: Effect,
+	name: Sym,
+) -> Result<ast::Ty<'a>> {
 	let ty_args = try_take_type_arguments(l)?;
 	Ok(ast::Ty { loc: l.loc_from(start), effect, name, ty_args })
 }
@@ -105,7 +110,9 @@ pub fn try_take_type_arguments<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a,
 	}
 }
 
-pub fn take_type_arguments_after_passing_bracketl<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, ast::Ty<'a>>> {
+pub fn take_type_arguments_after_passing_bracketl<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+) -> Result<List<'a, ast::Ty<'a>>> {
 	let b = l.list_builder::<ast::Ty>();
 	loop {
 		b.add() <- parse_ty(l)?;

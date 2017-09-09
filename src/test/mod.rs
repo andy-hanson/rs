@@ -6,7 +6,7 @@ use serde_json::to_string as to_json_string;
 use std::io::stderr;
 
 use util::arena::Arena;
-use util::arr::{ SliceOps};
+use util::arr::SliceOps;
 use util::dict::{Dict, MutDict};
 use util::file_utils::{read_files_in_directory_recursive_if_exists, write_file,
                        write_file_and_ensure_directory, IoError};
@@ -21,10 +21,9 @@ use super::model::module::{Module, ModuleOrFail};
 
 use self::test_document_provider::{ExpectedDiagnostic, TestDocumentProvider};
 
-const TEST_DIR: &'static str = "tests";
 lazy_static! {
-	static ref CASES_ROOT_DIR: Path<'static> = Path::of_slice(b"tests/cases");//Path::from_parts([TEST_DIR, "cases",]);
-	static ref BASELINES_ROOT_DIR: Path<'static> = Path::of_slice(b"tests/cases");//Path::from_parts([TEST_DIR, "builtins",]);
+	static ref CASES_ROOT_DIR: Path<'static> = Path::of_slice(b"tests/cases");
+	static ref BASELINES_ROOT_DIR: Path<'static> = Path::of_slice(b"tests/cases");
 }
 
 //TODO: Path leaks memory?
@@ -96,9 +95,8 @@ fn test_single<'a>(test_path: &Path, update_baselines: bool, arena: &'a Arena) -
 			}
 		};
 		let expected_diagnostics = document_provider.get_expected_diagnostics();
-		let expected_baselines = io_result_to_result(
-			read_files_in_directory_recursive_if_exists(&baselines_directory, arena),
-		)?;
+		let expected_baselines =
+			io_result_to_result(read_files_in_directory_recursive_if_exists(&baselines_directory, arena))?;
 		(program, root, expected_diagnostics, expected_baselines)
 	};
 
@@ -213,7 +211,7 @@ fn assert_baseline<'a, T: Serialize>(
 	)
 }
 
-fn to_json<'out, T : Serialize>(value: &T, arena: &'out Arena) -> &'out [u8] {
+fn to_json<'out, T: Serialize>(value: &T, arena: &'out Arena) -> &'out [u8] {
 	//TODO:PERF (also sanity)
 	//to_json_string(actual).unwrap().into_boxed_str().as_bytes(),
 	arena.clone_slice(to_json_string(value).unwrap().as_bytes())
@@ -264,7 +262,15 @@ fn test_with_no_diagnostics<'a>(
 	update_baselines: bool,
 	arena: &'a Arena,
 ) -> TestResult<'a, ()> {
-	unused!(test_path, baselines_directory, program, index_module, expected_baselines, update_baselines, arena);
+	unused!(
+		test_path,
+		baselines_directory,
+		program,
+		index_module,
+		expected_baselines,
+		update_baselines,
+		arena
+	);
 	unimplemented!()
 }
 

@@ -5,7 +5,10 @@ use super::super::super::model::ty::InstCls;
 
 use super::instantiator::Instantiator;
 
-pub fn try_get_member_from_class_declaration<'a>(cls: &ClassDeclaration<'a>, member_name: Sym) -> Option<InstMember<'a>> {
+pub fn try_get_member_from_class_declaration<'a>(
+	cls: &ClassDeclaration<'a>,
+	member_name: Sym,
+) -> Option<InstMember<'a>> {
 	get_member_worker(cls, Instantiator::NIL, member_name)
 }
 

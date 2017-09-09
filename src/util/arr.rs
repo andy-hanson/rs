@@ -1,5 +1,5 @@
 use std::iter::Iterator;
-use std::ops::{Index};
+use std::ops::Index;
 use std::slice::Iter;
 use std::str::FromStr;
 
@@ -165,7 +165,11 @@ pub trait SliceOps<T>: Index<usize, Output = T> {
 	}
 
 	//TODO:PERF (only iterate once)
-	fn each_corresponds_list<'a, U : NoDrop, F: Fn(&T, &U) -> bool>(&self, other: &'a List<'a, U>, f: F) -> bool {
+	fn each_corresponds_list<'a, U: NoDrop, F: Fn(&T, &U) -> bool>(
+		&self,
+		other: &'a List<'a, U>,
+		f: F,
+	) -> bool {
 		if self.len() != other.len {
 			return false
 		}
@@ -177,35 +181,52 @@ pub trait SliceOps<T>: Index<usize, Output = T> {
 		true
 	}
 
-	fn map<'a, 'out, U, F : FnMut(&'a T) -> U>(&'a self, arena: &'out Arena, f: F) -> &'out [U] where T : 'a {
+	fn map<'a, 'out, U, F: FnMut(&'a T) -> U>(&'a self, arena: &'out Arena, f: F) -> &'out [U]
+	where
+		T: 'a,
+	{
 		arena.map_from(self.len(), self.iter(), f)
 	}
 
-	fn zip<'slice, 'out, U, V : NoDrop, I : Iterator<Item=U>, F: Fn(&'slice T, U) -> V>(&'slice self, other: I, arena: &'out Arena, f: F) -> &'out [V] where T : 'slice {
+	fn zip<'slice, 'out, U, V: NoDrop, I: Iterator<Item = U>, F: Fn(&'slice T, U) -> V>(
+		&'slice self,
+		other: I,
+		arena: &'out Arena,
+		f: F,
+	) -> &'out [V]
+	where
+		T: 'slice,
+	{
 		self.try_zip(other, arena, f).unwrap()
 	}
 
-	fn try_zip<'slice, 'out, U, V : NoDrop, I : Iterator<Item=U>, F: Fn(&'slice T, U) -> V>(&'slice self, other: I, arena: &'out Arena, f: F) -> Result<&'out [V], (usize, usize)> where T : 'slice {
+	fn try_zip<'slice, 'out, U, V: NoDrop, I: Iterator<Item = U>, F: Fn(&'slice T, U) -> V>(
+		&'slice self,
+		other: I,
+		arena: &'out Arena,
+		f: F,
+	) -> Result<&'out [V], (usize, usize)>
+	where
+		T: 'slice,
+	{
 		let b = arena.max_size_arr_builder::<V>(self.len());
 		let mut my_iter = self.iter();
 		let mut other_iter = other.into_iter();
 		//let mut len = 0;
 		loop {
 			match my_iter.next() {
-				Some(x) => {
+				Some(x) =>
 					match other_iter.next() {
 						Some(y) => {
 							&b <- f(x, y);
 						}
-						None => unimplemented!()
-					}
-				}
-				None => {
+						None => unimplemented!(),
+					},
+				None =>
 					match other_iter.next() {
 						Some(_) => unimplemented!(),
-						None => break Ok(b.finish())
-					}
-				}
+						None => break Ok(b.finish()),
+					},
 			}
 			//len += 1;
 		}
@@ -225,7 +246,7 @@ pub fn single_as_slice<T>(item: &T) -> &[T] {
 	unsafe { ::std::slice::from_raw_parts(item, 1) }
 }
 
-pub trait EqSliceOps<T : Eq> : SliceOps<T> {
+pub trait EqSliceOps<T: Eq>: SliceOps<T> {
 	fn count(&self, value: T) -> usize {
 		let mut count = 0;
 		for x in self.iter() {
@@ -236,4 +257,4 @@ pub trait EqSliceOps<T : Eq> : SliceOps<T> {
 		count
 	}
 }
-impl<T : Eq> EqSliceOps<T> for [T] {}
+impl<T: Eq> EqSliceOps<T> for [T] {}

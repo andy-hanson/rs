@@ -22,10 +22,7 @@ pub struct CompiledProgram<'a> {
 
 pub enum CompileResult<'a> {
 	RootMissing,
-	RootFound {
-		program: CompiledProgram<'a>,
-		root: ModuleOrFail<'a>
-	},
+	RootFound { program: CompiledProgram<'a>, root: ModuleOrFail<'a> },
 }
 
 pub fn compile_dir<'a>(dir: Path, arena: &'a Arena) -> Result<CompileResult<'a>, IoError> {

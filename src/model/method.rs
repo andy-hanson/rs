@@ -1,6 +1,6 @@
 use serde::{Serialize, Serializer};
 
-use util::arena::{NoDrop, Up, SerializeUp};
+use util::arena::{NoDrop, SerializeUp, Up};
 use util::arith::to_u8;
 use util::late::Late;
 use util::loc::Loc;

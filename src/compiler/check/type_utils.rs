@@ -1,4 +1,4 @@
-use util::arena::{Arena, ptr_eq, ListBuilder};
+use util::arena::{ptr_eq, Arena, ListBuilder};
 use util::arr::SliceOps;
 use util::loc::Loc;
 
@@ -38,7 +38,8 @@ pub fn is_assignable<'a>(expected: &Ty<'a>, actual: &Ty<'a>, arena: &'a Arena) -
 			match *actual {
 				Ty::Bogus => true,
 				Ty::Plain(effect_actual, ref inst_cls_actual) =>
-					effect_actual.contains(effect_expected) && is_subclass(inst_cls_expected, inst_cls_actual, arena),
+					effect_actual.contains(effect_expected) &&
+						is_subclass(inst_cls_expected, inst_cls_actual, arena),
 				Ty::Param(_) => unimplemented!(),
 			},
 	}
@@ -117,7 +118,13 @@ pub fn instantiate_and_narrow_effects<'a>(
 	}
 }
 
-pub fn narrow_effects<'a>(narrowed_effect: Effect, ty: &Ty<'a>, loc: Loc, diags: &mut ListBuilder<'a, Diagnostic<'a>>, arena: &'a Arena) -> Ty<'a> {
+pub fn narrow_effects<'a>(
+	narrowed_effect: Effect,
+	ty: &Ty<'a>,
+	loc: Loc,
+	diags: &mut ListBuilder<'a, Diagnostic<'a>>,
+	arena: &'a Arena,
+) -> Ty<'a> {
 	instantiate_and_narrow_effects(narrowed_effect, ty, &Instantiator::NIL, loc, diags, arena)
 }
 
@@ -160,14 +167,16 @@ fn instantiate_inst_cls_and_forbid_effects<'a>(
 	diags: &ListBuilder<Diagnostic<'a>>,
 	arena: &'a Arena,
 ) -> InstCls<'a> {
-	map_inst_cls(
-		inst_cls,
-		arena,
-		|arg| instantiate_ty_and_forbid_effects(narrowed_effect, arg, instantiator, loc, diags, arena),
-	)
+	map_inst_cls(inst_cls, arena, |arg| {
+		instantiate_ty_and_forbid_effects(narrowed_effect, arg, instantiator, loc, diags, arena)
+	})
 }
 
-fn instantiate_inst_cls<'a>(inst_cls: &InstCls<'a>, instantiator: &Instantiator<'a>, arena: &'a Arena) -> InstCls<'a> {
+fn instantiate_inst_cls<'a>(
+	inst_cls: &InstCls<'a>,
+	instantiator: &Instantiator<'a>,
+	arena: &'a Arena,
+) -> InstCls<'a> {
 	map_inst_cls(inst_cls, arena, |arg| instantiate_type(arg, instantiator, arena))
 }
 

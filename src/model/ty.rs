@@ -1,7 +1,7 @@
 use serde::{Serialize, Serializer};
 
-use util::arena::{Arena, Up, ptr_eq, NoDrop, SerializeUp};
-use util::arr::{SliceOps};
+use util::arena::{ptr_eq, Arena, NoDrop, SerializeUp, Up};
+use util::arr::SliceOps;
 use util::late::Late;
 use util::sym::Sym;
 

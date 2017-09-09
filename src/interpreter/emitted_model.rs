@@ -7,17 +7,17 @@ use super::super::model::method::{Impl, MethodOrImpl, MethodWithBody};
 
 use super::value::Value;
 
-pub struct EmittedProgram<'model : 'emit, 'emit> {
+pub struct EmittedProgram<'model: 'emit, 'emit> {
 	pub methods: Dict<Up<'model, MethodWithBody<'model>>, Code<'model, 'emit>>,
 	pub impls: Dict<Up<'model, Impl<'model>>, Code<'model, 'emit>>,
 }
 impl<'model, 'emit> NoDrop for EmittedProgram<'model, 'emit> {}
 
-pub struct Code<'model : 'emit, 'emit> {
+pub struct Code<'model: 'emit, 'emit> {
 	pub source: MethodOrImpl<'model>,
 	pub code: CodeData<'model, 'emit>,
 }
-pub enum CodeData<'model : 'emit, 'emit> {
+pub enum CodeData<'model: 'emit, 'emit> {
 	Instructions(Instructions<'model, 'emit>),
 	Builtin(BuiltinCode),
 }
@@ -28,10 +28,10 @@ pub enum BuiltinCode {
 	Fn2(for<'a> fn(Value<'a>, Value<'a>) -> Value<'a>),
 }
 
-pub struct Instructions<'model : 'emit, 'emit>(pub &'emit [Instruction<'model, 'emit>]);
+pub struct Instructions<'model: 'emit, 'emit>(pub &'emit [Instruction<'model, 'emit>]);
 impl<'model, 'emit> NoDrop for Instructions<'model, 'emit> {}
 
-pub enum Instruction<'model : 'emit, 'emit> {
+pub enum Instruction<'model: 'emit, 'emit> {
 	/** Push a literal value onto the stack. */
 	LiteralVoid,
 	LiteralBool(bool),

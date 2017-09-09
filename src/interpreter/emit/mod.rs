@@ -12,7 +12,10 @@ use super::emitted_model::{Code, CodeData, EmittedProgram};
 mod emit_expr;
 use self::emit_expr::emit_method;
 
-pub fn emit_program<'model, 'emit>(root_module: &'model Module<'model>, arena: &'emit Arena) -> EmittedProgram<'model, 'emit> {
+pub fn emit_program<'model, 'emit>(
+	root_module: &'model Module<'model>,
+	arena: &'emit Arena,
+) -> EmittedProgram<'model, 'emit> {
 	// Emit all dependencies first.
 	let mut emitter =
 		Emitter { arena, emitted_modules: MutSet::new(), methods: MutDict::new(), impls: MutDict::new() };
@@ -20,7 +23,7 @@ pub fn emit_program<'model, 'emit>(root_module: &'model Module<'model>, arena: &
 	EmittedProgram { methods: emitter.methods.freeze(), impls: emitter.impls.freeze() }
 }
 
-struct Emitter<'model : 'emit, 'emit> {
+struct Emitter<'model: 'emit, 'emit> {
 	arena: &'emit Arena,
 	emitted_modules: MutSet<Up<'model, Module<'model>>>,
 	methods: MutDict<Up<'model, MethodWithBody<'model>>, Code<'model, 'emit>>,
@@ -54,7 +57,8 @@ impl<'model, 'emit> Emitter<'model, 'emit> {
 
 		for method in class.methods.iter() {
 			let code = self.get_code(module, method.name(), method.parameters(), *method.body);
-			self.methods.add(Up(method), Code { source: MethodOrImpl::Method(Up(method)), code })
+			self.methods
+				.add(Up(method), Code { source: MethodOrImpl::Method(Up(method)), code })
 		}
 	}
 

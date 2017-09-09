@@ -8,7 +8,11 @@ use super::super::super::model::method::Parameter;
 
 use super::super::emitted_model::{Instruction, Instructions};
 
-pub fn emit_method<'model, 'emit>(parameters: &[Parameter<'model>], body: &'model Expr<'model>, arena: &'emit Arena) -> Instructions<'model, 'emit> {
+pub fn emit_method<'model, 'emit>(
+	parameters: &[Parameter<'model>],
+	body: &'model Expr<'model>,
+	arena: &'emit Arena,
+) -> Instructions<'model, 'emit> {
 	let n_parameters = to_u8(parameters.len());
 	let mut emitter = ExprEmitter {
 		arena,
@@ -21,7 +25,7 @@ pub fn emit_method<'model, 'emit>(parameters: &[Parameter<'model>], body: &'mode
 	emitter.w.finish()
 }
 
-struct InstructionWriter<'model : 'emit, 'emit> {
+struct InstructionWriter<'model: 'emit, 'emit> {
 	instructions: DirectArrBuilder<'emit, Instruction<'model, 'emit>>,
 }
 impl<'model, 'emit> InstructionWriter<'model, 'emit> {
@@ -39,7 +43,7 @@ impl<'model, 'emit> InstructionWriter<'model, 'emit> {
 	}
 }
 
-struct ExprEmitter<'model : 'emit, 'emit> {
+struct ExprEmitter<'model: 'emit, 'emit> {
 	arena: &'emit Arena,
 	w: InstructionWriter<'model, 'emit>,
 	// Number of parameters the current function has.

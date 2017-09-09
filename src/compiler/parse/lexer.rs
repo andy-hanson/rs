@@ -4,7 +4,7 @@ use util::arena::{Arena, DirectArrBuilder, ListBuilder, NoDrop};
 use util::loc::{Loc, Pos};
 use util::sym::Sym;
 
-use super::super::super::model::diag::{ParseDiag};
+use super::super::super::model::diag::ParseDiag;
 
 use super::ast::{Expr, ExprData};
 use super::reader::Reader;
@@ -100,11 +100,11 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		self.arena <- Expr(self.loc_from(start), data)
 	}
 
-	pub fn direct_arr_builder<T : Sized + NoDrop>(&self) -> DirectArrBuilder<'ast, T> {
+	pub fn direct_arr_builder<T: Sized + NoDrop>(&self) -> DirectArrBuilder<'ast, T> {
 		self.arena.direct_arr_builder()
 	}
 
-	pub fn list_builder<T : Sized + NoDrop>(&self) -> ListBuilder<'ast, T> {
+	pub fn list_builder<T: Sized + NoDrop>(&self) -> ListBuilder<'ast, T> {
 		self.arena.list_builder()
 	}
 
@@ -282,10 +282,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		if actual == expected {
 			Ok(())
 		} else {
-			Err((
-				self.single_char_loc(),
-				ParseDiag::UnexpectedCharacter(char::from(actual), expected_desc),
-			))
+			Err((self.single_char_loc(), ParseDiag::UnexpectedCharacter(char::from(actual), expected_desc)))
 		}
 	}
 
@@ -298,10 +295,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		if pred(actual) {
 			Ok(())
 		} else {
-			Err((
-				self.single_char_loc(),
-				ParseDiag::UnexpectedCharacter(char::from(actual), expected_desc),
-			))
+			Err((self.single_char_loc(), ParseDiag::UnexpectedCharacter(char::from(actual), expected_desc)))
 		}
 	}
 
@@ -539,7 +533,12 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		self.unexpected(start_pos, expected_desc, actual.token_name())
 	}
 
-	pub fn unexpected(&self, start_pos: Pos, actual: &'static [u8], expected: &'static [u8]) -> (Loc, ParseDiag) {
+	pub fn unexpected(
+		&self,
+		start_pos: Pos,
+		actual: &'static [u8],
+		expected: &'static [u8],
+	) -> (Loc, ParseDiag) {
 		(self.loc_from(start_pos), ParseDiag::UnexpectedToken { expected, actual })
 	}
 

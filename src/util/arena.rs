@@ -2,17 +2,17 @@ use serde::{Serialize, Serializer};
 
 use std::cell::{Cell, UnsafeCell};
 use std::hash::{Hash, Hasher};
-use std::mem::size_of;
-use std::ops::{Placer, Place, InPlace, Deref};
 use std::marker::PhantomData;
+use std::mem::size_of;
+use std::ops::{Deref, InPlace, Place, Placer};
 use std::slice;
 
 use super::arith::{isize_to_usize, usize_to_isize};
 
 pub trait NoDrop {}
-impl<T : NoDrop> NoDrop for Option<T> {}
-impl<'a, T : NoDrop> NoDrop for &'a [T] {}
-impl<'a, T : NoDrop> NoDrop for &'a T {}
+impl<T: NoDrop> NoDrop for Option<T> {}
+impl<'a, T: NoDrop> NoDrop for &'a [T] {}
+impl<'a, T: NoDrop> NoDrop for &'a T {}
 impl NoDrop for bool {}
 impl NoDrop for u8 {}
 impl NoDrop for u32 {}
@@ -40,11 +40,11 @@ impl Arena {
 		unsafe { *self.next_index.get() }
 	}
 
-	fn alloc_in_array<T : NoDrop>(&self) -> *mut T {
+	fn alloc_in_array<T: NoDrop>(&self) -> *mut T {
 		self.alloc_worker()
 	}
 
-	fn alloc_single<T : NoDrop>(&self) -> *mut T {
+	fn alloc_single<T: NoDrop>(&self) -> *mut T {
 		self.check_lock();
 		self.alloc_worker()
 	}
@@ -55,7 +55,7 @@ impl Arena {
 		}
 	}
 
-	fn alloc_worker<T : NoDrop>(&self) -> *mut T {
+	fn alloc_worker<T: NoDrop>(&self) -> *mut T {
 		let size = size_of::<T>();
 		assert!(size > 0);
 		self.alloc_n_bytes(size) as *mut T
@@ -72,7 +72,7 @@ impl Arena {
 		}
 	}
 
-	pub fn clone_slice<T : NoDrop + Copy>(&self, slice: &[T]) -> &[T] {
+	pub fn clone_slice<T: NoDrop + Copy>(&self, slice: &[T]) -> &[T] {
 		//TODO:PERF faster copy
 		let b = self.direct_arr_builder::<T>();
 		for em in slice {
@@ -85,7 +85,12 @@ impl Arena {
 		self.alloc_n_bytes(size_of::<T>() * len) as *mut T
 	}
 
-	pub fn map_from<T, U, I : Iterator<Item=T>, F : FnMut(T) -> U>(&self, len: usize, iter: I, mut f: F) -> &[U] {
+	pub fn map_from<T, U, I: Iterator<Item = T>, F: FnMut(T) -> U>(
+		&self,
+		len: usize,
+		iter: I,
+		mut f: F,
+	) -> &[U] {
 		//TODO: don't even need to check the max size
 		let start = self.alloc_n(len);
 		let mut next = start;
@@ -100,26 +105,30 @@ impl Arena {
 		}
 	}
 
-	pub fn max_size_arr_builder<T : NoDrop>(&self, max_len: usize) -> MaxSizeArrBuilder<T> {
+	pub fn max_size_arr_builder<T: NoDrop>(&self, max_len: usize) -> MaxSizeArrBuilder<T> {
 		self.check_lock();
 		let ptr = self.alloc_n_bytes(size_of::<T>() * max_len) as *mut T;
 		MaxSizeArrBuilder::new(ptr, max_len)
 	}
 
 	// Writes directly into the arena. Other allocations aren't allowed to happen at the same time.
-	pub fn direct_arr_builder<T : NoDrop>(&self) -> DirectArrBuilder<T> {
-		unsafe { *self.locked.get() = true; }
+	pub fn direct_arr_builder<T: NoDrop>(&self) -> DirectArrBuilder<T> {
+		unsafe {
+			*self.locked.get() = true;
+		}
 		let start_byte_index = self.cur_index();
 		DirectArrBuilder {
 			arena: self,
 			start_ptr: unsafe {
-				(*self.bytes.get()).as_mut_ptr().offset(usize_to_isize(start_byte_index)) as *mut T
+				(*self.bytes.get())
+					.as_mut_ptr()
+					.offset(usize_to_isize(start_byte_index)) as *mut T
 			},
 			start_byte_index,
 		}
 	}
 
-	pub fn list_builder<T : NoDrop>(&self) -> ListBuilder<T> {
+	pub fn list_builder<T: NoDrop>(&self) -> ListBuilder<T> {
 		ListBuilder::new(self)
 	}
 
@@ -131,7 +140,7 @@ impl Arena {
 		}
 	}*/
 }
-impl<'a, 'arena, T : 'a + Sized + NoDrop> Placer<T> for &'a Arena {
+impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a Arena {
 	type Place = PointerPlace<'a, T>;
 
 	fn make_place(self) -> Self::Place {
@@ -139,7 +148,7 @@ impl<'a, 'arena, T : 'a + Sized + NoDrop> Placer<T> for &'a Arena {
 	}
 }
 
-pub struct ListBuilder<'a, T : 'a + Sized + NoDrop> {
+pub struct ListBuilder<'a, T: 'a + Sized + NoDrop> {
 	arena: &'a Arena,
 	//Returned at the end
 	first: UnsafeCell<Option<*const ListNode<'a, T>>>,
@@ -147,7 +156,7 @@ pub struct ListBuilder<'a, T : 'a + Sized + NoDrop> {
 	last: UnsafeCell<Option<*mut ListNode<'a, T>>>,
 	len: UnsafeCell<usize>,
 }
-impl<'a, T : 'a + Sized + NoDrop> ListBuilder<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop> ListBuilder<'a, T> {
 	fn new(arena: &'a Arena) -> Self {
 		ListBuilder {
 			arena,
@@ -182,28 +191,23 @@ impl<'a, T : 'a + Sized + NoDrop> ListBuilder<'a, T> {
 	}
 
 	pub fn finish(self) -> List<'a, T> {
-		unsafe {
-			List {
-				len: *self.len.get(),
-				head: (*self.first.get()).map(|ptr| &*ptr),
-			}
-		}
+		unsafe { List { len: *self.len.get(), head: (*self.first.get()).map(|ptr| &*ptr) } }
 	}
 }
 
-pub struct AddPlacer<'a, T : 'a + Sized + NoDrop>(&'a mut T);
-impl<'a, T : 'a + Sized + NoDrop> Placer<T> for AddPlacer<'a, T> {
+pub struct AddPlacer<'a, T: 'a + Sized + NoDrop>(&'a mut T);
+impl<'a, T: 'a + Sized + NoDrop> Placer<T> for AddPlacer<'a, T> {
 	type Place = PointerPlace<'a, T>;
 	fn make_place(self) -> Self::Place {
 		PointerPlace::new(self.0)
 	}
 }
 
-pub struct List<'a, T : NoDrop + 'a> {
+pub struct List<'a, T: NoDrop + 'a> {
 	pub len: usize,
 	head: Option<&'a ListNode<'a, T>>,
 }
-impl<'a, T : NoDrop + 'a> List<'a, T> {
+impl<'a, T: NoDrop + 'a> List<'a, T> {
 	pub fn empty() -> Self {
 		List { len: 0, head: None }
 	}
@@ -211,10 +215,12 @@ impl<'a, T : NoDrop + 'a> List<'a, T> {
 	pub fn single(value: T, arena: &'a Arena) -> Self {
 		List {
 			len: 1,
-			head: Some(arena <- ListNode {
+			head: Some(
+				arena <- ListNode {
 				value,
 				next: UnsafeCell::new(None),
-			})
+			},
+			),
 		}
 	}
 
@@ -222,12 +228,16 @@ impl<'a, T : NoDrop + 'a> List<'a, T> {
 		self.len != 0
 	}
 
-	pub fn map<'out, U, F : FnMut(&'a T) -> U>(&'a self, arena: &'out Arena, f: F) -> &'out [U] {
+	pub fn map<'out, U, F: FnMut(&'a T) -> U>(&'a self, arena: &'out Arena, f: F) -> &'out [U] {
 		arena.map_from(self.len, self.iter(), f)
 	}
 
 	//TODO:KILL
-	pub fn map_defined_probably_all<'out, U, F: FnMut(&'a T) -> Option<U>>(&'a self, arena: &'out Arena, f: F) -> &'out [U] {
+	pub fn map_defined_probably_all<'out, U, F: FnMut(&'a T) -> Option<U>>(
+		&'a self,
+		arena: &'out Arena,
+		f: F,
+	) -> &'out [U] {
 		unused!(arena, f);
 		//TODO:PERF we will probably map all, so allocate self.len() space ahead of time
 		unimplemented!()
@@ -248,7 +258,11 @@ impl<'a, T : NoDrop + 'a> List<'a, T> {
 	}
 
 	//TODO:KILL
-	pub fn map_with_index<'out, U, F: Fn(&'a T, usize) -> U>(&'a self, arena: &'out Arena, f: F) -> &'out [U] {
+	pub fn map_with_index<'out, U, F: Fn(&'a T, usize) -> U>(
+		&'a self,
+		arena: &'out Arena,
+		f: F,
+	) -> &'out [U] {
 		unused!(arena, f);
 		unimplemented!()
 	}
@@ -257,10 +271,10 @@ impl<'a, T : NoDrop + 'a> List<'a, T> {
 		ListIter(self.head)
 	}
 }
-impl<'a, T : NoDrop + 'a> NoDrop for List<'a, T> {}
+impl<'a, T: NoDrop + 'a> NoDrop for List<'a, T> {}
 
-pub struct ListIter<'a, T : 'a>(Option<&'a ListNode<'a, T>>);
-impl<'a, T : 'a> Iterator for ListIter<'a, T> {
+pub struct ListIter<'a, T: 'a>(Option<&'a ListNode<'a, T>>);
+impl<'a, T: 'a> Iterator for ListIter<'a, T> {
 	type Item = &'a T;
 
 	fn next(&mut self) -> Option<&'a T> {
@@ -274,8 +288,8 @@ impl<'a, T : 'a> Iterator for ListIter<'a, T> {
 
 //Just a marker for an up-pointer. Not serializable (normally, anyway.)
 #[derive(Copy, Clone)]
-pub struct Up<'a, T : 'a>(pub &'a T);
-impl<'a, T : NoDrop> NoDrop for Up<'a, T> {}
+pub struct Up<'a, T: 'a>(pub &'a T);
+impl<'a, T: NoDrop> NoDrop for Up<'a, T> {}
 impl<'a, T> Up<'a, T> {
 	//TODO: shouldn't be needed, this is Copy!
 	pub fn clone_as_up(&self) -> Up<'a, T> {
@@ -298,7 +312,7 @@ impl<'a, T: SerializeUp> Serialize for Up<'a, T> {
 }
 impl<'a, T> Eq for Up<'a, T> {}
 impl<'a, T> Hash for Up<'a, T> {
-	fn hash<H : Hasher>(&self, state: &mut H) {
+	fn hash<H: Hasher>(&self, state: &mut H) {
 		state.write_usize(self.0 as *const T as usize)
 	}
 }
@@ -320,25 +334,29 @@ pub trait SerializeUp {
 		S: Serializer;
 }
 
-struct ListNode<'a, T : 'a> {
+struct ListNode<'a, T: 'a> {
 	value: T,
 	next: UnsafeCell<Option<&'a ListNode<'a, T>>>,
 }
-impl<'a, T> NoDrop for ListNode<'a, T> where T : NoDrop {}
+impl<'a, T> NoDrop for ListNode<'a, T>
+where
+	T: NoDrop,
+{
+}
 
-pub struct MaxSizeArrBuilder<'a, T : 'a + Sized + NoDrop> {
+pub struct MaxSizeArrBuilder<'a, T: 'a + Sized + NoDrop> {
 	start_ptr: *mut T,
 	max_ptr: *mut T,
 	next_ptr: Cell<*mut T>,
 	phantom: PhantomData<&'a T>,
 }
-impl<'a, T : 'a + Sized + NoDrop> MaxSizeArrBuilder<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop> MaxSizeArrBuilder<'a, T> {
 	fn new(start_ptr: *mut T, max_len: usize) -> Self {
 		MaxSizeArrBuilder {
 			start_ptr,
 			max_ptr: unsafe { start_ptr.offset(usize_to_isize(max_len)) },
 			next_ptr: Cell::new(start_ptr),
-			phantom: PhantomData
+			phantom: PhantomData,
 		}
 	}
 
@@ -352,7 +370,7 @@ impl<'a, T : 'a + Sized + NoDrop> MaxSizeArrBuilder<'a, T> {
 		self.slice_so_far()
 	}
 }
-impl<'a, T : 'a + Sized + NoDrop + Copy> MaxSizeArrBuilder<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop + Copy> MaxSizeArrBuilder<'a, T> {
 	pub fn add_slice(&self, slice: &[T]) {
 		//TODO:PERF fast copy
 		for x in slice {
@@ -360,7 +378,7 @@ impl<'a, T : 'a + Sized + NoDrop + Copy> MaxSizeArrBuilder<'a, T> {
 		}
 	}
 }
-impl<'a, 'arena, T : 'a + Sized + NoDrop> Placer<T> for &'a MaxSizeArrBuilder<'arena, T> {
+impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a MaxSizeArrBuilder<'arena, T> {
 	type Place = PointerPlace<'arena, T>;
 
 	fn make_place(self) -> Self::Place {
@@ -377,9 +395,11 @@ pub struct DirectArrBuilder<'a, T: Sized + NoDrop> {
 	start_ptr: *mut T,
 	start_byte_index: usize,
 }
-impl<'a, T : 'a + Sized + NoDrop> DirectArrBuilder<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop> DirectArrBuilder<'a, T> {
 	pub fn finish(self) -> &'a mut [T] {
-		unsafe { *self.arena.locked.get() = false; }
+		unsafe {
+			*self.arena.locked.get() = false;
+		}
 
 		let len_bytes = self.arena.cur_index() - self.start_byte_index;
 		let t_size = size_of::<T>();
@@ -388,7 +408,7 @@ impl<'a, T : 'a + Sized + NoDrop> DirectArrBuilder<'a, T> {
 		unsafe { slice::from_raw_parts_mut(self.start_ptr, len) }
 	}
 }
-impl<'a, T : 'a + Sized + NoDrop + Copy> DirectArrBuilder<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop + Copy> DirectArrBuilder<'a, T> {
 	pub fn add_slice(&self, slice: &[T]) {
 		//TODO:PERF fast copy
 		for x in slice {
@@ -396,7 +416,7 @@ impl<'a, T : 'a + Sized + NoDrop + Copy> DirectArrBuilder<'a, T> {
 		}
 	}
 }
-impl<'a, T : 'a + Sized + NoDrop> Placer<T> for &'a DirectArrBuilder<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop> Placer<T> for &'a DirectArrBuilder<'a, T> {
 	type Place = PointerPlace<'a, T>;
 
 	fn make_place(self) -> Self::Place {
@@ -405,21 +425,21 @@ impl<'a, T : 'a + Sized + NoDrop> Placer<T> for &'a DirectArrBuilder<'a, T> {
 }
 
 /** Place for a single pointer that's already been allocated. */
-pub struct PointerPlace<'a, T : 'a + Sized + NoDrop> {
+pub struct PointerPlace<'a, T: 'a + Sized + NoDrop> {
 	ptr: *mut T,
-	phantom: PhantomData<&'a T>
+	phantom: PhantomData<&'a T>,
 }
-impl<'a, T : 'a + Sized + NoDrop> PointerPlace<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop> PointerPlace<'a, T> {
 	fn new(ptr: *mut T) -> Self {
 		PointerPlace { ptr, phantom: PhantomData }
 	}
 }
-impl<'a, T : 'a + Sized + NoDrop> Place<T> for PointerPlace<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop> Place<T> for PointerPlace<'a, T> {
 	fn pointer(&mut self) -> *mut T {
 		self.ptr
 	}
 }
-impl<'a, T : 'a + Sized + NoDrop> InPlace<T> for PointerPlace<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop> InPlace<T> for PointerPlace<'a, T> {
 	type Owner = &'a mut T;
 
 	unsafe fn finalize(self) -> Self::Owner {

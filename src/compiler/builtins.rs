@@ -1,10 +1,10 @@
-use util::arena::{NoDrop, Arena, List, Up};
+use util::arena::{Arena, List, NoDrop, Up};
 use util::late::Late;
 use util::sym::Sym;
 
 use super::super::model::class::ClassDeclaration;
-use super::super::model::diag::{Diagnostic, Diag};
-use super::super::model::module::{FailModule, Module, ModuleSourceEnum, ModuleOrFail};
+use super::super::model::diag::{Diag, Diagnostic};
+use super::super::model::module::{FailModule, Module, ModuleOrFail, ModuleSourceEnum};
 use super::super::model::ty::{InstCls, Ty};
 
 use super::check::check_module;

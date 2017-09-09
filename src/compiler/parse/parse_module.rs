@@ -1,5 +1,5 @@
-use util::arena::{List};
-use util::arr::{SliceOps};
+use util::arena::List;
+use util::arr::SliceOps;
 use util::loc::Pos;
 use util::path::{Path, RelPath};
 use util::sym::Sym;
@@ -44,7 +44,7 @@ fn parse_imports<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, ast::Import<'
 		}
 
 
-		let path = parse_path(l);//path_parts.finish();
+		let path = parse_path(l); //path_parts.finish();
 		let loc = l.loc_from(start_pos);
 		b.add() <-
 			if leading_dots == 0 {
@@ -74,7 +74,11 @@ fn parse_class<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, kw: Token) -> Result<&
 	Ok(l.arena <- ast::Class { loc: l.loc_from(start), type_parameters, head, supers, methods })
 }
 
-fn try_parse_class_generic<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, kw: Token) -> Result<(&'a [Sym], Pos, Token)> {
+fn try_parse_class_generic<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	start: Pos,
+	kw: Token,
+) -> Result<(&'a [Sym], Pos, Token)> {
 	// e.g. `generic[T]`
 	if kw != Token::Generic {
 		return Ok((&[], start, kw))
@@ -97,7 +101,11 @@ fn try_parse_class_generic<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, kw: Token)
 	Ok((type_parameters.finish(), next_pos, next_tok))
 }
 
-fn parse_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, kw: Token) -> Result<(Option<ast::ClassHead<'a>>, Pos, MethodKw)> {
+fn parse_head<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	start: Pos,
+	kw: Token,
+) -> Result<(Option<ast::ClassHead<'a>>, Pos, MethodKw)> {
 	match kw {
 		Token::EOF => Ok((None, start, MethodKw::Eof)),
 		Token::Fun => Ok((None, start, MethodKw::Fun)),
@@ -144,7 +152,11 @@ fn parse_abstract_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ast:
 	Ok(ast::ClassHead(l.loc_from(start), ast::ClassHeadData::Abstract(abstract_methods.finish())))
 }
 
-fn parse_methods<'a, 't>(l: &mut Lexer<'a, 't>, mut start: Pos, mut next: MethodKw) -> Result<List<'a, ast::Method<'a>>> {
+fn parse_methods<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	mut start: Pos,
+	mut next: MethodKw,
+) -> Result<List<'a, ast::Method<'a>>> {
 	let methods = l.list_builder::<ast::Method>();
 	loop {
 		match next {
@@ -177,7 +189,9 @@ fn parse_methods<'a, 't>(l: &mut Lexer<'a, 't>, mut start: Pos, mut next: Method
 	}
 }
 
-fn parse_method_head<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<(ast::Ty<'a>, Sym, Effect, List<'a, ast::Parameter<'a>>)> {
+fn parse_method_head<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+) -> Result<(ast::Ty<'a>, Sym, Effect, List<'a, ast::Parameter<'a>>)> {
 	let return_ty = parse_ty(l)?;
 	l.take_space()?;
 	let name = l.take_name()?;
@@ -209,9 +223,14 @@ fn parse_method_head<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<(ast::Ty<'a>, Sym,
 	Ok((return_ty, name, self_effect, parameters))
 }
 
-fn parse_parameters<'a, 't>(l: &mut Lexer<'a, 't>, first: Option<ast::Parameter<'a>>) -> Result<List<'a, ast::Parameter<'a>>> {
+fn parse_parameters<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	first: Option<ast::Parameter<'a>>,
+) -> Result<List<'a, ast::Parameter<'a>>> {
 	let parameters = l.list_builder::<ast::Parameter<'a>>();
-	if let Some(f) = first { parameters.add() <- f; }
+	if let Some(f) = first {
+		parameters.add() <- f;
+	}
 	loop {
 		if l.try_take_parenr() {
 			break Ok(parameters.finish())

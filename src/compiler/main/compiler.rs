@@ -9,7 +9,7 @@ use util::sym::Sym;
 use super::super::super::host::document_info::DocumentInfo;
 use super::super::super::host::document_provider::DocumentProvider;
 use super::super::super::model::diag::{Diag, Diagnostic};
-use super::super::super::model::module::{FailModule, Module, ModuleSource, ModuleSourceEnum, ModuleOrFail};
+use super::super::super::model::module::{FailModule, Module, ModuleOrFail, ModuleSource, ModuleSourceEnum};
 
 use super::super::builtins::{get_builtins, BuiltinsOwn};
 use super::super::check::check_module;
@@ -78,8 +78,12 @@ struct Compiler<'document_provider, 'old, 'model, D: DocumentProvider<'model> + 
 	// Keys are logical paths.
 	modules: MutDict<Path<'model>, ModuleState<'model>>,
 }
-impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>> Compiler<'document_provider, 'old, 'model, D> {
-	fn compile_single(&mut self, logical_path: Path<'model>) -> Result<(CompileSingleResult<'model>, bool), D::Error> {
+impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
+	Compiler<'document_provider, 'old, 'model, D> {
+	fn compile_single(
+		&mut self,
+		logical_path: Path<'model>,
+	) -> Result<(CompileSingleResult<'model>, bool), D::Error> {
 		if let Some(already_compiled) = self.modules.get(&logical_path) {
 			return Ok(match *already_compiled {
 				ModuleState::Compiling =>
@@ -113,15 +117,10 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>> Compiler<'do
 		let parse_result = parse(&parse_arena, document.text);
 		Ok(match parse_result {
 			Ok(ModuleAst { ref imports, class }) => {
-				self.modules.add(logical_path.clone_path_as_ptr(), ModuleState::Compiling);
-				let (module_or_fail, is_reused) = self.do_compile_single(
-					&logical_path,
-					document,
-					imports,
-					class,
-					full_path,
-					is_index,
-				)?;
+				self.modules
+					.add(logical_path.clone_path_as_ptr(), ModuleState::Compiling);
+				let (module_or_fail, is_reused) =
+					self.do_compile_single(&logical_path, document, imports, class, full_path, is_index)?;
 				let module_state = if is_reused {
 					ModuleState::CompiledReused(module_or_fail.clone_as_ptr())
 				} else {
@@ -137,7 +136,8 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>> Compiler<'do
 				let diag = Diagnostic(parse_diag.0, Diag::ParseError(parse_diag.1)); //TODO: duplicate code somewhere
 				let fail = self.arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, self.arena) };
 				let module_or_fail = ModuleOrFail::Fail(fail);
-				self.modules.add(logical_path.clone_path_as_ptr(), ModuleState::CompiledFresh(module_or_fail));
+				self.modules
+					.add(logical_path.clone_path_as_ptr(), ModuleState::CompiledFresh(module_or_fail));
 				(CompileSingleResult::Found(ModuleOrFail::Fail(fail)), false)
 			}
 		})
@@ -176,7 +176,8 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>> Compiler<'do
 		);
 		let res = match resolved_imports {
 			ResolvedImports::Success(imports) => {
-				let module = self.arena <- Module { source, imports, class: Late::new(), diagnostics: Late::new() };
+				let module =
+					self.arena <- Module { source, imports, class: Late::new(), diagnostics: Late::new() };
 				let name = match logical_path.last() {
 					Some(name) => Sym::from_slice(name),
 					None => self.document_provider.root_name(),
@@ -200,9 +201,11 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>> Compiler<'do
 		let mut diagnostics = self.arena.list_builder::<Diagnostic>();
 		let mut all_imports_reused = true;
 		//TODO:PERF probably, all imports will succeed, so allocate whole array.
-		let all_successes = self.arena.max_size_arr_builder::<Up<'model, Module<'model>>>(import_asts.len);
+		let all_successes = self.arena
+			.max_size_arr_builder::<Up<'model, Module<'model>>>(import_asts.len);
 		//TODO:PERF probably, this will not be necessary, somehow avoid allocating?
-		let all = self.arena.max_size_arr_builder::<ModuleOrFail<'model>>(import_asts.len);
+		let all = self.arena
+			.max_size_arr_builder::<ModuleOrFail<'model>>(import_asts.len);
 		let mut any_failure = false;
 		for import_ast in import_asts.iter() {
 			match self.resolve_import(import_ast, &mut diagnostics, full_path, &mut all_imports_reused)? {

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use util::arena::{Up, List};
+use util::arena::{List, Up};
 use util::arr::SliceOps;
 use util::loc::Loc;
 use util::sym::Sym;
@@ -20,7 +20,13 @@ use super::ctx::Ctx;
 use super::instantiator::Instantiator;
 use super::type_utils::{common_type, instantiate_and_narrow_effects, instantiate_type, is_assignable};
 
-pub fn check_method_body<'ast, 'ctx, 'instantiator, 'builtins_ctx : 'ctx, 'model : 'ctx + 'instantiator + 'builtins_ctx>(
+pub fn check_method_body<
+	'ast,
+	'ctx,
+	'instantiator,
+	'builtins_ctx: 'ctx,
+	'model: 'ctx + 'instantiator + 'builtins_ctx,
+>(
 	ctx: &'ctx Ctx<'builtins_ctx, 'model>,
 	method_or_impl: MethodOrImpl<'model>,
 	method_instantiator: &'instantiator Instantiator<'model>,
@@ -41,7 +47,12 @@ pub fn check_method_body<'ast, 'ctx, 'instantiator, 'builtins_ctx : 'ctx, 'model
 	ectx.check_return(return_ty, body)
 }
 
-struct CheckExprContext<'ctx, 'instantiator, 'builtins_ctx : 'ctx, 'model : 'ctx + 'instantiator + 'builtins_ctx> {
+struct CheckExprContext<
+	'ctx,
+	'instantiator,
+	'builtins_ctx: 'ctx,
+	'model: 'ctx + 'instantiator + 'builtins_ctx,
+> {
 	ctx: &'ctx Ctx<'builtins_ctx, 'model>,
 	method_or_impl: MethodOrImpl<'model>,
 	method_instantiator: &'instantiator Instantiator<'model>,
@@ -50,7 +61,8 @@ struct CheckExprContext<'ctx, 'instantiator, 'builtins_ctx : 'ctx, 'model : 'ctx
 	current_parameters: &'model [Parameter<'model>],
 	locals: RefCell<Vec<&'model Local<'model>>>,
 }
-impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instantiator, 'builtins_ctx, 'model> {
+impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
+	CheckExprContext<'ctx, 'instantiator, 'builtins_ctx, 'model> {
 	fn add_diagnostic(&self, loc: Loc, data: Diag<'model>) {
 		self.ctx.add_diagnostic(loc, data)
 	}
@@ -81,11 +93,19 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		self.check_expr(&mut Expected::Infer(None), a)
 	}
 
-	fn check_expr<'ast>(&self, mut e: &mut Expected<'model>, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
+	fn check_expr<'ast>(
+		&self,
+		mut e: &mut Expected<'model>,
+		a: &'ast ast::Expr<'ast>,
+	) -> &'model Expr<'model> {
 		self.check_expr_worker(&mut e, a).0
 	}
 
-	fn check_expr_worker<'ast>(&self, mut e: &mut Expected<'model>, &ast::Expr(loc, ref ast_data): &'ast ast::Expr<'ast>) -> Handled<'model> {
+	fn check_expr_worker<'ast>(
+		&self,
+		mut e: &mut Expected<'model>,
+		&ast::Expr(loc, ref ast_data): &'ast ast::Expr<'ast>,
+	) -> Handled<'model> {
 		match *ast_data {
 			ast::ExprData::Access(name) => {
 				if let Some(local) = self.locals.borrow().iter().find(|l| l.name == name) {
@@ -126,7 +146,9 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				// implementing an abstract method where the superclass took type arguments.
 				let moa = &self.method_or_impl.method_or_abstract();
 				let inst = self.method_instantiator;
-				let args = unwrap_or_return!(self.check_arguments(loc, moa, inst, arg_asts.iter().cloned()), self.bogus(loc));
+				let args = unwrap_or_return!(
+					self.check_arguments(loc, moa, inst, arg_asts.iter().cloned()),
+					self.bogus(loc));
 				self.handle(&mut e, loc, ExprData::Recur(self.method_or_impl.copy(), args))
 			}
 			ast::ExprData::New(ref ty_arg_asts, ref arg_asts) => {
@@ -170,7 +192,9 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 					Ty::Plain(target_effect, ref target_class) => {
 						let InstMember(member_decl, instantiator) =
 							//TODO: just get_slot_of_inst_cls
-							unwrap_or_return!(self.get_member_of_inst_cls(target.loc(), target_class, property_name), self.bogus(loc));
+							unwrap_or_return!(
+								self.get_member_of_inst_cls(target.loc(), target_class, property_name),
+								self.bogus(loc));
 						let slot = match member_decl {
 							MemberDeclaration::Slot(s) => s,
 							_ => {
@@ -344,7 +368,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		args: &'ast List<&'ast ast::Expr<'ast>>,
 	) -> Handled<'model> {
 		let &ast::Expr(target_loc, ref target_data) = target;
-		let empty_list = todo();//List::empty(); //TODO:PERF
+		let empty_list = todo(); //List::empty(); //TODO:PERF
 		let (&ast::Expr(real_target_loc, ref real_target_data), ty_arg_asts) = match *target_data {
 			ast::ExprData::TypeArguments(real_target, ref ty_arg_asts) => {
 				//TODO:SIMPLIFY
@@ -356,7 +380,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				let a: &ast::Expr = target;
 				let b: &List<ast::Ty> = empty_list;
 				(a, b)
-			},
+			}
 		};
 		match *real_target_data {
 			ast::ExprData::StaticAccess(class_name, static_method_name) => {
@@ -368,7 +392,14 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				self.call_static_method(&mut expected, loc, cls, static_method_name, ty_arg_asts, args)
 			}
 			ast::ExprData::GetProperty(property_target, property_name) =>
-				self.call_method(&mut expected, loc, property_target, property_name, ty_arg_asts, args.iter().cloned()),
+				self.call_method(
+					&mut expected,
+					loc,
+					property_target,
+					property_name,
+					ty_arg_asts,
+					args.iter().cloned(),
+				),
 			ast::ExprData::Access(name) => self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
 			_ => {
 				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
@@ -470,7 +501,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		self.handle(&mut expected, loc, expr)
 	}
 
-	fn call_method<'ast, I : Iterator<Item=&'ast ast::Expr<'ast>>>(
+	fn call_method<'ast, I: Iterator<Item = &'ast ast::Expr<'ast>>>(
 		&self,
 		mut expected: &mut Expected<'model>,
 		loc: Loc,
@@ -527,7 +558,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		self.handle(&mut expected, loc, e)
 	}
 
-	fn check_call_arguments<'ast, I : Iterator<Item=&'ast ast::Expr<'ast>>>(
+	fn check_call_arguments<'ast, I: Iterator<Item = &'ast ast::Expr<'ast>>>(
 		&self,
 		loc: Loc,
 		inst_method: &'model InstMethod<'model>,
@@ -538,7 +569,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		self.check_arguments(loc, &inst_method.0, &instantiator, arg_asts)
 	}
 
-	fn check_arguments<'ast, I : Iterator<Item=&'ast ast::Expr<'ast>>>(
+	fn check_arguments<'ast, I: Iterator<Item = &'ast ast::Expr<'ast>>>(
 		&self,
 		loc: Loc,
 		method_decl: &MethodOrAbstract<'model>,
@@ -566,7 +597,12 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 	NOTE: Caller is responsible for checking that we can access this member's effect!
 	If this returns None, we've already handled the error reporting, so just call handleBogus.
 	*/
-	fn get_member_of_inst_cls(&self, loc: Loc, inst_cls: &InstCls<'model>, member_name: Sym) -> Option<InstMember<'model>> {
+	fn get_member_of_inst_cls(
+		&self,
+		loc: Loc,
+		inst_cls: &InstCls<'model>,
+		member_name: Sym,
+	) -> Option<InstMember<'model>> {
 		let res = try_get_member_of_inst_cls(inst_cls, member_name);
 		if res.is_none() {
 			self.add_diagnostic(loc, Diag::MemberNotFound(Up(inst_cls.0), member_name))
@@ -609,7 +645,8 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 				let expr = self.expr(loc, e);
 				let expr_ty = expr.ty();
 				let new_inferred_ty = match *inferred_ty {
-					Some(ref mut last_inferred_ty) => self.get_compatible_type(loc, last_inferred_ty, expr_ty),
+					Some(ref mut last_inferred_ty) =>
+						self.get_compatible_type(loc, last_inferred_ty, expr_ty),
 					None => expr_ty.clone(),
 				};
 				*inferred_ty = Some(new_inferred_ty);
@@ -642,7 +679,8 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model> CheckExprContext<'ctx, 'instant
 		self.instantiate_type(inst_method.0.return_ty(), &Instantiator::of_inst_method(inst_method))
 	}
 
-	fn instantiate_return_type_with_extra_instantiator(&self,
+	fn instantiate_return_type_with_extra_instantiator(
+		&self,
 		inst_method: &InstMethod<'model>,
 		instantiator: &Instantiator<'model>,
 	) -> Ty<'model> {

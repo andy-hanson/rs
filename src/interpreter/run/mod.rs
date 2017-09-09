@@ -11,14 +11,21 @@ use super::value::Value;
 mod data_stack;
 use self::data_stack::DataStack;
 
-pub fn run<'model, 'emit>(method: &MethodWithBody<'model>, emitted: &EmittedProgram<'model, 'emit>, arguments: Vec<Value<'model>>) -> Value<'model> {
+pub fn run<'model, 'emit>(
+	method: &MethodWithBody<'model>,
+	emitted: &EmittedProgram<'model, 'emit>,
+	arguments: Vec<Value<'model>>,
+) -> Value<'model> {
 	assert!(method.is_static);
 	assert_eq!(to_u8(arguments.len()), method.arity());
 	let emitted_method = emitted.methods.get(&Up(method)).unwrap();
 	exec(emitted_method, arguments)
 }
 
-fn exec<'model, 'emit>(first_code: &Code<'model, 'emit>, first_arguments: Vec<Value<'model>>) -> Value<'model> {
+fn exec<'model, 'emit>(
+	first_code: &Code<'model, 'emit>,
+	first_arguments: Vec<Value<'model>>,
+) -> Value<'model> {
 	let mut stack = DataStack::new(first_arguments);
 	let mut return_stack = Vec::<(MethodOrImpl, &'emit Instructions, usize)>::new();
 	let mut cur_method = first_code.source.copy();
@@ -39,7 +46,7 @@ fn exec<'model, 'emit>(first_code: &Code<'model, 'emit>, first_arguments: Vec<Va
 			Instruction::LiteralFloat(f) => stack.push(Value::Float(f)),
 			Instruction::LiteralString(s) => {
 				unused!(s);
-				unimplemented!()//stack.push(Value::String(Rc::clone(s))),
+				unimplemented!() //stack.push(Value::String(Rc::clone(s))),
 			}
 			Instruction::Fetch(n) => stack.fetch(n),
 			Instruction::UnLet(n) => stack.un_let(n),

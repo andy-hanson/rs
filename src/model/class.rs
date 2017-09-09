@@ -1,7 +1,7 @@
 use serde::{Serialize, Serializer};
 
 use util::arena::SerializeUp;
-use util::arr::{SliceOps};
+use util::arr::SliceOps;
 use util::late::Late;
 use util::loc::Loc;
 use util::sym::Sym;
@@ -24,7 +24,9 @@ pub struct ClassDeclaration<'a> {
 impl<'a> ClassDeclaration<'a> {
 	//mv
 	pub fn find_static_method(&self, name: Sym) -> Option<&'a MethodWithBody<'a>> {
-		self.methods.find(|m| m.is_static && m.name() == name).map(|m| *m)
+		self.methods
+			.find(|m| m.is_static && m.name() == name)
+			.map(|m| *m)
 	}
 }
 impl<'a> SerializeUp for ClassDeclaration<'a> {

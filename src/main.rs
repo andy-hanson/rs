@@ -8,7 +8,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(offset_to)]
 #![feature(collection_placement)]
-
 #![allow(needless_lifetimes)] //TODO
 
 #[macro_use]
@@ -32,5 +31,4 @@ mod test;
 //use test::do_test_single;
 //use util::path::Path;
 
-fn main() {
-}
+fn main() {}

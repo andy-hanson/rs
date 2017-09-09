@@ -36,11 +36,11 @@ enum TestFailure<'a> {
 	NoSuchBaseline(Path<'a>),
 	UnexpectedOutput { actual: &'a [u8], expected: &'a [u8] },
 }
-impl<'a> Show for TestFailure<'a> {
-	fn show<S: Shower>(&self, s: &mut S) {
+impl<'t, 'a> Show for &'t TestFailure<'a> {
+	fn show<S: Shower>(self, s: &mut S) {
 		match *self {
 			TestFailure::NoIndex(ref path) => {
-				s.add(&"Could not find an index file at ").add(path);
+				s.add("Could not find an index file at ").add(path);
 			}
 			TestFailure::IoError(_) => unimplemented!(),
 			TestFailure::ExtraBaselines(_) => unimplemented!(),
@@ -56,11 +56,12 @@ fn show_unexpected_diagnostics<'a, S: Shower>(module: &ModuleOrFail<'a>, s: &mut
 	let diags = module.diagnostics();
 	assert!(diags.any()); // Else we shouldn't have thrown the error
 
-	let text = module.source().text();
+	let source = module.source();
+	let text = source.text();
 	let lc = LineAndColumnGetter::new(text);
 	for &Diagnostic(loc, ref data) in diags.iter() {
 		let lc_loc = lc.line_and_column_at_loc(loc);
-		s.add(&lc_loc).add(&" ").add(data);
+		source.show(s).add(&lc_loc).add(": ").add(data);
 	}
 }
 

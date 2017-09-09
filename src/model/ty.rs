@@ -3,6 +3,7 @@ use serde::{Serialize, Serializer};
 use util::arena::{ptr_eq, Arena, NoDrop, SerializeUp, Up};
 use util::arr::SliceOps;
 use util::late::Late;
+use util::sync::UnsafeSync;
 use util::sym::Sym;
 
 use super::class::ClassDeclaration;
@@ -11,8 +12,6 @@ use super::method::MethodWithBody;
 
 // Make a static version of Bogus so it can be used as a ref
 static BOGUS: UnsafeSync<Ty> = UnsafeSync(Ty::Bogus);
-struct UnsafeSync<T>(T);
-unsafe impl<T> Sync for UnsafeSync<T> {}
 
 #[derive(Serialize)]
 pub enum Ty<'a> {

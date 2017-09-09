@@ -1,6 +1,7 @@
 use util::arena::{Arena, List, NoDrop, Up};
 use util::late::Late;
 use util::path::Path;
+use util::string_maker::Shower;
 use util::sym::Sym;
 
 use super::super::compiler::full_path;
@@ -26,6 +27,13 @@ impl<'a> ModuleSourceEnum<'a> {
 		match *self {
 			ModuleSourceEnum::Normal(ref source) => source.document.text,
 			ModuleSourceEnum::Builtin { text, .. } => text,
+		}
+	}
+
+	pub fn show<'b, S : Shower>(&self, s: &'b mut S) -> &'b mut S {
+		match *self {
+			ModuleSourceEnum::Normal(ref ms) => s.add(&ms.logical_path),
+			ModuleSourceEnum::Builtin { name, text: _ } => s.add("Builtin ").add(name),
 		}
 	}
 }

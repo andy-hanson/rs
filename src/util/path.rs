@@ -16,8 +16,11 @@ impl<'a> Path<'a> {
 	}
 
 	pub fn of_slice(slice: &'a [u8]) -> Self {
-		unused!(slice);
-		unimplemented!()
+		Path(slice)
+	}
+
+	pub fn slice(&self) -> &'a [u8] {
+		self.0
 	}
 
 	pub fn resolve_with_root<'out>(root: &Path, path: &Path, arena: &'out Arena) -> Path<'out> {
@@ -91,20 +94,10 @@ impl<'a> Path<'a> {
 	}
 
 	pub fn add_extension<'out>(&self, extension: &[u8], arena: &'out Arena) -> Path<'out> {
-		unused!(extension, arena);
-		unimplemented!()
-		/*let parts = &self.0;
-		if !parts.any() {
-			// Silly, but create a path that's just e.g. ".txt"
-			return Path(Arr::_1(Arr::copy_from_slice(extension)))
-		}
-		assert!(parts.any());
-		let mut b = ArrBuilder::<Arr<u8>>::new();
-		for part in parts.slice_rtail() {
-			b.add(part.clone())
-		}
-		b.add(self.last().unwrap().concat(extension));
-		Path(b.finish())*/
+		let b = arena.max_size_arr_builder(self.0.len() + extension.len());
+		b.add_slice(self.0);
+		b.add_slice(extension);
+		Path(b.finish())
 	}
 
 	pub fn name_of_containing_directory(&self) -> &[u8] {
@@ -119,9 +112,9 @@ impl<'a> Path<'a> {
 		Path(self.0)
 	}
 }
-impl<'a> Show for Path<'a> {
-	fn show<S: Shower>(&self, s: &mut S) {
-		s.add(&self.0);
+impl<'p, 'a> Show for &'p Path<'a> {
+	fn show<S: Shower>(self, s: &mut S) {
+		s.add(self.0);
 	}
 }
 impl<'a> Hash for Path<'a> {

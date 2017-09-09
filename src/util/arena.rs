@@ -1,7 +1,9 @@
 use serde::{Serialize, Serializer};
 
 use std::cell::{Cell, UnsafeCell};
+use std::fs::File;
 use std::hash::{Hash, Hasher};
+use std::io::{Read, Result as IoResult};
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::ops::{Deref, InPlace, Place, Placer};
@@ -22,22 +24,22 @@ impl NoDrop for usize {}
 
 pub struct Arena {
 	bytes: UnsafeCell<Box<[u8]>>,
-	next_index: UnsafeCell<usize>,
+	next_index: Cell<usize>,
 	//TODO:cfg[debug]
-	locked: UnsafeCell<bool>,
+	locked: Cell<bool>,
 }
 impl Arena {
 	#[allow(new_without_default_derive)]
 	pub fn new() -> Self {
 		Arena {
-			bytes: UnsafeCell::new(Box::new([0; 1000])),
-			next_index: UnsafeCell::new(0),
-			locked: UnsafeCell::new(false),
+			bytes: UnsafeCell::new(Box::new([0; 1000000])),
+			next_index: Cell::new(0),
+			locked: Cell::new(false),
 		}
 	}
 
 	fn cur_index(&self) -> usize {
-		unsafe { *self.next_index.get() }
+		self.next_index.get()
 	}
 
 	fn alloc_in_array<T: NoDrop>(&self) -> *mut T {
@@ -50,7 +52,7 @@ impl Arena {
 	}
 
 	fn check_lock(&self) {
-		if unsafe { *self.locked.get() } {
+		if self.locked.get() {
 			panic!("Trying to allocate while in the middle of writing to an array.")
 		}
 	}
@@ -65,10 +67,13 @@ impl Arena {
 		unsafe {
 			let bytes = &mut *self.bytes.get();
 			let next_index = self.next_index.get();
-			let pt = bytes.as_mut_ptr().offset(usize_to_isize(*next_index));
-			*next_index += size;
-			assert!(*next_index < bytes.len());
-			pt
+			let new_next_index = next_index + size;
+			if new_next_index > bytes.len() {
+				//Need to alloc more
+				unimplemented!()
+			}
+			self.next_index.set(new_next_index);
+			bytes.as_mut_ptr().offset(usize_to_isize(next_index))
 		}
 	}
 
@@ -113,9 +118,7 @@ impl Arena {
 
 	// Writes directly into the arena. Other allocations aren't allowed to happen at the same time.
 	pub fn direct_arr_builder<T: NoDrop>(&self) -> DirectArrBuilder<T> {
-		unsafe {
-			*self.locked.get() = true;
-		}
+		self.locked.set(true);
 		let start_byte_index = self.cur_index();
 		DirectArrBuilder {
 			arena: self,
@@ -132,13 +135,31 @@ impl Arena {
 		ListBuilder::new(self)
 	}
 
-	// Writes to a buffer and copies to the arena when finishing.
-	/*pub fn safe_arr_builder<T : NoDrop>(&self) -> SafeArrBuilder<T> {
-		SafeArrBuilder {
-			arena: self,
-			vec: Vec::new(),
+	pub fn read_from_file(&self, mut f: File) -> IoResult<&[u8]> {
+		unsafe {
+			let bytes = &mut *self.bytes.get();
+			let next_index = self.next_index.get();
+			let buff_start = bytes.as_mut_ptr().offset(usize_to_isize(next_index));
+			let capacity = bytes.len() - next_index;
+			if capacity == 0 { unimplemented!() }
+			let buff = slice::from_raw_parts_mut(buff_start, capacity);
+			let mut buff_idx = 0;
+			loop {
+				let n_bytes_read = f.read(&mut buff[buff_idx..capacity])?;
+				if n_bytes_read == 0 {
+					break
+				}
+				buff_idx += n_bytes_read;
+				//`- 1` to make room for the '\0' we add at the end.
+				if buff_idx >= capacity - 1 { unimplemented!() }
+			}
+			buff[buff_idx] = b'\0';
+			buff_idx += 1;
+			self.next_index.set(next_index + buff_idx);
+			//Also add '\0' at the end!
+			Ok(&buff[0..buff_idx])
 		}
-	}*/
+	}
 }
 impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a Arena {
 	type Place = PointerPlace<'a, T>;
@@ -397,10 +418,7 @@ pub struct DirectArrBuilder<'a, T: Sized + NoDrop> {
 }
 impl<'a, T: 'a + Sized + NoDrop> DirectArrBuilder<'a, T> {
 	pub fn finish(self) -> &'a mut [T] {
-		unsafe {
-			*self.arena.locked.get() = false;
-		}
-
+		self.arena.locked.set(false);
 		let len_bytes = self.arena.cur_index() - self.start_byte_index;
 		let t_size = size_of::<T>();
 		assert_eq!(len_bytes % t_size, 0);

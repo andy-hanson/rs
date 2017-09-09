@@ -25,6 +25,23 @@ pub enum ParseDiag {
 	UnexpectedToken { expected: &'static [u8], actual: &'static [u8] },
 }
 impl NoDrop for ParseDiag {}
+impl<'a> Show for &'a ParseDiag {
+	fn show<S : Shower>(self, s: &mut S) {
+		match *self {
+			ParseDiag::TooMuchIndent(_, _) => unimplemented!(),
+			ParseDiag::LeadingSpace => unimplemented!(),
+			ParseDiag::TrailingSpace => unimplemented!(),
+			ParseDiag::EmptyExpression => unimplemented!(),
+			ParseDiag::BlockCantEndInLet => unimplemented!(),
+			ParseDiag::PrecedingEquals => unimplemented!(),
+			ParseDiag::UnrecognizedCharacter(_) => unimplemented!(),
+			ParseDiag::UnexpectedCharacter(_, _) => unimplemented!(),
+			ParseDiag::UnexpectedToken { expected, actual } => {
+				s.add("Expected token type '").add(expected).add("', got: '").add(actual).add("'.");
+			}
+		}
+	}
+}
 
 pub enum Diag<'a> {
 	//TODO: Diag must be NoDrop, but this will leak the path!
@@ -59,13 +76,12 @@ pub enum Diag<'a> {
 	WrongImplParameters(Up<'a, AbstractMethod<'a>>),
 }
 impl<'a> NoDrop for Diag<'a> {}
-impl<'a> Show for Diag<'a> {
-	fn show<S: Shower>(&self, s: &mut S) {
-		let _ = s;
+impl<'d, 'a> Show for &'d Diag<'a> {
+	fn show<S: Shower>(self, s: &mut S) {
 		match *self {
 			Diag::CircularDependency(_, _) => unimplemented!(),
 			Diag::CantFindLocalModule(_, _) => unimplemented!(),
-			Diag::ParseError(_) => unimplemented!(),
+			Diag::ParseError(ref p) => p.show(s),
 
 			Diag::CantCombineTypes(_, _) => unimplemented!(),
 			Diag::NotAssignable { ref expected, ref actual } => {

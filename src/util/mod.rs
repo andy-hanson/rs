@@ -10,5 +10,6 @@ pub mod path;
 pub mod loc;
 pub mod late;
 pub mod string_maker;
+pub mod sync;
 pub mod sym;
 pub mod utils;

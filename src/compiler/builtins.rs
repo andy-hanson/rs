@@ -1,5 +1,8 @@
 use util::arena::{Arena, List, NoDrop, Up};
+use util::file_utils::read_file;
 use util::late::Late;
+use util::path::Path;
+use util::sync::UnsafeSync;
 use util::sym::Sym;
 
 use super::super::model::class::ClassDeclaration;
@@ -12,18 +15,28 @@ use super::parse::ast::Module as ModuleAst;
 use super::parse::parse;
 
 lazy_static! {
-	static ref BUILTINS_FILES: [(Sym, &'static [u8]); 6] = [
-		(Sym::of("Void"), load_builtin_file(include_str!("../../builtins/Void.nz"))),
-		(Sym::of("Bool"), load_builtin_file(include_str!("../../builtins/Bool.nz"))),
-		(Sym::of("Nat"), load_builtin_file(include_str!("../../builtins/Nat.nz"))),
-		(Sym::of("Int"), load_builtin_file(include_str!("../../builtins/Int.nz"))),
-		(Sym::of("Float"), load_builtin_file(include_str!("../../builtins/Float.nz"))),
-		(Sym::of("String"), load_builtin_file(include_str!("../../builtins/String.nz"))),
-	];
+	static ref BUILTINS_ARENA: UnsafeSync<Arena> = UnsafeSync(Arena::new());
+	static ref BUILTINS_FILES: [(Sym, &'static [u8]); 6] =
+		[
+			(Sym::of("Void"), load_builtin_file(b"builtins/Void.nz")),
+			(Sym::of("Bool"), load_builtin_file(b"builtins/Bool.nz")),
+			(Sym::of("Nat"), load_builtin_file(b"builtins/Nat.nz")),
+			(Sym::of("Int"), load_builtin_file(b"builtins/Int.nz")),
+			(Sym::of("Float"), load_builtin_file(b"builtins/Float.nz")),
+			(Sym::of("String"), load_builtin_file(b"builtins/String.nz")),
+		];
 }
 
-fn load_builtin_file(text: &str) -> &[u8] {
-	text.as_bytes()
+fn load_builtin_file(path_slice: &[u8]) -> &[u8] {
+	let path = Path::of_slice(path_slice);
+	let arena = &BUILTINS_ARENA;
+	match read_file(&path, arena.get()).unwrap() {
+		Some(b) => b,
+		None => {
+			let str = String::from_utf8(path.slice().to_owned()).unwrap();
+			panic!("Can't load builtin from {}", str)
+		}
+	}
 }
 
 pub struct BuiltinsOwn<'model> {

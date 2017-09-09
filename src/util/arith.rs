@@ -1,17 +1,17 @@
-use std::{u32, u8};
+use std::{isize, u32, u8};
 
 pub fn u8_to_usize(u: u8) -> usize {
 	u as usize
 }
 
 pub fn isize_to_usize(i: isize) -> usize {
-	unused!(i);
-	unimplemented!()
+	assert!(i >= 0);
+	i as usize
 }
 
 pub fn usize_to_isize(u: usize) -> isize {
-	unused!(u);
-	unimplemented!()
+	assert!(u <= isize::MAX as usize);
+	u as isize
 }
 
 pub fn usize_to_u32(u: usize) -> u32 {

@@ -27,8 +27,11 @@ mod interpreter;
 mod model;
 mod test;
 
-//use std::process::exit;
-//use test::do_test_single;
-//use util::path::Path;
+use std::process::exit;
+use test::do_test_single;
+use util::path::Path;
 
-fn main() {}
+fn main() {
+	let exit_code = do_test_single(&Path::of_slice(b"Main-Pass"), /*update_baselines*/ false);
+	exit(exit_code)
+}

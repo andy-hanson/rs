@@ -5,44 +5,42 @@ use std::marker::Sized;
 
 use util::arr::{SliceOps, U8SliceOps};
 
-pub trait Show
-where
-	Self: Sized,
+pub trait Show where Self : Sized
 {
-	fn show<S: Shower>(&self, s: &mut S);
+	fn show<S: Shower>(self, s: &mut S);
 
-	fn to_string(&self) -> String {
+	fn to_string(self) -> String {
 		StringMaker::stringify(self)
 	}
 }
 impl Show for char {
-	fn show<S: Shower>(&self, s: &mut S) {
-		s._add_char(*self);
+	fn show<S: Shower>(self, s: &mut S) {
+		s._add_char(self);
 	}
 }
 impl<'a> Show for &'a [u8] {
-	fn show<S: Shower>(&self, s: &mut S) {
-		s._add_bytes(*self);
+	fn show<S: Shower>(self, s: &mut S) {
+		s._add_bytes(self);
 	}
 }
 impl<'a> Show for &'a str {
-	fn show<S: Shower>(&self, s: &mut S) {
+	fn show<S: Shower>(self, s: &mut S) {
 		s._add_bytes(self.as_bytes());
 	}
 }
 impl Show for u32 {
-	fn show<S: Shower>(&self, s: &mut S) {
-		s._add_uint(*self);
+	fn show<S: Shower>(self, s: &mut S) {
+		s._add_uint(self);
 	}
 }
 impl Show for i32 {
-	fn show<S: Shower>(&self, s: &mut S) {
-		s._add_int(*self);
+	fn show<S: Shower>(self, s: &mut S) {
+		s._add_int(self);
 	}
 }
 impl Show for f64 {
-	fn show<S: Shower>(&self, s: &mut S) {
-		s._add_float(*self);
+	fn show<S: Shower>(self, s: &mut S) {
+		s._add_float(self);
 	}
 }
 
@@ -58,17 +56,17 @@ where
 	fn _add_int(&mut self, i: i32) -> &mut Self;
 	fn _add_float(&mut self, f: f64) -> &mut Self;
 
-	fn add<T: Show>(&mut self, value: &T) -> &mut Self {
+	fn add<T: Show>(&mut self, value: T) -> &mut Self {
 		value.show(self);
 		self
 	}
 
-	fn join<T: Show>(&mut self, arr: &[T]) -> &mut Self {
+	fn join<'a, T>(&mut self, arr: &'a [T]) -> &mut Self where &'a T : Show {
 		if arr.any() {
 			arr[0].show(self);
 			for x in arr.iter().skip(1) {
-				self.add(&',');
-				self.add(&' ');
+				self.add(',');
+				self.add(' ');
 				x.show(self)
 			}
 		}
@@ -153,7 +151,7 @@ impl StringMaker {
 		StringMaker(String::new())
 	}
 
-	fn stringify<T: Show>(t: &T) -> String {
+	fn stringify<T: Show>(t: T) -> String {
 		let mut s = StringMaker::new();
 		t.show(&mut s);
 		s.0

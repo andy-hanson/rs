@@ -40,11 +40,8 @@ pub fn readdir_worker<'a>(
 			if file_type.is_dir() {
 				readdir_worker(&child_path, arena, &mut res)?
 			} else if file_type.is_file() {
-				let /*mut*/ file_text = Vec::<u8>::new();
-				unused!(file_text);
-				unimplemented!()
-			//File::open(child_path.to_string())?.read_to_end(&mut file_text)?;
-			//res.add(child_path, file_text)
+				let text = arena.read_from_file(File::open(child_path.to_string())?)?;
+				res.add(child_path, text)
 			} else {
 				unimplemented!()
 			}
@@ -55,13 +52,8 @@ pub fn readdir_worker<'a>(
 
 pub fn read_file<'out>(path: &Path, arena: &'out Arena) -> Result<Option<&'out [u8]>> {
 	match File::open(path.to_string()) {
-		Ok(/*mut*/ f) => {
-			unused!(f, arena);
-			//let mut v = Vec::<u8>::new();
-			//f.read_to_end(&mut v)?;
-			//Ok(Some(v))
-			unimplemented!()
-		}
+		Ok(/*mut*/ f) =>
+			arena.read_from_file(f).map(Some),
 		Err(e) =>
 			match e.kind() {
 				ErrorKind::NotFound => Ok(None),

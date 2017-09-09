@@ -4,16 +4,19 @@ first_time:
 	# Then update_dev_dependencies
 
 clean:
-	rustup run nightly cargo clean
+	cargo +nightly clean
 
 check:
-	rustup run nightly cargo check
+	cargo +nightly check
 
 build:
-	rustup run nightly cargo build
+	cargo +nightly build
 
 run:
-	RUST_BACKTRACE=short rustup run nightly cargo run
+	#  -Zforce-overflow-checks=yes
+	# -Zperf-stats
+	# `-- -Zincremental=.incremental` didn't seem to improve anything
+	RUST_BACKTRACE=short cargo +nightly run
 
 update_dev_dependencies:
 	rustup update

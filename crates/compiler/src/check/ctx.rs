@@ -4,6 +4,7 @@ use util::sym::Sym;
 
 use model::class::ClassDeclaration;
 use model::diag::{Diag, Diagnostic};
+use model::effect::Effect;
 use model::method::{InstMethod, MethodOrAbstract};
 use model::module::Module;
 use model::ty::{InstCls, Ty, TypeParameter};
@@ -42,18 +43,34 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		self.builtins.bool.unwrap().clone()
 	}
 
-	pub fn get_ty(&self, ty_ast: &ast::Ty) -> Ty<'model> {
+	pub fn get_ty<'ast>(&self, ty_ast: &'ast ast::Ty<'ast>) -> Ty<'model> {
 		//TODO:PERF -- version without type parameters?
 		self.get_ty_or_type_parameter(ty_ast, &[])
 	}
 
-	pub fn get_ty_or_type_parameter(
+	pub fn get_ty_or_type_parameter<'ast>(
 		&self,
-		ty_ast: &ast::Ty,
-		type_parameters: &[TypeParameter<'model>],
+		&ast::Ty { loc, effect, name, ref ty_args }: &'ast ast::Ty<'ast>,
+		extra_type_parameters: &'model [TypeParameter<'model>],
 	) -> Ty<'model> {
-		unused!(ty_ast, type_parameters);
-		unimplemented!()
+		for tp in self.current_class.type_parameters.iter().chain(extra_type_parameters) {
+			if name == tp.name {
+				if effect != Effect::Pure {
+					//Diagnostic: Not allowed to specify an effect on a type parameter.
+					unimplemented!()
+				}
+				if ty_args.any() {
+					// Diagnostic: Can't provide type arguments to a type parameter
+					unimplemented!()
+				}
+				return Ty::Param(tp)
+			}
+
+		}
+
+		let cls = unwrap_or_return!(self.access_class_declaration_or_add_diagnostic(loc, name), Ty::Bogus);
+		let args = ty_args.map(self.arena, |ty_ast| self.get_ty_or_type_parameter(ty_ast, extra_type_parameters));
+		Ty::Plain(effect, InstCls(cls, args))
 	}
 
 	pub fn instantiate_class_from_ast<'ast>(
@@ -80,13 +97,13 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 
 	pub fn instantiate_method<'ast>(
 		&self,
-		method_decl: &MethodOrAbstract<'model>,
+		method_decl: MethodOrAbstract<'model>,
 		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
 	) -> Option<&'model InstMethod<'model>> {
 		if ty_arg_asts.len != method_decl.type_parameters().len() {
 			unimplemented!()
 		} else {
-			Some(self.arena <- InstMethod(method_decl.copy(), self.get_ty_args(ty_arg_asts)))
+			Some(self.arena <- InstMethod(method_decl, self.get_ty_args(ty_arg_asts)))
 		}
 	}
 
@@ -99,14 +116,14 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		loc: Loc,
 		name: Sym,
 	) -> Option<&'model ClassDeclaration<'model>> {
-		let res = self.access_class_declaration(name);
+		let res = self.access_class_declaration(loc, name);
 		if res.is_none() {
 			self.add_diagnostic(loc, Diag::ClassNotFound(name))
 		}
 		res
 	}
 
-	fn access_class_declaration(&self, name: Sym) -> Option<&'model ClassDeclaration<'model>> {
+	fn access_class_declaration(&self, loc: Loc, name: Sym) -> Option<&'model ClassDeclaration<'model>> {
 		if name == self.current_class.name {
 			return Some(self.current_class)
 		}
@@ -123,7 +140,8 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 			}
 		}
 
-		unimplemented!() //Diagnostic: class not found
+		self.add_diagnostic(loc, Diag::ClassNotFound(name));
+		None
 	}
 
 	pub fn add_diagnostic(&self, loc: Loc, data: Diag<'model>) {

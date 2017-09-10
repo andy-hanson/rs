@@ -6,13 +6,13 @@ use util::sym::Sym;
 
 use model::effect::Effect;
 
-use super::ast;
+use super::ast::{Expr, Module, Import, Class, ClassHead, ClassHeadData, AbstractMethod, Method, Ty, Parameter, Super, Impl, Slot};
 use super::lexer::{Lexer, MethodKw, NewlineOrDedent, NewlineOrIndent, Result, SlotKw};
 use super::parse_expr::parse_block;
 use super::parse_ty::{parse_self_effect_or_ty, parse_ty, try_take_type_parameters, SelfEffectOrTy};
 use super::token::Token;
 
-pub fn parse_module<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<ast::Module<'a>> {
+pub fn parse_module<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Module<'a>> {
 	let kw = l.next_token();
 
 	let (imports, class_start, next_kw) = if kw == Token::Import {
@@ -25,11 +25,11 @@ pub fn parse_module<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<ast::Module<'a>> {
 	};
 
 	let class = parse_class(l, class_start, next_kw)?;
-	Ok(ast::Module { imports, class })
+	Ok(Module { imports, class })
 }
 
-fn parse_imports<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, ast::Import<'a>>> {
-	let b = l.list_builder::<ast::Import>();
+fn parse_imports<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Import<'a>>> {
+	let b = l.list_builder::<Import>();
 	loop {
 		if l.try_take_newline()? {
 			break Ok(b.finish())
@@ -48,9 +48,9 @@ fn parse_imports<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, ast::Import<'
 		let loc = l.loc_from(start_pos);
 		b.add() <-
 			if leading_dots == 0 {
-				ast::Import::Global(loc, path)
+				Import::Global(loc, path)
 			} else {
-				ast::Import::Local(loc, RelPath { n_parents: leading_dots - 1, rel_to_parent: path })
+				Import::Local(loc, RelPath { n_parents: leading_dots - 1, rel_to_parent: path })
 			};
 	}
 }
@@ -66,12 +66,12 @@ fn parse_path<'a, 't>(l: &mut Lexer<'a, 't>) -> Path<'a> {
 	unimplemented!()
 }
 
-fn parse_class<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, kw: Token) -> Result<&'a ast::Class<'a>> {
+fn parse_class<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, kw: Token) -> Result<&'a Class<'a>> {
 	let (type_parameters, start_2, kw_2) = try_parse_class_generic(l, start, kw)?;
 	let (head, start_3, kw_3) = parse_head(l, start_2, kw_2)?;
 	let (supers, start_4, kw_4) = parse_supers(l, start_3, kw_3)?;
 	let methods = parse_methods(l, start_4, kw_4)?;
-	Ok(l.arena <- ast::Class { loc: l.loc_from(start), type_parameters, head, supers, methods })
+	Ok(l.arena <- Class { loc: l.loc_from(start), type_parameters, head, supers, methods })
 }
 
 fn try_parse_class_generic<'a, 't>(
@@ -105,12 +105,12 @@ fn parse_head<'a, 't>(
 	l: &mut Lexer<'a, 't>,
 	start: Pos,
 	kw: Token,
-) -> Result<(Option<ast::ClassHead<'a>>, Pos, MethodKw)> {
+) -> Result<(Option<ClassHead<'a>>, Pos, MethodKw)> {
 	match kw {
 		Token::EOF => Ok((None, start, MethodKw::Eof)),
 		Token::Fun => Ok((None, start, MethodKw::Fun)),
 		Token::Builtin => {
-			let head = ast::ClassHead(l.loc_from(start), ast::ClassHeadData::Builtin);
+			let head = ClassHead(l.loc_from(start), ClassHeadData::Builtin);
 			l.take_newline()?;
 			Ok((Some(head), l.pos(), l.take_method_keyword_or_eof()?))
 		}
@@ -127,9 +127,9 @@ fn parse_head<'a, 't>(
 	}
 }
 
-fn parse_abstract_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ast::ClassHead<'a>> {
+fn parse_abstract_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ClassHead<'a>> {
 	l.take_indent()?;
-	let abstract_methods = l.list_builder::<ast::AbstractMethod>();
+	let abstract_methods = l.list_builder::<AbstractMethod>();
 	loop {
 		let method_start = l.pos();
 		let type_parameters = try_take_type_parameters(l)?;
@@ -137,7 +137,7 @@ fn parse_abstract_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ast:
 			l.take_space()?;
 		}
 		let (return_ty, name, self_effect, parameters) = parse_method_head(l)?;
-		abstract_methods.add() <- ast::AbstractMethod {
+		abstract_methods.add() <- AbstractMethod {
 			loc: l.loc_from(method_start),
 			type_parameters,
 			return_ty,
@@ -150,15 +150,15 @@ fn parse_abstract_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ast:
 			NewlineOrDedent::Dedent => break,
 		}
 	}
-	Ok(ast::ClassHead(l.loc_from(start), ast::ClassHeadData::Abstract(abstract_methods.finish())))
+	Ok(ClassHead(l.loc_from(start), ClassHeadData::Abstract(abstract_methods.finish())))
 }
 
 fn parse_methods<'a, 't>(
 	l: &mut Lexer<'a, 't>,
 	mut start: Pos,
 	mut next: MethodKw,
-) -> Result<List<'a, ast::Method<'a>>> {
-	let methods = l.list_builder::<ast::Method>();
+) -> Result<List<'a, Method<'a>>> {
+	let methods = l.list_builder::<Method>();
 	loop {
 		match next {
 			MethodKw::Def | MethodKw::Fun => {
@@ -166,12 +166,8 @@ fn parse_methods<'a, 't>(
 				let type_parameters = try_take_type_parameters(l)?;
 				l.take_space()?;
 				let (return_ty, name, self_effect, parameters) = parse_method_head(l)?;
-				let body = if l.try_take_indent()? {
-					Some(parse_block(l)?)
-				} else {
-					None
-				};
-				methods.add() <- ast::Method {
+				let body = take_optional_body(l)?;
+				methods.add() <- Method {
 					loc: l.loc_from(start),
 					is_static,
 					type_parameters,
@@ -192,10 +188,10 @@ fn parse_methods<'a, 't>(
 
 fn parse_method_head<'a, 't>(
 	l: &mut Lexer<'a, 't>,
-) -> Result<(ast::Ty<'a>, Sym, Effect, List<'a, ast::Parameter<'a>>)> {
+) -> Result<(Ty<'a>, Sym, Effect, List<'a, Parameter<'a>>)> {
 	let return_ty = parse_ty(l)?;
 	l.take_space()?;
-	let name = l.take_name()?;
+	let name = l.take_name_or_operator()?;
 	l.take_parenl()?;
 
 	let (self_effect, parameters) = if l.try_take_parenr() {
@@ -214,7 +210,7 @@ fn parse_method_head<'a, 't>(
 			SelfEffectOrTy::Ty(first_ty) => {
 				l.take_space()?;
 				let first_name = l.take_name()?;
-				let first = ast::Parameter { loc: l.loc_from(first_start), ty: first_ty, name: first_name };
+				let first = Parameter { loc: l.loc_from(first_start), ty: first_ty, name: first_name };
 				let parameters = parse_parameters(l, Some(first))?;
 				(Effect::Pure, parameters)
 			}
@@ -226,9 +222,9 @@ fn parse_method_head<'a, 't>(
 
 fn parse_parameters<'a, 't>(
 	l: &mut Lexer<'a, 't>,
-	first: Option<ast::Parameter<'a>>,
-) -> Result<List<'a, ast::Parameter<'a>>> {
-	let parameters = l.list_builder::<ast::Parameter<'a>>();
+	first: Option<Parameter<'a>>,
+) -> Result<List<'a, Parameter<'a>>> {
+	let parameters = l.list_builder::<Parameter<'a>>();
 	if let Some(f) = first {
 		parameters.add() <- f;
 	}
@@ -242,7 +238,7 @@ fn parse_parameters<'a, 't>(
 		let ty = parse_ty(l)?;
 		l.take_space()?;
 		let name = l.take_name()?;
-		parameters.add() <- ast::Parameter { loc: l.loc_from(start), ty, name };
+		parameters.add() <- Parameter { loc: l.loc_from(start), ty, name };
 	}
 }
 
@@ -250,8 +246,8 @@ fn parse_supers<'a, 't>(
 	l: &mut Lexer<'a, 't>,
 	mut start: Pos,
 	mut next: MethodKw,
-) -> Result<(List<'a, ast::Super<'a>>, Pos, MethodKw)> {
-	let supers = l.list_builder::<ast::Super>();
+) -> Result<(List<'a, Super<'a>>, Pos, MethodKw)> {
+	let supers = l.list_builder::<Super>();
 	loop {
 		if next != MethodKw::Is {
 			break Ok((supers.finish(), start, next))
@@ -264,7 +260,7 @@ fn parse_supers<'a, 't>(
 	}
 }
 
-fn parse_super<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ast::Super<'a>> {
+fn parse_super<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<Super<'a>> {
 	l.take_space()?;
 	let name = l.take_ty_name()?;
 	let ty_args = List::empty(); // TODO
@@ -272,11 +268,21 @@ fn parse_super<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ast::Super<'
 		NewlineOrIndent::Indent => parse_impls(l)?,
 		NewlineOrIndent::Newline => List::empty(),
 	};
-	Ok(ast::Super { loc: l.loc_from(start), name, ty_args, impls })
+	Ok(Super { loc: l.loc_from(start), name, ty_args, impls })
 }
 
-fn parse_impls<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, ast::Impl<'a>>> {
-	let impls = l.list_builder::<ast::Impl<'a>>();
+//mv
+fn take_optional_body<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<&'a Expr<'a>>> {
+	Ok(match l.take_newline_or_indent()? {
+		NewlineOrIndent::Indent =>
+			Some(parse_block(l)?),
+		NewlineOrIndent::Newline =>
+			None
+	})
+}
+
+fn parse_impls<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Impl<'a>>> {
+	let impls = l.list_builder::<Impl<'a>>();
 	loop {
 		// foo(x, y)
 		let start = l.pos();
@@ -297,22 +303,17 @@ fn parse_impls<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, ast::Impl<'a>>>
 			}
 		};
 
-		let body = if l.try_take_indent()? {
-			Some(parse_block(l)?)
-		} else {
-			None
-		};
-
-		impls.add() <- ast::Impl { loc: l.loc_from(start), name, parameter_names, body };
+		let body = take_optional_body(l)?;
+		impls.add() <- Impl { loc: l.loc_from(start), name, parameter_names, body };
 		if l.try_take_dedent_from_dedenting() {
 			break Ok(impls.finish())
 		}
 	}
 }
 
-fn parse_slots<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ast::ClassHead<'a>> {
+fn parse_slots<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ClassHead<'a>> {
 	l.take_indent()?;
-	let slots = l.list_builder::<ast::Slot>();
+	let slots = l.list_builder::<Slot>();
 	loop {
 		let start = l.pos();
 		let next = l.take_slot_keyword()?;
@@ -324,11 +325,11 @@ fn parse_slots<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ast::ClassHe
 		let ty = parse_ty(l)?;
 		l.take_space()?;
 		let name = l.take_name()?;
-		slots.add() <- ast::Slot { loc: l.loc_from(start), mutable, ty, name };
+		slots.add() <- Slot { loc: l.loc_from(start), mutable, ty, name };
 		match l.take_newline_or_dedent()? {
 			NewlineOrDedent::Newline => {}
 			NewlineOrDedent::Dedent => break,
 		}
 	}
-	Ok(ast::ClassHead(l.loc_from(start), ast::ClassHeadData::Slots(slots.finish())))
+	Ok(ClassHead(l.loc_from(start), ClassHeadData::Slots(slots.finish())))
 }

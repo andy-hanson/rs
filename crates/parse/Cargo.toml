@@ -1,0 +1,8 @@
+[package]
+name = "parse"
+version = "0.1.0"
+
+[dependencies]
+util = { path = "../util" }
+model = { path = "../model" }
+lazy_static = "0.2"

@@ -37,6 +37,11 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		}
 	}
 
+	// Call this when receiving 'Diagnostic' from the lexer.
+	pub fn diag(&mut self) -> (Loc, ParseDiag) {
+		replace(&mut self.diagnostic, None).unwrap()
+	}
+
 	pub fn debug_show(&self) {
 		self.reader.debug_show()
 	}
@@ -252,6 +257,16 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 					Token::Operator
 				},
 
+			b'=' => {
+				if is_operator_char(self.peek()) {
+					self.skip();
+					self.skip_while(is_operator_char);
+					Token::Operator
+				} else {
+					Token::Equals
+				}
+			}
+
 			b'*' | b'/' | b'^' | b'?' | b'<' | b'>' => {
 				self.skip_while(is_operator_char);
 				Token::Operator
@@ -434,14 +449,6 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		}
 	}
 
-	pub fn try_take_indent(&mut self) -> Result<bool> {
-		self.expect_newline_character()?;
-		for _ in 0..self.indent {
-			self.expect_tab_character()?
-		}
-		Ok(self.try_take(b'\t'))
-	}
-
 	pub fn take_indent(&mut self) -> Result<()> {
 		self.expect_newline_character()?;
 		self.indent += 1;
@@ -516,6 +523,19 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		self.expect_character_by_predicate(is_lower_case_letter, b"(non-type) name")?;
 		self.skip_while(is_name_char);
 		Ok(self.slice_from(start_pos))
+	}
+
+	pub fn take_name_or_operator(&mut self) -> Result<Sym> {
+		let start_pos = self.pos();
+		let first = self.read_char();
+		if is_lower_case_letter(first) {
+			self.skip_while(is_name_char);
+		} else if is_operator_char(first) {
+			self.skip_while(is_operator_char);
+		} else {
+			return Err((self.single_char_loc(), ParseDiag::UnexpectedCharacterType { actual: first, expected_desc: b"name or operator" }))
+		}
+		Ok(Sym::from_slice(self.slice_from(start_pos)))
 	}
 
 	pub fn take_name(&mut self) -> Result<Sym> {
@@ -671,7 +691,7 @@ fn is_upper_case_letter(ch: u8) -> bool {
 
 fn is_operator_char(ch: u8) -> bool {
 	match ch {
-		b'-' | b'+' | b'*' | b'/' | b'^' | b'?' | b'<' | b'>' => true,
+		b'=' | b'-' | b'+' | b'*' | b'/' | b'^' | b'?' | b'<' | b'>' => true,
 		_ => false,
 	}
 }

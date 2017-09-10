@@ -1,10 +1,9 @@
 use serde::{Serialize, Serializer};
 
+use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 
 use super::arena::Arena;
-use std::borrow::Borrow;
-
 use super::string_maker::{Show, Shower};
 
 pub struct Path<'a>(&'a [u8]);
@@ -164,4 +163,12 @@ impl<'a> RelPath<'a> {
 	//pub fn clone_path(&self) -> RelPath {
 	//	RelPath { n_parents: self.n_parents, rel_to_parent: self.rel_to_parent.clone_path() }
 	//}
+}
+impl<'p, 'a> Show for &'p RelPath<'a> {
+	fn show<S: Shower>(self, s: &mut S) {
+		for _ in 0..self.n_parents {
+			s.add("../");
+		}
+		s.add(&self.rel_to_parent);
+	}
 }

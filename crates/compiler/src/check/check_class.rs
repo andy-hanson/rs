@@ -142,7 +142,7 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 		{
 			ctx.add_diagnostic(
 				loc,
-				Diag::ImplsMismatch { expected_names: abstract_methods.map(ctx.arena, |a| a.name()) },
+				Diag::ImplsMismatch { expected: abstract_methods },
 			);
 			return None
 		}
@@ -207,9 +207,9 @@ fn check_method_initial<'ast, 'builtins_ctx, 'model>(
 fn check_parameters<'builtins_ctx, 'ast, 'model>(
 	ctx: &mut Ctx<'builtins_ctx, 'model>,
 	param_asts: &'ast List<'ast, ast::Parameter<'ast>>,
-	type_parameters: &[TypeParameter<'model>],
+	type_parameters: &'model [TypeParameter<'model>],
 ) -> &'model [Parameter<'model>] {
-	param_asts.map_with_index(ctx.arena, |&ast::Parameter { loc, ty: ref ty_ast, name }, index| {
+	param_asts.map_with_index(ctx.arena, |index, &ast::Parameter { loc, ty: ref ty_ast, name }| {
 		for prior_param in param_asts.iter().take(index) {
 			if prior_param.name == name {
 				unimplemented!()

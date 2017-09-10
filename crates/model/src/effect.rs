@@ -1,4 +1,5 @@
 use util::arena::NoDrop;
+use util::string_maker::{Show, Shower};
 
 #[derive(Copy, Clone, Eq, PartialEq, Serialize)]
 pub enum Effect {
@@ -40,12 +41,17 @@ impl Effect {
 		self.contains(Effect::Io)
 	}
 
-	pub fn show(self) -> &'static str {
+	fn show_str(self) -> &'static str {
 		match self {
 			Effect::Pure => "pure",
 			Effect::Get => "get",
 			Effect::Set => "set",
 			Effect::Io => "io",
 		}
+	}
+}
+impl Show for Effect {
+	fn show<S : Shower>(self, s: &mut S) {
+		s.add(self.show_str());
 	}
 }

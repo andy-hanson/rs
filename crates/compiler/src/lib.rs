@@ -8,13 +8,13 @@ extern crate lazy_static;
 
 extern crate host;
 extern crate model;
+extern crate parse;
 #[macro_use]
 extern crate util;
 
 mod builtins;
 mod check;
 mod main;
-mod parse;
 
 pub use self::main::{compile, compile_dir, compile_file, full_path, CompileResult, CompiledProgram,
                      EXTENSION};

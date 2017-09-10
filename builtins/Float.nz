@@ -1,19 +1,19 @@
 builtin
 
-def Bool ==(n: Float)
+def Bool ==(Float f)
 
-def Bool <(n: Float)
+def Bool <(Float f)
 
-def Bool >(n: Float)
+def Bool >(Float f)
 
-def Bool <=(n: Float)
+def Bool <=(Float f)
 
-def Bool >=(n: Float)
+def Bool >=(Float f)
 
-def Float +(n: Float)
+def Float +(Float f)
 
-def Float -(n: Float)
+def Float -(Float f)
 
-def Float *(n: Float)
+def Float *(Float f)
 
-def Float /(n: Float)
+def Float /(Float f)

@@ -251,12 +251,12 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 				Ok(match imported_module {
 					CompileSingleResult::Circular => {
 						import_diagnostics.add() <-
-							Diagnostic(loc, Diag::CircularDependency(full_path.clone_path_as_ptr(), relative_path));
+							Diagnostic(loc, Diag::CircularDependency { from: full_path.clone_path_as_ptr(), to: relative_path });
 						None
 					}
 					CompileSingleResult::Missing => {
 						import_diagnostics.add() <-
-							Diagnostic(loc, Diag::CantFindLocalModule(full_path.clone_path_as_ptr(), relative_path));
+							Diagnostic(loc, Diag::CantFindLocalModule { from: full_path.clone_path_as_ptr(), to: relative_path });
 						None
 					}
 					CompileSingleResult::Found(found) => Some(found),

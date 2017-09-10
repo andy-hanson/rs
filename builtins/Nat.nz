@@ -1,22 +1,22 @@
 builtin
 
-def Bool ==(n: Nat)
+def Bool ==(Nat n)
 
-def Bool <(n: Nat)
+def Bool <(Nat n)
 
-def Bool >(n: Nat)
+def Bool >(Nat n)
 
-def Bool <=(n: Nat)
+def Bool <=(Nat n)
 
-def Bool >=(n: Nat)
+def Bool >=(Nat n)
 
-def Nat +(n: Nat)
+def Nat +(Nat n)
 
-def Int -(n: Nat)
+def Int -(Nat n)
 
-def Nat *(n: Nat)
+def Nat *(Nat n)
 
-def Nat /(n: Nat)
+def Nat /(Nat n)
 
 def Nat decr()
 

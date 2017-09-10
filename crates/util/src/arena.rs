@@ -253,6 +253,14 @@ impl<'a, T: NoDrop + 'a> List<'a, T> {
 		arena.map_from(self.len, self.iter(), f)
 	}
 
+	pub fn map_with_index<'out, U, F: FnMut(usize, &'a T) -> U>(
+		&'a self,
+		arena: &'out Arena,
+		mut f: F,
+	) -> &'out [U] {
+		arena.map_from(self.len, self.iter().enumerate(), |(i, x)| f(i, x))
+	}
+
 	//TODO:KILL
 	pub fn map_defined_probably_all<'out, U : NoDrop, F: FnMut(&'a T) -> Option<U>>(
 		&'a self,
@@ -282,16 +290,6 @@ impl<'a, T: NoDrop + 'a> List<'a, T> {
 		}
 	}
 
-	//TODO:KILL
-	pub fn map_with_index<'out, U, F: Fn(&'a T, usize) -> U>(
-		&'a self,
-		arena: &'out Arena,
-		f: F,
-	) -> &'out [U] {
-		unused!(arena, f);
-		unimplemented!()
-	}
-
 	pub fn iter(&self) -> ListIter<'a, T> {
 		ListIter(self.head)
 	}
@@ -311,13 +309,17 @@ impl<'a, T: 'a> Iterator for ListIter<'a, T> {
 	}
 }
 
-//Just a marker for an up-pointer. Not serializable (normally, anyway.)
-#[derive(Copy, Clone)]
 pub struct Up<'a, T: 'a>(pub &'a T);
 impl<'a, T: NoDrop> NoDrop for Up<'a, T> {}
 impl<'a, T> Up<'a, T> {
 	//TODO: shouldn't be needed, this is Copy!
 	pub fn clone_as_up(&self) -> Up<'a, T> {
+		Up(self.0)
+	}
+}
+impl<'a, T> Copy for Up<'a, T> {}
+impl<'a, T> Clone for Up<'a, T> {
+	fn clone(&self) -> Self {
 		Up(self.0)
 	}
 }

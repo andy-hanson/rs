@@ -54,6 +54,8 @@ impl<'a> AbstractMethod<'a> {
 	pub fn parameters(&self) -> &'a [Parameter<'a>] {
 		self.0.parameters
 	}
+
+	pub fn arity(&self) -> u8 { self.0.arity() }
 }
 impl<'a> NoDrop for AbstractMethod<'a> {}
 impl<'a> SerializeUp for AbstractMethod<'a> {
@@ -198,52 +200,59 @@ impl<'a> Serialize for MethodOrImpl<'a> {
 	}
 }
 
-
+#[derive(Copy, Clone)]
 pub enum MethodOrAbstract<'a> {
 	Method(Up<'a, MethodWithBody<'a>>),
 	Abstract(Up<'a, AbstractMethod<'a>>),
 }
 impl<'a> NoDrop for MethodOrAbstract<'a> {}
 impl<'a> MethodOrAbstract<'a> {
-	pub fn copy(&self) -> Self {
+	pub fn name(&self) -> Sym {
 		match *self {
-			MethodOrAbstract::Method(ref m) => MethodOrAbstract::Method(m.clone_as_up()),
-			MethodOrAbstract::Abstract(ref a) => MethodOrAbstract::Abstract(a.clone_as_up()),
+			MethodOrAbstract::Method(m) => m.name(),
+			MethodOrAbstract::Abstract(a) => a.name(),
 		}
 	}
 
 	pub fn is_static(&self) -> bool {
 		match *self {
-			MethodOrAbstract::Method(ref m) => m.is_static,
+			MethodOrAbstract::Method(m) => m.is_static,
 			MethodOrAbstract::Abstract(_) => false,
 		}
 	}
 
 	pub fn type_parameters(&self) -> &'a [TypeParameter<'a>] {
 		match *self {
-			MethodOrAbstract::Method(ref m) => m.0.type_parameters(),
-			MethodOrAbstract::Abstract(ref a) => a.0.type_parameters(),
+			MethodOrAbstract::Method(m) => m.0.type_parameters(),
+			MethodOrAbstract::Abstract(a) => a.0.type_parameters(),
 		}
 	}
 
 	pub fn return_ty(&self) -> &Ty<'a> {
 		match *self {
-			MethodOrAbstract::Method(ref m) => m.0.return_ty(),
-			MethodOrAbstract::Abstract(ref a) => a.0.return_ty(),
+			MethodOrAbstract::Method(m) => m.0.return_ty(),
+			MethodOrAbstract::Abstract(a) => a.0.return_ty(),
 		}
 	}
 
 	pub fn self_effect(&self) -> Effect {
 		match *self {
-			MethodOrAbstract::Method(ref m) => m.0.self_effect(),
-			MethodOrAbstract::Abstract(ref a) => a.0.self_effect(),
+			MethodOrAbstract::Method(m) => m.0.self_effect(),
+			MethodOrAbstract::Abstract(a) => a.0.self_effect(),
 		}
 	}
 
 	pub fn parameters(&self) -> &'a [Parameter<'a>] {
 		match *self {
-			MethodOrAbstract::Method(ref m) => m.0.parameters(),
-			MethodOrAbstract::Abstract(ref a) => a.0.parameters(),
+			MethodOrAbstract::Method(m) => m.0.parameters(),
+			MethodOrAbstract::Abstract(a) => a.0.parameters(),
+		}
+	}
+
+	pub fn arity(&self) -> u8 {
+		match *self {
+			MethodOrAbstract::Method(m) => m.arity(),
+			MethodOrAbstract::Abstract(a) => a.arity(),
 		}
 	}
 }

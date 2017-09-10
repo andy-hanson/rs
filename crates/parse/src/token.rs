@@ -54,7 +54,6 @@ pub enum Token {
 	BracketL,
 	BracketR,
 	Colon,
-	ColonEquals,
 	Comma,
 	CurlyL,
 	CurlyR,
@@ -75,7 +74,7 @@ impl Token {
 			Some(name) => name,
 			None =>
 				match self {
-					Token::Diagnostic => panic!(),
+					Token::Diagnostic => unreachable!(), // Should be handled by the parser.
 					Token::Name => b"name",
 					Token::TyName => b"type name",
 					Token::Operator => b"operator",
@@ -88,7 +87,6 @@ impl Token {
 					Token::BracketL => b"[",
 					Token::BracketR => b"]",
 					Token::Colon => b":",
-					Token::ColonEquals => b":=",
 					Token::Comma => b",",
 					Token::CurlyL => b"{",
 					Token::CurlyR => b"}",

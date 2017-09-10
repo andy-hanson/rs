@@ -1,22 +1,22 @@
 builtin
 
-def Bool ==(n: Int)
+def Bool ==(Int i)
 
-def Bool <(n: Int)
+def Bool <(Int i)
 
-def Bool >(n: Int)
+def Bool >(Int i)
 
-def Bool <=(n: Int)
+def Bool <=(Int i)
 
-def Bool >=(n: Int)
+def Bool >=(Int i)
 
-def Int +(n: Int)
+def Int +(Int i)
 
-def Int -(n: Int)
+def Int -(Int i)
 
-def Int *(n: Int)
+def Int *(Int i)
 
-def Int /(n: Int)
+def Int /(Int i)
 
 def Int decr()
 

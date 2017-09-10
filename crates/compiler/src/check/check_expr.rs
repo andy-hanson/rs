@@ -129,7 +129,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				self.bogus(loc)
 			}
 			ast::ExprData::StaticAccess(_, _) | ast::ExprData::TypeArguments(_, _) => {
-				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
+				self.add_diagnostic(loc, Diag::MethodUsedAsValue);
 				self.bogus(loc)
 			}
 			ast::ExprData::OperatorCall(left, operator, right) => {
@@ -144,7 +144,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				}
 				// For recursion, need to do substitution in case we are
 				// implementing an abstract method where the superclass took type arguments.
-				let moa = &self.method_or_impl.method_or_abstract();
+				let moa = self.method_or_impl.method_or_abstract();
 				let inst = self.method_instantiator;
 				let args = unwrap_or_return!(
 					self.check_arguments(loc, moa, inst, arg_asts.iter().cloned()),
@@ -161,8 +161,9 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				};
 				if arg_asts.len != slots.len() {
 					self.add_diagnostic(loc, Diag::NewArgumentCountMismatch {
-						expected: slots.len(),
-						actual: arg_asts.len,
+						class: Up(self.ctx.current_class),
+						n_slots: slots.len(),
+						n_arguments: arg_asts.len,
 					});
 					return self.bogus(loc)
 				}
@@ -198,7 +199,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 						let slot = match member_decl {
 							MemberDeclaration::Slot(s) => s,
 							_ => {
-								self.add_diagnostic(target.loc(), Diag::DelegatesNotYetSupported);
+								self.add_diagnostic(target.loc(), Diag::MethodUsedAsValue);
 								return self.bogus(loc)
 							}
 						};
@@ -228,7 +229,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					self.add_diagnostic(loc, Diag::SlotNotMutable(Up(slot)))
 				}
 				if !self.self_effect.can_set() {
-					self.add_diagnostic(loc, Diag::MissingEffectToSetSlot(self.self_effect, Up(slot)))
+					self.add_diagnostic(loc, Diag::MissingEffectToSetSlot { allowed_effect: self.self_effect, slot: Up(slot) })
 				}
 
 				let value = self.check_subtype(self.instantiate_type(&slot.ty, &instantiator), value_ast);
@@ -402,7 +403,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				),
 			ast::ExprData::Access(name) => self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
 			_ => {
-				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
+				self.add_diagnostic(loc, Diag::CallsNonMethod);
 				self.bogus(target_loc)
 			}
 		}
@@ -424,7 +425,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 
 		let inst_method = unwrap_or_return!(
 			self.ctx
-				.instantiate_method(&MethodOrAbstract::Method(Up(method_decl)), ty_arg_asts),
+				.instantiate_method(MethodOrAbstract::Method(Up(method_decl)), ty_arg_asts),
 			self.bogus(loc)
 		);
 
@@ -464,13 +465,13 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			MemberDeclaration::Method(m) => MethodOrAbstract::Method(Up(m)),
 			MemberDeclaration::AbstractMethod(a) => MethodOrAbstract::Abstract(Up(a)),
 			_ => {
-				self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
+				self.add_diagnostic(loc, Diag::CallsNonMethod);
 				return self.bogus(loc)
 			}
 		};
 
 		let inst_method =
-			unwrap_or_return!(self.ctx.instantiate_method(&method_decl, ty_arg_asts), self.bogus(loc));
+			unwrap_or_return!(self.ctx.instantiate_method(method_decl, ty_arg_asts), self.bogus(loc));
 
 		let args = unwrap_or_return!(
 			self.check_call_arguments(loc, inst_method, &member_instantiator, arg_asts.iter().cloned()),
@@ -491,7 +492,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			if !self.self_effect.contains(method_decl.self_effect()) {
 				self.add_diagnostic(
 					loc,
-					Diag::IllegalEffect { allowed: self.self_effect, required: method_decl.self_effect() },
+					Diag::IllegalSelfEffect { target_effect: self.self_effect, method: method_decl },
 				)
 			}
 
@@ -524,25 +525,25 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					MemberDeclaration::Method(m) => MethodOrAbstract::Method(Up(m)),
 					MemberDeclaration::AbstractMethod(a) => MethodOrAbstract::Abstract(Up(a)),
 					_ => {
-						self.add_diagnostic(loc, Diag::DelegatesNotYetSupported);
+						self.add_diagnostic(loc, Diag::CallsNonMethod);
 						return self.bogus(loc)
 					}
 				};
 
-				if let MethodOrAbstract::Method(ref m) = method {
+				if let MethodOrAbstract::Method(m) = method {
 					if m.is_static {
 						self.add_diagnostic(loc, Diag::CantAccessStaticMethodThroughInstance(m.clone_as_up()));
 						return self.bogus(loc)
 					}
+				}
 
-					if !target_effect.contains(m.self_effect()) {
-						self.add_diagnostic(loc, Diag::IllegalEffect { allowed: target_effect, required: m.self_effect() })
-					}
+				if !target_effect.contains(method.self_effect()) {
+					self.add_diagnostic(loc, Diag::IllegalSelfEffect { target_effect, method })
 				}
 
 				// Note: member is instantiated based on the *class* type arguments,
                 // but there may sill be *method* type arguments.
-				let inst_method = unwrap_or_return!(self.ctx.instantiate_method(&method, ty_arg_asts), self.bogus(loc));
+				let inst_method = unwrap_or_return!(self.ctx.instantiate_method(method, ty_arg_asts), self.bogus(loc));
 
 				let args = unwrap_or_return!(
 					self.check_call_arguments(loc, inst_method, &member_instantiator, arg_asts.into_iter()),
@@ -566,13 +567,13 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		arg_asts: I,
 	) -> Option<&'model [&'model Expr<'model>]> {
 		let instantiator = Instantiator::of_inst_method(inst_method).combine(extra_instantiator);
-		self.check_arguments(loc, &inst_method.0, &instantiator, arg_asts)
+		self.check_arguments(loc, inst_method.0, &instantiator, arg_asts)
 	}
 
 	fn check_arguments<'ast, I: Iterator<Item = &'ast ast::Expr<'ast>>>(
 		&self,
 		loc: Loc,
-		method_decl: &MethodOrAbstract<'model>,
+		method_decl: MethodOrAbstract<'model>,
 		instantiator: &Instantiator<'model>,
 		arg_asts: I,
 	) -> Option<&'model [&'model Expr<'model>]> {
@@ -582,7 +583,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		}) {
 			Ok(res) => Some(res),
 			Err((_, n_args)) => {
-				self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl.copy(), n_args));
+				self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl, n_args));
 				None
 			}
 		}

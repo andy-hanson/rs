@@ -15,32 +15,38 @@ pub trait Show where Self : Sized
 }
 impl Show for char {
 	fn show<S: Shower>(self, s: &mut S) {
-		s._add_char(self);
+		s._add_char(self)
 	}
 }
 impl<'a> Show for &'a [u8] {
 	fn show<S: Shower>(self, s: &mut S) {
-		s._add_bytes(self);
+		s._add_bytes(self)
 	}
 }
 impl<'a> Show for &'a str {
 	fn show<S: Shower>(self, s: &mut S) {
-		s._add_bytes(self.as_bytes());
+		s._add_bytes(self.as_bytes())
 	}
+}
+impl Show for u8 {
+	fn show<S : Shower>(self, s: &mut S) { s._add_u8(self) }
 }
 impl Show for u32 {
 	fn show<S: Shower>(self, s: &mut S) {
-		s._add_uint(self);
+		s._add_u32(self)
 	}
+}
+impl Show for usize {
+	fn show<S : Shower>(self, s: &mut S) { s._add_usize(self) }
 }
 impl Show for i32 {
 	fn show<S: Shower>(self, s: &mut S) {
-		s._add_int(self);
+		s._add_int(self)
 	}
 }
 impl Show for f64 {
 	fn show<S: Shower>(self, s: &mut S) {
-		s._add_float(self);
+		s._add_float(self)
 	}
 }
 
@@ -50,11 +56,13 @@ where
 	Self: Sized,
 {
 	fn nl(&mut self) -> &mut Self;
-	fn _add_char(&mut self, char: char) -> &mut Self;
-	fn _add_bytes(&mut self, bytes: &[u8]) -> &mut Self;
-	fn _add_uint(&mut self, u: u32) -> &mut Self;
-	fn _add_int(&mut self, i: i32) -> &mut Self;
-	fn _add_float(&mut self, f: f64) -> &mut Self;
+	fn _add_char(&mut self, char: char);
+	fn _add_bytes(&mut self, bytes: &[u8]);
+	fn _add_u8(&mut self, u: u8);
+	fn _add_u32(&mut self, u: u32);
+	fn _add_usize(&mut self, u: usize);
+	fn _add_int(&mut self, i: i32);
+	fn _add_float(&mut self, f: f64);
 
 	fn add<T: Show>(&mut self, value: T) -> &mut Self {
 		value.show(self);
@@ -68,6 +76,19 @@ where
 				self.add(',');
 				self.add(' ');
 				x.show(self)
+			}
+		}
+		self
+	}
+
+	//TODO:duplicate code (write join_iter)
+	fn join_map<'a, T, U : Show, F : FnMut(&T) -> U>(&mut self, arr: &'a [T], mut f: F) -> &mut Self {
+		if arr.any() {
+			f(&arr[0]).show(self);
+			for x in arr.iter().skip(1) {
+				self.add(',');
+				self.add(' ');
+				f(x).show(self)
 			}
 		}
 		self
@@ -96,29 +117,32 @@ impl<W: IoWrite> Shower for WriteShower<W> {
 		self
 	}
 
-	fn _add_char(&mut self, char: char) -> &mut Self {
-		write!(&mut self.0, "{}", char).unwrap();
-		self
+	fn _add_char(&mut self, char: char) {
+		write!(&mut self.0, "{}", char).unwrap()
 	}
 
-	fn _add_bytes(&mut self, bytes: &[u8]) -> &mut Self {
-		self.0.write_all(bytes).unwrap();
-		self
+	fn _add_bytes(&mut self, bytes: &[u8]) {
+		self.0.write_all(bytes).unwrap()
 	}
 
-	fn _add_uint(&mut self, u: u32) -> &mut Self {
-		write!(&mut self.0, "{}", u).unwrap();
-		self
+	fn _add_u8(&mut self, u: u8) {
+		write!(&mut self.0, "{}", u).unwrap()
 	}
 
-	fn _add_int(&mut self, i: i32) -> &mut Self {
-		write!(&mut self.0, "{}", i).unwrap();
-		self
+	fn _add_u32(&mut self, u: u32) {
+		write!(&mut self.0, "{}", u).unwrap()
 	}
 
-	fn _add_float(&mut self, f: f64) -> &mut Self {
-		write!(&mut self.0, "{}", f).unwrap();
-		self
+	fn _add_usize(&mut self, u: usize) {
+		write!(&mut self.0, "{}", u).unwrap()
+	}
+
+	fn _add_int(&mut self, i: i32) {
+		write!(&mut self.0, "{}", i).unwrap()
+	}
+
+	fn _add_float(&mut self, f: f64) {
+		write!(&mut self.0, "{}", f).unwrap()
 	}
 }
 
@@ -129,30 +153,33 @@ impl Shower for StringMaker {
 		self
 	}
 
-	fn _add_char(&mut self, ch: char) -> &mut Self {
-		self.0.push(ch);
-		self
+	fn _add_char(&mut self, ch: char) {
+		self.0.push(ch)
 	}
 
-	fn _add_bytes(&mut self, bytes: &[u8]) -> &mut Self {
+	fn _add_bytes(&mut self, bytes: &[u8]) {
 		//TODO:PERF
-		self.0.push_str(&bytes.clone_to_utf8_string());
-		self
+		self.0.push_str(&bytes.clone_to_utf8_string())
 	}
 
-	fn _add_uint(&mut self, u: u32) -> &mut Self {
-		write!(&mut self.0, "{}", u).unwrap();
-		self
+	fn _add_u8(&mut self, u: u8) {
+		write!(&mut self.0, "{}", u).unwrap()
 	}
 
-	fn _add_int(&mut self, i: i32) -> &mut Self {
-		write!(&mut self.0, "{}", i).unwrap();
-		self
+	fn _add_u32(&mut self, u: u32) {
+		write!(&mut self.0, "{}", u).unwrap()
 	}
 
-	fn _add_float(&mut self, f: f64) -> &mut Self {
-		write!(&mut self.0, "{}", f).unwrap();
-		self
+	fn _add_usize(&mut self, u: usize) {
+		write!(&mut self.0, "{}", u).unwrap()
+	}
+
+	fn _add_int(&mut self, i: i32) {
+		write!(&mut self.0, "{}", i).unwrap()
+	}
+
+	fn _add_float(&mut self, f: f64) {
+		write!(&mut self.0, "{}", f).unwrap()
 	}
 }
 impl StringMaker {

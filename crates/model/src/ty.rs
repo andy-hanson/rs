@@ -3,6 +3,7 @@ use serde::{Serialize, Serializer};
 use util::arena::{ptr_eq, Arena, NoDrop, SerializeUp, Up};
 use util::arr::SliceOps;
 use util::late::Late;
+use util::string_maker::{Show, Shower};
 use util::sync::UnsafeSync;
 use util::sym::Sym;
 
@@ -65,6 +66,21 @@ impl<'a> Clone for Ty<'a> {
 		}
 	}
 }
+impl<'t, 'a> Show for &'t Ty<'a> {
+	fn show<S : Shower>(self, s: &mut S) {
+		match *self {
+			Ty::Bogus => {
+				s.add("<bogus>");
+			}
+			Ty::Plain(effect, ref inst_cls) => {
+				s.add(effect).add(' ').add(inst_cls);
+			}
+			Ty::Param(p) => {
+				s.add(p.name);
+			}
+		}
+	}
+}
 /*impl Serialize for Ty {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer
@@ -104,6 +120,16 @@ impl<'a> Clone for InstCls<'a> {
 		InstCls(self.0, self.1)
 	}
 }
+impl<'i, 'a> Show for &'i InstCls<'a> {
+	fn show<S : Shower>(self, s: &mut S) {
+		s.add(self.0.name);
+		if self.1.any() {
+			s.add('[');
+			s.join(self.1);
+			s.add(']');
+		}
+	}
+}
 
 pub enum TypeParameterOrigin<'a> {
 	Class(Up<'a, ClassDeclaration<'a>>),
@@ -121,8 +147,8 @@ impl<'a> TypeParameterOrigin<'a> {
 }
 
 pub struct TypeParameter<'a> {
-	origin: Late<TypeParameterOrigin<'a>>,
-	name: Sym,
+	pub origin: Late<TypeParameterOrigin<'a>>,
+	pub name: Sym,
 }
 impl<'a> NoDrop for TypeParameter<'a> {}
 impl<'a> TypeParameter<'a> {

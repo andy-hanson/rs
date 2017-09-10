@@ -1,3 +1,13 @@
+#![allow(dead_code)] // TODO
+#![feature(placement_in_syntax)]
+
+#[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
+extern crate util;
+extern crate model; //TODO:avoid
+
 use util::arena::Arena;
 
 pub mod ast;

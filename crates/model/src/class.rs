@@ -73,12 +73,22 @@ pub struct Super<'a> {
 }
 impl<'a> NoDrop for Super<'a> {}
 
+#[derive(Copy, Clone)]
 pub enum MemberDeclaration<'a> {
 	Slot(&'a SlotDeclaration<'a>),
 	Method(&'a MethodWithBody<'a>),
 	AbstractMethod(&'a AbstractMethod<'a>),
 }
 impl<'a> NoDrop for MemberDeclaration<'a> {}
+impl<'a> MemberDeclaration<'a> {
+	pub fn name(&self) -> Sym {
+		match *self {
+			MemberDeclaration::Slot(s) => s.name,
+			MemberDeclaration::Method(m) => m.name(),
+			MemberDeclaration::AbstractMethod(a) => a.name(),
+		}
+	}
+}
 impl<'a> Serialize for MemberDeclaration<'a> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where

@@ -51,7 +51,9 @@ fn parse_block_with_start<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, first: Toke
 			Ok(l.expr_from(start, data))
 		}
 		Token::Dedent => Ok(expr),
-		_ => unimplemented!(), // TODO: unexpected
+		Token::Diagnostic =>
+			Err(l.diag()),
+		_ => Err(l.unexpected_token(next.pos, next.token, b"newline or dedent")),
 	}
 }
 

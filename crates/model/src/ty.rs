@@ -4,8 +4,8 @@ use util::arena::{ptr_eq, Arena, NoDrop, SerializeUp, Up};
 use util::arr::SliceOps;
 use util::late::Late;
 use util::string_maker::{Show, Shower};
-use util::sync::UnsafeSync;
 use util::sym::Sym;
+use util::sync::UnsafeSync;
 
 use super::class::ClassDeclaration;
 use super::effect::Effect;
@@ -67,7 +67,7 @@ impl<'a> Clone for Ty<'a> {
 	}
 }
 impl<'t, 'a> Show for &'t Ty<'a> {
-	fn show<S : Shower>(self, s: &mut S) {
+	fn show<S: Shower>(self, s: &mut S) {
 		match *self {
 			Ty::Bogus => {
 				s.add("<bogus>");
@@ -121,7 +121,7 @@ impl<'a> Clone for InstCls<'a> {
 	}
 }
 impl<'i, 'a> Show for &'i InstCls<'a> {
-	fn show<S : Shower>(self, s: &mut S) {
+	fn show<S: Shower>(self, s: &mut S) {
 		s.add(self.0.name);
 		if self.1.any() {
 			s.add('[');

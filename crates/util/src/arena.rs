@@ -29,10 +29,9 @@ pub struct Arena {
 	locked: Cell<bool>,
 }
 impl Arena {
-	#[allow(new_without_default_derive)]
 	pub fn new() -> Self {
 		Arena {
-			bytes: UnsafeCell::new(Box::new([0; 1000000])),
+			bytes: UnsafeCell::new(Box::new([0; 1_000_000])),
 			next_index: Cell::new(0),
 			locked: Cell::new(false),
 		}
@@ -141,7 +140,9 @@ impl Arena {
 			let next_index = self.next_index.get();
 			let buff_start = bytes.as_mut_ptr().offset(usize_to_isize(next_index));
 			let capacity = bytes.len() - next_index;
-			if capacity == 0 { unimplemented!() }
+			if capacity == 0 {
+				unimplemented!()
+			}
 			let buff = slice::from_raw_parts_mut(buff_start, capacity);
 			let mut buff_idx = 0;
 			loop {
@@ -151,7 +152,9 @@ impl Arena {
 				}
 				buff_idx += n_bytes_read;
 				//`- 1` to make room for the '\0' we add at the end.
-				if buff_idx >= capacity - 1 { unimplemented!() }
+				if buff_idx >= capacity - 1 {
+					unimplemented!()
+				}
 			}
 			buff[buff_idx] = b'\0';
 			buff_idx += 1;
@@ -262,7 +265,7 @@ impl<'a, T: NoDrop + 'a> List<'a, T> {
 	}
 
 	//TODO:KILL
-	pub fn map_defined_probably_all<'out, U : NoDrop, F: FnMut(&'a T) -> Option<U>>(
+	pub fn map_defined_probably_all<'out, U: NoDrop, F: FnMut(&'a T) -> Option<U>>(
 		&'a self,
 		arena: &'out Arena,
 		mut f: F,
@@ -318,6 +321,7 @@ impl<'a, T> Up<'a, T> {
 	}
 }
 impl<'a, T> Copy for Up<'a, T> {}
+#[allow(expl_impl_clone_on_copy)] // If I derive(Copy) it doesn't seem to do anything.
 impl<'a, T> Clone for Up<'a, T> {
 	fn clone(&self) -> Self {
 		Up(self.0)

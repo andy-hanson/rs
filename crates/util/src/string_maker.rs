@@ -5,7 +5,9 @@ use std::marker::Sized;
 
 use super::arr::{SliceOps, U8SliceOps};
 
-pub trait Show where Self : Sized
+pub trait Show
+where
+	Self: Sized,
 {
 	fn show<S: Shower>(self, s: &mut S);
 
@@ -29,7 +31,9 @@ impl<'a> Show for &'a str {
 	}
 }
 impl Show for u8 {
-	fn show<S : Shower>(self, s: &mut S) { s._add_u8(self) }
+	fn show<S: Shower>(self, s: &mut S) {
+		s._add_u8(self)
+	}
 }
 impl Show for u32 {
 	fn show<S: Shower>(self, s: &mut S) {
@@ -37,7 +41,9 @@ impl Show for u32 {
 	}
 }
 impl Show for usize {
-	fn show<S : Shower>(self, s: &mut S) { s._add_usize(self) }
+	fn show<S: Shower>(self, s: &mut S) {
+		s._add_usize(self)
+	}
 }
 impl Show for i32 {
 	fn show<S: Shower>(self, s: &mut S) {
@@ -69,7 +75,10 @@ where
 		self
 	}
 
-	fn join<'a, T>(&mut self, arr: &'a [T]) -> &mut Self where &'a T : Show {
+	fn join<'a, T>(&mut self, arr: &'a [T]) -> &mut Self
+	where
+		&'a T: Show,
+	{
 		if arr.any() {
 			arr[0].show(self);
 			for x in arr.iter().skip(1) {
@@ -82,7 +91,7 @@ where
 	}
 
 	//TODO:duplicate code (write join_iter)
-	fn join_map<'a, T, U : Show, F : FnMut(&T) -> U>(&mut self, arr: &'a [T], mut f: F) -> &mut Self {
+	fn join_map<'a, T, U: Show, F: FnMut(&T) -> U>(&mut self, arr: &'a [T], mut f: F) -> &mut Self {
 		if arr.any() {
 			f(&arr[0]).show(self);
 			for x in arr.iter().skip(1) {
@@ -102,7 +111,7 @@ impl WriteShower<Stderr> {
 		WriteShower::new(stderr())
 	}
 
-	pub fn write_stderr<S : Show>(shown: S) {
+	pub fn write_stderr<S: Show>(shown: S) {
 		Self::stderr().add(shown).nl();
 	}
 }

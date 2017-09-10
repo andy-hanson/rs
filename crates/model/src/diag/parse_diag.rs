@@ -1,4 +1,4 @@
-use util::arena::{NoDrop};
+use util::arena::NoDrop;
 use util::string_maker::{Show, Shower};
 
 pub enum ParseDiag {
@@ -15,10 +15,13 @@ pub enum ParseDiag {
 }
 impl NoDrop for ParseDiag {}
 impl<'a> Show for &'a ParseDiag {
-	fn show<S : Shower>(self, s: &mut S) {
+	fn show<S: Shower>(self, s: &mut S) {
 		match *self {
 			ParseDiag::TooMuchIndent { old, new } => {
-				s.add("Expected only ").add(old + 1).add(" indents; actual: ").add(new);
+				s.add("Expected only ")
+					.add(old + 1)
+					.add(" indents; actual: ")
+					.add(new);
 			}
 			ParseDiag::LeadingSpace => {
 				s.add("Line begins with a space. (Use tabs to indent.)");
@@ -50,13 +53,17 @@ impl<'a> Show for &'a ParseDiag {
 				show_char(expected, s);
 			}
 			ParseDiag::UnexpectedToken { expected, actual } => {
-				s.add("Expected token type '").add(expected).add("', got: '").add(actual).add("'.");
+				s.add("Expected token type '")
+					.add(expected)
+					.add("', got: '")
+					.add(actual)
+					.add("'.");
 			}
 		}
 	}
 }
 
-fn show_char<S : Shower>(ch: u8, s: &mut S) {
+fn show_char<S: Shower>(ch: u8, s: &mut S) {
 	match ch {
 		b'\t' => {
 			s.add("tab");

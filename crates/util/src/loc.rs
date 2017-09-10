@@ -115,7 +115,8 @@ impl LineAndColumnGetter {
 	pub fn line_and_column_at_pos(&self, pos: Pos) -> LineAndColumn {
 		let pos_index = pos.index;
 		// Both low_line and high_line are inclusive,
-		// meaning the range of possible answers is [low_line..high_line] and we stop when this range has only one element.
+		// meaning the range of possible answers is [low_line..high_line]
+		// and we stop when this range has only one element.
 		let mut low_line: usize = 0;
 		// EXCLUSIVE, not a valid line.
 		let mut high_line = self.line_to_pos.len();

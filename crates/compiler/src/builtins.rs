@@ -2,14 +2,14 @@ use util::arena::{Arena, List, NoDrop, Up};
 use util::file_utils::read_file;
 use util::late::Late;
 use util::path::Path;
-use util::sync::UnsafeSync;
 use util::sym::Sym;
+use util::sync::UnsafeSync;
 
 use util::string_maker::{Shower, WriteShower};
 
-use model::diag::show_diagnostics;
 use model::class::ClassDeclaration;
 use model::diag::{Diag, Diagnostic};
+use model::diag::show_diagnostics;
 use model::module::{FailModule, Module, ModuleOrFail, ModuleSourceEnum};
 use model::ty::{InstCls, Ty};
 
@@ -23,8 +23,8 @@ lazy_static! {
 		[
 			(Sym::of("Void"), load_builtin_file(b"builtins/Void.nz")),
 			(Sym::of("Bool"), load_builtin_file(b"builtins/Bool.nz")),
-			(Sym::of("Nat"), load_builtin_file(b"builtins/Nat.nz")),
 			(Sym::of("Int"), load_builtin_file(b"builtins/Int.nz")),
+			(Sym::of("Nat"), load_builtin_file(b"builtins/Nat.nz")), // Nat - Nat is Int, so Nat must come after Int
 			(Sym::of("Float"), load_builtin_file(b"builtins/Float.nz")),
 			(Sym::of("String"), load_builtin_file(b"builtins/String.nz")),
 		];
@@ -62,7 +62,7 @@ pub struct BuiltinsCtx<'model> {
 	pub bool: Option<&'model Ty<'model>>,
 }
 
-pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn<'model> {
+pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 	let all_successes = arena.max_size_arr_builder(BUILTINS_FILES.len());
 	let own = arena <- BuiltinsOwn {
 		all: Late::new(),

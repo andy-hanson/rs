@@ -4,9 +4,9 @@
 #[macro_use]
 extern crate lazy_static;
 
+extern crate model;
 #[macro_use]
-extern crate util;
-extern crate model; //TODO:avoid
+extern crate util; //TODO:avoid
 
 use util::arena::Arena;
 

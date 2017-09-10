@@ -52,8 +52,7 @@ pub fn readdir_worker<'a>(
 
 pub fn read_file<'out>(path: &Path, arena: &'out Arena) -> Result<Option<&'out [u8]>> {
 	match File::open(path.to_string()) {
-		Ok(/*mut*/ f) =>
-			arena.read_from_file(f).map(Some),
+		Ok(/*mut*/ f) => arena.read_from_file(f).map(Some),
 		Err(e) =>
 			match e.kind() {
 				ErrorKind::NotFound => Ok(None),

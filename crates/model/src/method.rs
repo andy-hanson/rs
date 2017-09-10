@@ -55,7 +55,9 @@ impl<'a> AbstractMethod<'a> {
 		self.0.parameters
 	}
 
-	pub fn arity(&self) -> u8 { self.0.arity() }
+	pub fn arity(&self) -> u8 {
+		self.0.arity()
+	}
 }
 impl<'a> NoDrop for AbstractMethod<'a> {}
 impl<'a> SerializeUp for AbstractMethod<'a> {

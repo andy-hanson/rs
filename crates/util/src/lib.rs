@@ -1,5 +1,6 @@
 #![allow(unknown_lints)] // Clippy lints aren't known to rustc?
-
+#![allow(new_without_default)]
+#![allow(new_without_default_derive)]
 #![feature(collection_placement)]
 #![feature(offset_to)]
 #![feature(placement_in_syntax)]

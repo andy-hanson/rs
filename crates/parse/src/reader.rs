@@ -43,7 +43,13 @@ impl<'text> Reader<'text> {
 		}
 
 		let mut s = WriteShower::stderr();
-		s.add("Line ").add(line_no).add(": ").add(&self.source[nl_before..pos]).add("|").add(&self.source[pos..nl_after]).nl();
+		s.add("Line ")
+			.add(line_no)
+			.add(": ")
+			.add(&self.source[nl_before..pos])
+			.add("|")
+			.add(&self.source[pos..nl_after])
+			.nl();
 	}
 
 	pub fn pos(&self) -> Pos {

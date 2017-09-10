@@ -257,15 +257,14 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 					Token::Operator
 				},
 
-			b'=' => {
+			b'=' =>
 				if is_operator_char(self.peek()) {
 					self.skip();
 					self.skip_while(is_operator_char);
 					Token::Operator
 				} else {
 					Token::Equals
-				}
-			}
+				},
 
 			b'*' | b'/' | b'^' | b'?' | b'<' | b'>' => {
 				self.skip_while(is_operator_char);
@@ -533,7 +532,10 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		} else if is_operator_char(first) {
 			self.skip_while(is_operator_char);
 		} else {
-			return Err((self.single_char_loc(), ParseDiag::UnexpectedCharacterType { actual: first, expected_desc: b"name or operator" }))
+			return Err((
+				self.single_char_loc(),
+				ParseDiag::UnexpectedCharacterType { actual: first, expected_desc: b"name or operator" },
+			))
 		}
 		Ok(Sym::from_slice(self.slice_from(start_pos)))
 	}

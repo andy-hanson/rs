@@ -25,7 +25,7 @@ update_dev_dependencies:
 	cargo +nightly install rustfmt-nightly -f
 
 fmt:
-	rustup run nightly cargo fmt
+	cargo +nightly fmt --all
 
 lint:
-	rustup run nightly cargo clippy
+	cargo +nightly clippy --all

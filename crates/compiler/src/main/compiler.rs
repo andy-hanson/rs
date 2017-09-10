@@ -8,8 +8,8 @@ use util::sym::Sym;
 
 use host::document_provider::DocumentProvider;
 
-use model::document_info::DocumentInfo;
 use model::diag::{Diag, Diagnostic};
+use model::document_info::DocumentInfo;
 use model::module::{FailModule, Module, ModuleOrFail, ModuleSource, ModuleSourceEnum};
 
 use super::super::builtins::{get_builtins, BuiltinsOwn};

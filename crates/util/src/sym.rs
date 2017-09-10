@@ -62,8 +62,8 @@ impl Serialize for Sym {
 impl Debug for Sym {
 	fn fmt(&self, f: &mut Formatter) -> FormatResult {
 		let map = SYMBOL_TO_STRING.lock().unwrap();
-		let str = map.get(&self).unwrap().deref(); // TODO: duplicate code...
+		let str = map.get(self).unwrap().deref(); // TODO: duplicate code...
 		f.write_str(&String::from_utf8_lossy(str))
 	}
 }
-//TODO:cfg[debug
+//TODO:cfg[debug]

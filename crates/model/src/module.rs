@@ -5,8 +5,8 @@ use util::string_maker::Shower;
 use util::sym::Sym;
 
 use super::class::ClassDeclaration;
-use super::document_info::DocumentInfo;
 use super::diag::Diagnostic;
+use super::document_info::DocumentInfo;
 
 pub enum ModuleSourceEnum<'a> {
 	Normal(ModuleSource<'a>),
@@ -28,10 +28,10 @@ impl<'a> ModuleSourceEnum<'a> {
 		}
 	}
 
-	pub fn show<'b, S : Shower>(&self, s: &'b mut S) -> &'b mut S {
+	pub fn show<'b, S: Shower>(&self, s: &'b mut S) -> &'b mut S {
 		match *self {
 			ModuleSourceEnum::Normal(ref ms) => s.add(&ms.logical_path),
-			ModuleSourceEnum::Builtin { name, text: _ } => s.add("Builtin ").add(name),
+			ModuleSourceEnum::Builtin { name, .. } => s.add("Builtin ").add(name),
 		}
 	}
 }
@@ -45,7 +45,7 @@ impl<'a> NoDrop for ModuleSource<'a> {}
 impl<'a> ModuleSource<'a> {
 	pub fn full_path<'out>(&self, arena: &'out Arena) -> Path<'out> {
 		unused!(arena);
-		unimplemented!()//full_path(&self.logical_path, self.is_index, arena)
+		unimplemented!() //full_path(&self.logical_path, self.is_index, arena)
 	}
 }
 

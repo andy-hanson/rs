@@ -53,7 +53,11 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		&ast::Ty { loc, effect, name, ref ty_args }: &'ast ast::Ty<'ast>,
 		extra_type_parameters: &'model [TypeParameter<'model>],
 	) -> Ty<'model> {
-		for tp in self.current_class.type_parameters.iter().chain(extra_type_parameters) {
+		for tp in self.current_class
+			.type_parameters
+			.iter()
+			.chain(extra_type_parameters)
+		{
 			if name == tp.name {
 				if effect != Effect::Pure {
 					//Diagnostic: Not allowed to specify an effect on a type parameter.
@@ -65,11 +69,11 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 				}
 				return Ty::Param(tp)
 			}
-
 		}
 
 		let cls = unwrap_or_return!(self.access_class_declaration_or_add_diagnostic(loc, name), Ty::Bogus);
-		let args = ty_args.map(self.arena, |ty_ast| self.get_ty_or_type_parameter(ty_ast, extra_type_parameters));
+		let args =
+			ty_args.map(self.arena, |ty_ast| self.get_ty_or_type_parameter(ty_ast, extra_type_parameters));
 		Ty::Plain(effect, InstCls(cls, args))
 	}
 

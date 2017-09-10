@@ -6,7 +6,8 @@ use util::sym::Sym;
 
 use model::effect::Effect;
 
-use super::ast::{Expr, Module, Import, Class, ClassHead, ClassHeadData, AbstractMethod, Method, Ty, Parameter, Super, Impl, Slot};
+use super::ast::{AbstractMethod, Class, ClassHead, ClassHeadData, Expr, Impl, Import, Method, Module,
+                 Parameter, Slot, Super, Ty};
 use super::lexer::{Lexer, MethodKw, NewlineOrDedent, NewlineOrIndent, Result, SlotKw};
 use super::parse_expr::parse_block;
 use super::parse_ty::{parse_self_effect_or_ty, parse_ty, try_take_type_parameters, SelfEffectOrTy};
@@ -274,10 +275,8 @@ fn parse_super<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<Super<'a>> {
 //mv
 fn take_optional_body<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<&'a Expr<'a>>> {
 	Ok(match l.take_newline_or_indent()? {
-		NewlineOrIndent::Indent =>
-			Some(parse_block(l)?),
-		NewlineOrIndent::Newline =>
-			None
+		NewlineOrIndent::Indent => Some(parse_block(l)?),
+		NewlineOrIndent::Newline => None,
 	})
 }
 

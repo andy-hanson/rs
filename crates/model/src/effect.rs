@@ -51,7 +51,7 @@ impl Effect {
 	}
 }
 impl Show for Effect {
-	fn show<S : Shower>(self, s: &mut S) {
+	fn show<S: Shower>(self, s: &mut S) {
 		s.add(self.show_str());
 	}
 }

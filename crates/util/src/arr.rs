@@ -96,7 +96,7 @@ impl U8SliceOps for [u8] {
 	}
 }
 
-
+#[allow(len_without_is_empty)] // len must be O(1)
 pub trait SliceOps<T>: Index<usize, Output = T> {
 	fn len(&self) -> usize;
 	fn iter(&self) -> Iter<T>;

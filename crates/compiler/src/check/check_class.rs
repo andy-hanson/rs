@@ -6,8 +6,7 @@ use util::sym::Sym;
 
 use model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
 use model::diag::Diag;
-use model::method::{AbstractMethod, Impl, MethodOrImpl, MethodSignature,
-                                         MethodWithBody, Parameter};
+use model::method::{AbstractMethod, Impl, MethodOrImpl, MethodSignature, MethodWithBody, Parameter};
 use model::module::Module;
 use model::ty::{TypeParameter, TypeParameterOrigin};
 
@@ -140,10 +139,7 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 		if !abstract_methods
 			.each_corresponds_list(impl_asts, |implemented, impl_ast| implemented.name() == impl_ast.name)
 		{
-			ctx.add_diagnostic(
-				loc,
-				Diag::ImplsMismatch { expected: abstract_methods },
-			);
+			ctx.add_diagnostic(loc, Diag::ImplsMismatch { expected: abstract_methods });
 			return None
 		}
 		abstract_methods.zip(

@@ -229,7 +229,10 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					self.add_diagnostic(loc, Diag::SlotNotMutable(Up(slot)))
 				}
 				if !self.self_effect.can_set() {
-					self.add_diagnostic(loc, Diag::MissingEffectToSetSlot { allowed_effect: self.self_effect, slot: Up(slot) })
+					self.add_diagnostic(loc, Diag::MissingEffectToSetSlot {
+						allowed_effect: self.self_effect,
+						slot: Up(slot)
+					})
 				}
 
 				let value = self.check_subtype(self.instantiate_type(&slot.ty, &instantiator), value_ast);

@@ -5,6 +5,9 @@ use util::path::Path;
 use util::sync::UnsafeSync;
 use util::sym::Sym;
 
+use util::string_maker::{Shower, WriteShower};
+
+use model::diag::show_diagnostics;
 use model::class::ClassDeclaration;
 use model::diag::{Diag, Diagnostic};
 use model::module::{FailModule, Module, ModuleOrFail, ModuleSourceEnum};
@@ -74,6 +77,7 @@ pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn<'model>
 	let all = arena.max_size_arr_builder(BUILTINS_FILES.len());
 
 	for &(name, text) in BUILTINS_FILES.iter() {
+		//println!("COMPILING: {:?}", name);
 		let source = ModuleSourceEnum::Builtin { name, text };
 		let ast_arena = Arena::new();
 		&all <- match parse(&ast_arena, text) {
@@ -103,9 +107,14 @@ pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn<'model>
 			}
 			Err((loc, parse_diag)) => {
 				let diag = Diagnostic(loc, Diag::ParseError(parse_diag));
-				ModuleOrFail::Fail(
+				let mf = ModuleOrFail::Fail(
 					arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, arena) },
-				)
+				);
+				let mut shower = WriteShower::stderr();
+				show_diagnostics(&mf, &mut shower);
+				shower.nl();
+				panic!("Bai");
+				//TODO: just return it...
 			}
 		};
 	}

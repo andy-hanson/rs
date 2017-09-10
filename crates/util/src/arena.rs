@@ -254,14 +254,18 @@ impl<'a, T: NoDrop + 'a> List<'a, T> {
 	}
 
 	//TODO:KILL
-	pub fn map_defined_probably_all<'out, U, F: FnMut(&'a T) -> Option<U>>(
+	pub fn map_defined_probably_all<'out, U : NoDrop, F: FnMut(&'a T) -> Option<U>>(
 		&'a self,
 		arena: &'out Arena,
-		f: F,
+		mut f: F,
 	) -> &'out [U] {
-		unused!(arena, f);
-		//TODO:PERF we will probably map all, so allocate self.len() space ahead of time
-		unimplemented!()
+		let b = arena.max_size_arr_builder(self.len);
+		for x in self.iter() {
+			if let Some(out) = f(x) {
+				&b <- out;
+			}
+		}
+		b.finish()
 	}
 
 	//TODO:KILL

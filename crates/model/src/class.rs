@@ -1,13 +1,12 @@
 use serde::{Serialize, Serializer};
 
-use util::arena::SerializeUp;
+use util::arena::{NoDrop, SerializeUp};
 use util::arr::SliceOps;
 use util::late::Late;
 use util::loc::Loc;
 use util::sym::Sym;
 
 use super::method::{AbstractMethod, Impl, MethodWithBody};
-//use super::module::Module;
 
 use super::ty::{InstCls, Ty, TypeParameter};
 
@@ -21,6 +20,7 @@ pub struct ClassDeclaration<'a> {
 	//TODO:PERF would like an array of methods, not references to methods
 	pub methods: Late<&'a [&'a MethodWithBody<'a>]>,
 }
+impl<'a> NoDrop for ClassDeclaration<'a> {}
 impl<'a> ClassDeclaration<'a> {
 	//mv
 	pub fn find_static_method(&self, name: Sym) -> Option<&'a MethodWithBody<'a>> {
@@ -46,6 +46,7 @@ pub enum ClassHead<'a> {
 	// Implementation details are completely hidden.
 	Builtin,
 }
+impl<'a> NoDrop for ClassHead<'a> {}
 
 #[derive(Serialize)]
 pub struct SlotDeclaration<'a> {
@@ -54,6 +55,7 @@ pub struct SlotDeclaration<'a> {
 	pub ty: Ty<'a>,
 	pub name: Sym,
 }
+impl<'a> NoDrop for SlotDeclaration<'a> {}
 impl<'a> SerializeUp for SlotDeclaration<'a> {
 	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
@@ -69,12 +71,14 @@ pub struct Super<'a> {
 	pub super_class: InstCls<'a>,
 	pub impls: &'a [Impl<'a>],
 }
+impl<'a> NoDrop for Super<'a> {}
 
 pub enum MemberDeclaration<'a> {
 	Slot(&'a SlotDeclaration<'a>),
 	Method(&'a MethodWithBody<'a>),
 	AbstractMethod(&'a AbstractMethod<'a>),
 }
+impl<'a> NoDrop for MemberDeclaration<'a> {}
 impl<'a> Serialize for MemberDeclaration<'a> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where

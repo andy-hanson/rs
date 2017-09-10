@@ -1,6 +1,7 @@
 first_time:
 	# Install from https://rustup.rs
 	rustup install nightly
+	rustup default nightly # Needed to get IntelliJ to use nightly.
 	# Then update_dev_dependencies
 
 clean:

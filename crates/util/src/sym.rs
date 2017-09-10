@@ -1,6 +1,7 @@
 use serde::{Serialize, Serializer};
 
 use std::collections::HashMap;
+use std::fmt::{Debug, Formatter, Result as FormatResult};
 use std::ops::Deref;
 use std::sync::Mutex;
 
@@ -44,7 +45,8 @@ impl Sym {
 impl Show for Sym {
 	fn show<S: Shower>(self, s: &mut S) {
 		let map = SYMBOL_TO_STRING.lock().unwrap();
-		s.add(map.get(&self).unwrap().deref());
+		let str = map.get(&self).unwrap().deref();
+		s.add(str);
 	}
 }
 impl Serialize for Sym {
@@ -53,7 +55,15 @@ impl Serialize for Sym {
 		S: Serializer,
 	{
 		let map = SYMBOL_TO_STRING.lock().unwrap();
-		let st = map.get(self).unwrap(); // TODO: duplicate code...
-		serializer.serialize_str(&st.clone_to_utf8_string())
+		let str = map.get(self).unwrap(); // TODO: duplicate code...
+		serializer.serialize_str(&str.clone_to_utf8_string())
 	}
 }
+impl Debug for Sym {
+	fn fmt(&self, f: &mut Formatter) -> FormatResult {
+		let map = SYMBOL_TO_STRING.lock().unwrap();
+		let str = map.get(&self).unwrap().deref(); // TODO: duplicate code...
+		f.write_str(&String::from_utf8_lossy(str))
+	}
+}
+//TODO:cfg[debug

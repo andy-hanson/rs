@@ -1,5 +1,5 @@
 use std::fmt::Write;
-use std::io::Write as IoWrite;
+use std::io::{stderr, Stderr, Write as IoWrite};
 use std::iter::Iterator;
 use std::marker::Sized;
 
@@ -76,8 +76,17 @@ where
 
 //mv
 pub struct WriteShower<W: IoWrite>(W);
+impl WriteShower<Stderr> {
+	pub fn stderr() -> WriteShower<Stderr> {
+		WriteShower::new(stderr())
+	}
+
+	pub fn write_stderr<S : Show>(shown: S) {
+		Self::stderr().add(shown).nl();
+	}
+}
 impl<W: IoWrite> WriteShower<W> {
-	pub fn new(w: W) -> Self {
+	fn new(w: W) -> Self {
 		WriteShower(w)
 	}
 }

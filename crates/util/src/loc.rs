@@ -3,6 +3,7 @@ use serde::{Serialize, Serializer};
 use std::ops::{Add, Sub};
 
 use super::arena::NoDrop;
+use super::arith::{mid, usize_to_u32};
 use super::string_maker::{Show, Shower};
 
 #[derive(Copy, Clone)]
@@ -60,6 +61,7 @@ impl Loc {
 }
 impl NoDrop for Loc {}
 
+#[derive(Eq, PartialEq, Debug)] //TODO:shouldn't need this
 pub struct LineAndColumn {
 	pub line: u32,
 	pub column: u32,
@@ -89,7 +91,7 @@ impl<'a> Show for &'a LineAndColumnLoc {
 }
 
 pub struct LineAndColumnGetter {
-	line_to_pos: Vec<u32>,
+	line_to_pos: Box<[u32]>,
 }
 impl LineAndColumnGetter {
 	pub fn new(text: &[u8]) -> Self {
@@ -100,7 +102,7 @@ impl LineAndColumnGetter {
 				line_to_pos.place_back() <- (pos as u32) + 1;
 			}
 		}
-		LineAndColumnGetter { line_to_pos }
+		LineAndColumnGetter { line_to_pos: line_to_pos.into_boxed_slice() }
 	}
 
 	pub fn line_and_column_at_loc(&self, loc: Loc) -> LineAndColumnLoc {
@@ -110,30 +112,38 @@ impl LineAndColumnGetter {
 		}
 	}
 
-	fn line_and_column_at_pos(&self, pos: Pos) -> LineAndColumn {
+	pub fn line_and_column_at_pos(&self, pos: Pos) -> LineAndColumn {
 		let pos_index = pos.index;
-		let mut low_line: u32 = 0;
-		let mut high_line = (self.line_to_pos.len() as u32) - 1;
+		// Both low_line and high_line are inclusive,
+		// meaning the range of possible answers is [low_line..high_line] and we stop when this range has only one element.
+		let mut low_line: usize = 0;
+		// EXCLUSIVE, not a valid line.
+		let mut high_line = self.line_to_pos.len();
 
-		while low_line < high_line {
+		while low_line < high_line - 1 {
+			// Pick a line in between them.
 			let middle_line = mid(low_line, high_line);
 			let middle_pos = self.line_to_pos[middle_line as usize];
 
-			if middle_pos == pos_index {
-				return LineAndColumn { line: middle_line, column: 0 }
-			} else if middle_pos > pos_index {
-				high_line = middle_line - 1
+			if pos_index == middle_pos {
+				// Exact match (rare)
+				return LineAndColumn { line: usize_to_u32(middle_line), column: 0 }
+			} else if pos_index < middle_pos {
+				// Picked a line too far.
+				high_line = middle_line
 			} else {
-				// middle_pos < pos_index
-				low_line = middle_line + 1
+				// pos_index > middle_pos
+				// This is a possible line; pos may be somewhere on this line.
+				low_line = middle_line
 			}
 		}
 
-		let line = low_line - 1;
-		LineAndColumn { line, column: pos_index - self.line_to_pos[line as usize] }
+		let line = low_line;
+		let line_start = self.line_to_pos[line];
+		assert!(pos_index >= line_start);
+		if line < self.line_to_pos.len() - 1 {
+			assert!(pos_index <= self.line_to_pos[line + 1]);
+		}
+		LineAndColumn { line: usize_to_u32(line), column: pos_index - line_start }
 	}
-}
-
-fn mid(a: u32, b: u32) -> u32 {
-	(a + b) / 2
 }

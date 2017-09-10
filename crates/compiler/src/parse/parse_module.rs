@@ -111,6 +111,7 @@ fn parse_head<'a, 't>(
 		Token::Fun => Ok((None, start, MethodKw::Fun)),
 		Token::Builtin => {
 			let head = ast::ClassHead(l.loc_from(start), ast::ClassHeadData::Builtin);
+			l.take_newline()?;
 			Ok((Some(head), l.pos(), l.take_method_keyword_or_eof()?))
 		}
 		Token::Abstract => {
@@ -122,7 +123,7 @@ fn parse_head<'a, 't>(
 			Ok((Some(head), l.pos(), l.take_method_keyword_or_eof()?))
 		}
 		Token::Enum => panic!(), // TODO
-		_ => Err(l.unexpected_token(start, kw, b"'abstract', 'static', 'slots', or 'enum'")),
+		_ => Err(l.unexpected_token(start, kw, b"'builtin', 'abstract', 'static', 'slots', or 'enum'")),
 	}
 }
 

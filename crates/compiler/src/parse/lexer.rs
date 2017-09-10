@@ -37,6 +37,10 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		}
 	}
 
+	pub fn debug_show(&self) {
+		self.reader.debug_show()
+	}
+
 	pub fn quote_part_value(&mut self) -> &'ast [u8] {
 		replace(&mut self.quote_part_value, &[])
 	}
@@ -237,7 +241,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 
 			b'A'...b'Z' => {
 				self.skip_while(is_name_char);
-				Token::Operator
+				Token::TyName
 			}
 
 			b'-' | b'+' =>
@@ -266,23 +270,23 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		if res {
 			self.skip()
 		}
-		true
+		res
 	}
 
 	pub fn expect_newline_character(&mut self) -> Result<()> {
-		self.expect_character(b'\n', b"newline")
+		self.expect_character(b'\n')
 	}
 
 	pub fn expect_tab_character(&mut self) -> Result<()> {
-		self.expect_character(b'\t', b"tab")
+		self.expect_character(b'\t')
 	}
 
-	fn expect_character(&mut self, expected: u8, expected_desc: &'static [u8]) -> Result<()> {
+	fn expect_character(&mut self, expected: u8) -> Result<()> {
 		let actual = self.read_char();
 		if actual == expected {
 			Ok(())
 		} else {
-			Err((self.single_char_loc(), ParseDiag::UnexpectedCharacter(char::from(actual), expected_desc)))
+			Err((self.single_char_loc(), ParseDiag::UnexpectedCharacter { actual, expected }))
 		}
 	}
 
@@ -295,7 +299,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		if pred(actual) {
 			Ok(())
 		} else {
-			Err((self.single_char_loc(), ParseDiag::UnexpectedCharacter(char::from(actual), expected_desc)))
+			Err((self.single_char_loc(), ParseDiag::UnexpectedCharacterType { actual, expected_desc }))
 		}
 	}
 
@@ -312,20 +316,20 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 
 	fn handle_newline(&mut self) -> Result<Token> {
 		self.skip_empty_lines();
-		let old_indent = self.indent;
-		let new_indent = self.lex_indent()?;
-		self.indent = new_indent;
-		if new_indent == old_indent {
+		let old = self.indent;
+		let new = self.lex_indent()?;
+		self.indent = new;
+		if new == old {
 			Ok(Token::Newline)
-		} else if new_indent > old_indent {
-			if new_indent != old_indent + 1 {
-				Err((self.single_char_loc(), ParseDiag::TooMuchIndent(old_indent, new_indent)))
+		} else if new > old {
+			if new != old + 1 {
+				Err((self.single_char_loc(), ParseDiag::TooMuchIndent { old, new }))
 			} else {
 				Ok(Token::Indent)
 			}
 		} else {
 			// `- 1` becuase the Token.Dedent that we're about to return doesn't go in dedenting
-			self.dedenting = old_indent - new_indent - 1;
+			self.dedenting = old - new - 1;
 			Ok(Token::Dedent)
 		}
 	}
@@ -452,28 +456,28 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 	}
 
 	pub fn take_equals(&mut self) -> Result<()> {
-		self.expect_character(b'=', b"'='")
+		self.expect_character(b'=')
 	}
 	pub fn take_space(&mut self) -> Result<()> {
-		self.expect_character(b' ', b"space")
+		self.expect_character(b' ')
 	}
 	pub fn take_parenl(&mut self) -> Result<()> {
-		self.expect_character(b'(', b"'('")
+		self.expect_character(b'(')
 	}
 	pub fn take_parenr(&mut self) -> Result<()> {
-		self.expect_character(b')', b"')'")
+		self.expect_character(b')')
 	}
 	pub fn take_bracketl(&mut self) -> Result<()> {
-		self.expect_character(b'[', b"'['")
+		self.expect_character(b'[')
 	}
 	pub fn take_bracketr(&mut self) -> Result<()> {
-		self.expect_character(b']', b"']'")
+		self.expect_character(b']')
 	}
 	pub fn take_comma(&mut self) -> Result<()> {
-		self.expect_character(b',', b"','")
+		self.expect_character(b',')
 	}
 	pub fn take_dot(&mut self) -> Result<()> {
-		self.expect_character(b'.', b"'.'")
+		self.expect_character(b'.')
 	}
 
 	pub fn try_take_equals(&mut self) -> bool {
@@ -530,7 +534,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		actual: Token,
 		expected_desc: &'static [u8],
 	) -> (Loc, ParseDiag) {
-		self.unexpected(start_pos, expected_desc, actual.token_name())
+		self.unexpected(start_pos, actual.token_name(), expected_desc)
 	}
 
 	pub fn unexpected(
@@ -604,7 +608,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 	}
 
 	fn unexpected_char(&self, actual: u8, expected_desc: &'static [u8]) -> (Loc, ParseDiag) {
-		(self.single_char_loc(), ParseDiag::UnexpectedCharacter(char::from(actual), expected_desc))
+		(self.single_char_loc(), ParseDiag::UnexpectedCharacterType { actual, expected_desc })
 	}
 }
 

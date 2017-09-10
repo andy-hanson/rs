@@ -3,21 +3,18 @@ use std::borrow::Borrow;
 use serde::Serialize;
 use serde_json::to_string as to_json_string;
 
-use std::io::stderr;
-
 use util::arena::Arena;
 use util::arr::SliceOps;
 use util::dict::{Dict, MutDict};
 use util::file_utils::{read_files_in_directory_recursive_if_exists, write_file,
                        write_file_and_ensure_directory, IoError};
-use util::loc::LineAndColumnGetter;
 use util::path::Path;
 use util::string_maker::{Show, Shower, WriteShower};
 
 mod test_document_provider;
-use super::compiler::{compile, CompileResult, CompiledProgram, EXTENSION};
-use super::model::diag::Diagnostic;
-use super::model::module::{Module, ModuleOrFail};
+use compiler::{compile, CompileResult, CompiledProgram, EXTENSION};
+use model::diag::show_diagnostics;
+use model::module::{Module, ModuleOrFail};
 
 use self::test_document_provider::{ExpectedDiagnostic, TestDocumentProvider};
 
@@ -45,23 +42,10 @@ impl<'t, 'a> Show for &'t TestFailure<'a> {
 			TestFailure::IoError(_) => unimplemented!(),
 			TestFailure::ExtraBaselines(_) => unimplemented!(),
 			TestFailure::ExpectedDiagnostics(_) => unimplemented!(),
-			TestFailure::UnexpectedDiagnostics(ref m) => show_unexpected_diagnostics(m, s),
+			TestFailure::UnexpectedDiagnostics(ref m) => show_diagnostics(m, s),
 			TestFailure::NoSuchBaseline(_) => unimplemented!(),
 			TestFailure::UnexpectedOutput { .. } => unimplemented!(),
 		}
-	}
-}
-
-fn show_unexpected_diagnostics<'a, S: Shower>(module: &ModuleOrFail<'a>, s: &mut S) {
-	let diags = module.diagnostics();
-	assert!(diags.any()); // Else we shouldn't have thrown the error
-
-	let source = module.source();
-	let text = source.text();
-	let lc = LineAndColumnGetter::new(text);
-	for &Diagnostic(loc, ref data) in diags.iter() {
-		let lc_loc = lc.line_and_column_at_loc(loc);
-		source.show(s).add(&lc_loc).add(": ").add(data);
 	}
 }
 
@@ -72,8 +56,7 @@ pub fn do_test_single(test_path: &Path, update_baselines: bool) -> i32 {
 	match test_single(test_path, update_baselines, &arena) {
 		Ok(()) => 0,
 		Err(e) => {
-			let mut shower = WriteShower::new(stderr());
-			shower.add(&e).nl();
+			WriteShower::write_stderr(&e);
 			1
 		}
 	}

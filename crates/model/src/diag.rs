@@ -1,5 +1,5 @@
 use util::arena::{NoDrop, Up};
-use util::loc::Loc;
+use util::loc::{LineAndColumnGetter, Loc};
 use util::path::{Path, RelPath};
 use util::string_maker::{Show, Shower};
 use util::sym::Sym;
@@ -8,37 +8,80 @@ use super::class::{ClassDeclaration, MemberDeclaration, SlotDeclaration};
 use super::effect::Effect;
 use super::expr::Local;
 use super::method::{AbstractMethod, MethodOrAbstract, MethodWithBody, Parameter};
+use super::module::ModuleOrFail;
 use super::ty::Ty;
 
 pub struct Diagnostic<'a>(pub Loc, pub Diag<'a>);
 impl<'a> NoDrop for Diagnostic<'a> {}
 
 pub enum ParseDiag {
-	TooMuchIndent(/*expected*/ u32, /*actual*/ u32),
+	TooMuchIndent { old: u32, new: u32 },
 	LeadingSpace,
 	TrailingSpace,
 	EmptyExpression,
 	BlockCantEndInLet,
 	PrecedingEquals,
 	UnrecognizedCharacter(char),
-	UnexpectedCharacter(char, &'static [u8]),
+	UnexpectedCharacterType { actual: u8, expected_desc: &'static [u8] },
+	UnexpectedCharacter { actual: u8, expected: u8 },
 	UnexpectedToken { expected: &'static [u8], actual: &'static [u8] },
 }
 impl NoDrop for ParseDiag {}
 impl<'a> Show for &'a ParseDiag {
 	fn show<S : Shower>(self, s: &mut S) {
 		match *self {
-			ParseDiag::TooMuchIndent(_, _) => unimplemented!(),
-			ParseDiag::LeadingSpace => unimplemented!(),
-			ParseDiag::TrailingSpace => unimplemented!(),
-			ParseDiag::EmptyExpression => unimplemented!(),
-			ParseDiag::BlockCantEndInLet => unimplemented!(),
-			ParseDiag::PrecedingEquals => unimplemented!(),
-			ParseDiag::UnrecognizedCharacter(_) => unimplemented!(),
-			ParseDiag::UnexpectedCharacter(_, _) => unimplemented!(),
+			ParseDiag::TooMuchIndent { old, new } => {
+				s.add("Expected only ").add(old + 1).add(" indents; actual: ").add(new);
+			}
+			ParseDiag::LeadingSpace => {
+				s.add("Line begins with a space. (Use tabs to indent.)");
+			}
+			ParseDiag::TrailingSpace => {
+				s.add("Line ends in a space.");
+			}
+			ParseDiag::EmptyExpression => {
+				s.add("Expression has no content.");
+			}
+			ParseDiag::BlockCantEndInLet => {
+				s.add("`let` may not be the last line in a block.");
+			}
+			ParseDiag::PrecedingEquals => {
+				s.add("Unusual expression preceding `=`."); //TODO: better error message
+			}
+			ParseDiag::UnrecognizedCharacter(ch) => {
+				s.add("Illegal character '").add(ch).add("'.");
+			}
+			ParseDiag::UnexpectedCharacterType { actual, expected_desc } => {
+				s.add("Unexpected character '");
+				show_char(actual, s);
+				s.add("'; expected: ").add(expected_desc);
+			}
+			ParseDiag::UnexpectedCharacter { actual, expected } => {
+				s.add("Unexpected character '");
+				show_char(actual, s);
+				s.add("'; expected: ");
+				show_char(expected, s);
+			}
 			ParseDiag::UnexpectedToken { expected, actual } => {
 				s.add("Expected token type '").add(expected).add("', got: '").add(actual).add("'.");
 			}
+		}
+	}
+}
+
+fn show_char<S : Shower>(ch: u8, s: &mut S) {
+	match ch {
+		b'\t' => {
+			s.add("tab");
+		}
+		b' ' => {
+			s.add("space");
+		}
+		b'\n' => {
+			s.add("newline");
+		}
+		_ => {
+			s.add(char::from(ch));
 		}
 	}
 }
@@ -119,5 +162,18 @@ impl<'d, 'a> Show for &'d Diag<'a> {
 			}
 			Diag::WrongImplParameters(_) => unimplemented!(),
 		}
+	}
+}
+
+pub fn show_diagnostics<'a, S : Shower>(module: &ModuleOrFail<'a>, s: &mut S) {
+	let diags = module.diagnostics();
+	assert!(diags.any()); // Else don't call this.
+
+	let source = module.source();
+	let text = source.text();
+	let lc = LineAndColumnGetter::new(text);
+	for &Diagnostic(loc, ref data) in diags.iter() {
+		let lc_loc = lc.line_and_column_at_loc(loc);
+		source.show(s).add(&lc_loc).add(": ").add(data);
 	}
 }

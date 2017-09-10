@@ -109,7 +109,7 @@ impl Token {
 }
 
 lazy_static! {
-// TODO: use a static map? https://github.com/cbreeden/static-map
+	// TODO: use a static map? https://github.com/cbreeden/static-map
 	static ref NAME_TO_TOKEN: Dict<&'static [u8], Token> = dict!(
 		b"abstract" => Token::Abstract,
 		b"array" => Token::Array,

@@ -1,6 +1,14 @@
 use std::{isize, u32, u8};
 
+pub fn mid(a: usize, b: usize) -> usize {
+	(a + b) / 2
+}
+
 pub fn u8_to_usize(u: u8) -> usize {
+	u as usize
+}
+
+pub fn u32_to_usize(u: u32) -> usize {
 	u as usize
 }
 

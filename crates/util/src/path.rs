@@ -6,6 +6,7 @@ use std::hash::{Hash, Hasher};
 use super::arena::Arena;
 use super::string_maker::{Show, Shower};
 
+#[derive(Copy, Clone)]
 pub struct Path<'a>(&'a [u8]);
 impl<'a> Path<'a> {
 	pub const EMPTY: Path<'static> = Path(&[]);
@@ -22,7 +23,7 @@ impl<'a> Path<'a> {
 		self.0
 	}
 
-	pub fn resolve_with_root<'out>(root: &Path, path: &Path, arena: &'out Arena) -> Path<'out> {
+	pub fn resolve_with_root<'out>(root: Path, path: Path, arena: &'out Arena) -> Path<'out> {
 		let res = arena.direct_arr_builder();
 		res.add_slice(root.0);
 		&res <- b'/';
@@ -105,10 +106,6 @@ impl<'a> Path<'a> {
 
 	pub fn directory(&self) -> Self {
 		unimplemented!() //Path(self.0.copy_rtail())
-	}
-
-	pub fn clone_path_as_ptr(&self) -> Self {
-		Path(self.0)
 	}
 }
 impl<'p, 'a> Show for &'p Path<'a> {

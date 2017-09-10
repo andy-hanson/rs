@@ -11,7 +11,7 @@ pub trait FileInput {
 	None for file not found.
 	Result::Err for any other problems reading.
 	*/
-	fn read<'a>(&self, path: &Path, arena: &'a Arena) -> Result<Option<&'a [u8]>, Self::Error>;
+	fn read<'a>(&self, path: Path, arena: &'a Arena) -> Result<Option<&'a [u8]>, Self::Error>;
 }
 
 pub struct NativeFileInput<'a> {
@@ -29,7 +29,7 @@ impl<'a> FileInput for NativeFileInput<'a> {
 		Sym::from_slice(self.root_dir.last().unwrap())
 	}
 
-	fn read<'out>(&self, path: &Path, arena: &'out Arena) -> Result<Option<&'out [u8]>, Self::Error> {
-		read_file(&Path::resolve_with_root(&self.root_dir, path, arena), arena)
+	fn read<'out>(&self, path: Path, arena: &'out Arena) -> Result<Option<&'out [u8]>, Self::Error> {
+		read_file(Path::resolve_with_root(self.root_dir, path, arena), arena)
 	}
 }

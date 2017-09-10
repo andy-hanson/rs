@@ -44,7 +44,7 @@ impl<'a> DocumentProvider<'a> for TestDocumentProvider<'a> {
 		self.file_input.root_name()
 	}
 
-	fn get_document(&self, path: &Path, arena: &'a Arena) -> Result<Option<DocumentInfo<'a>>, Self::Error> {
+	fn get_document(&self, path: Path, arena: &'a Arena) -> Result<Option<DocumentInfo<'a>>, Self::Error> {
 		//TODO:PERF parse while reading, avoid extra allocation
 		self.file_input.read(path, arena).map(|op| {
 			op.map(|content| {

@@ -30,7 +30,7 @@ pub fn parse_module<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Module<'a>> {
 }
 
 fn parse_imports<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Import<'a>>> {
-	let b = l.list_builder::<Import>();
+	let mut b = l.list_builder::<Import>();
 	loop {
 		if l.try_take_newline()? {
 			break Ok(b.finish())
@@ -47,7 +47,7 @@ fn parse_imports<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Import<'a>>> 
 
 		let path = parse_path(l); //path_parts.finish();
 		let loc = l.loc_from(start_pos);
-		b.add() <-
+		&mut b <-
 			if leading_dots == 0 {
 				Import::Global(loc, path)
 			} else {
@@ -130,7 +130,7 @@ fn parse_head<'a, 't>(
 
 fn parse_abstract_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ClassHead<'a>> {
 	l.take_indent()?;
-	let abstract_methods = l.list_builder::<AbstractMethod>();
+	let mut abstract_methods = l.list_builder::<AbstractMethod>();
 	loop {
 		let method_start = l.pos();
 		let type_parameters = try_take_type_parameters(l)?;
@@ -138,7 +138,7 @@ fn parse_abstract_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<Clas
 			l.take_space()?;
 		}
 		let (return_ty, name, self_effect, parameters) = parse_method_head(l)?;
-		abstract_methods.add() <- AbstractMethod {
+		&mut abstract_methods <- AbstractMethod {
 			loc: l.loc_from(method_start),
 			type_parameters,
 			return_ty,
@@ -159,7 +159,7 @@ fn parse_methods<'a, 't>(
 	mut start: Pos,
 	mut next: MethodKw,
 ) -> Result<List<'a, Method<'a>>> {
-	let methods = l.list_builder::<Method>();
+	let mut methods = l.list_builder::<Method>();
 	loop {
 		match next {
 			MethodKw::Def | MethodKw::Fun => {
@@ -168,7 +168,7 @@ fn parse_methods<'a, 't>(
 				l.take_space()?;
 				let (return_ty, name, self_effect, parameters) = parse_method_head(l)?;
 				let body = take_optional_body(l)?;
-				methods.add() <- Method {
+				&mut methods <- Method {
 					loc: l.loc_from(start),
 					is_static,
 					type_parameters,
@@ -225,9 +225,9 @@ fn parse_parameters<'a, 't>(
 	l: &mut Lexer<'a, 't>,
 	first: Option<Parameter<'a>>,
 ) -> Result<List<'a, Parameter<'a>>> {
-	let parameters = l.list_builder::<Parameter<'a>>();
+	let mut parameters = l.list_builder::<Parameter<'a>>();
 	if let Some(f) = first {
-		parameters.add() <- f;
+		&mut parameters <- f;
 	}
 	loop {
 		if l.try_take_parenr() {
@@ -239,7 +239,7 @@ fn parse_parameters<'a, 't>(
 		let ty = parse_ty(l)?;
 		l.take_space()?;
 		let name = l.take_name()?;
-		parameters.add() <- Parameter { loc: l.loc_from(start), ty, name };
+		&mut parameters <- Parameter { loc: l.loc_from(start), ty, name };
 	}
 }
 
@@ -248,13 +248,13 @@ fn parse_supers<'a, 't>(
 	mut start: Pos,
 	mut next: MethodKw,
 ) -> Result<(List<'a, Super<'a>>, Pos, MethodKw)> {
-	let supers = l.list_builder::<Super>();
+	let mut supers = l.list_builder::<Super>();
 	loop {
 		if next != MethodKw::Is {
 			break Ok((supers.finish(), start, next))
 		}
 
-		supers.add() <- parse_super(l, start)?;
+		&mut supers <- parse_super(l, start)?;
 
 		start = l.pos();
 		next = l.take_method_keyword_or_eof()?;
@@ -281,7 +281,7 @@ fn take_optional_body<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<&'a Expr<'
 }
 
 fn parse_impls<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Impl<'a>>> {
-	let impls = l.list_builder::<Impl<'a>>();
+	let mut impls = l.list_builder::<Impl<'a>>();
 	loop {
 		// foo(x, y)
 		let start = l.pos();
@@ -303,7 +303,7 @@ fn parse_impls<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Impl<'a>>> {
 		};
 
 		let body = take_optional_body(l)?;
-		impls.add() <- Impl { loc: l.loc_from(start), name, parameter_names, body };
+		&mut impls <- Impl { loc: l.loc_from(start), name, parameter_names, body };
 		if l.try_take_dedent_from_dedenting() {
 			break Ok(impls.finish())
 		}
@@ -312,7 +312,7 @@ fn parse_impls<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Impl<'a>>> {
 
 fn parse_slots<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ClassHead<'a>> {
 	l.take_indent()?;
-	let slots = l.list_builder::<Slot>();
+	let mut slots = l.list_builder::<Slot>();
 	loop {
 		let start = l.pos();
 		let next = l.take_slot_keyword()?;
@@ -324,7 +324,7 @@ fn parse_slots<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ClassHead<'a
 		let ty = parse_ty(l)?;
 		l.take_space()?;
 		let name = l.take_name()?;
-		slots.add() <- Slot { loc: l.loc_from(start), mutable, ty, name };
+		&mut slots <- Slot { loc: l.loc_from(start), mutable, ty, name };
 		match l.take_newline_or_dedent()? {
 			NewlineOrDedent::Newline => {}
 			NewlineOrDedent::Dedent => break,

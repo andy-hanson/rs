@@ -1,8 +1,9 @@
-use util::arena::{Arena, List, NoDrop, Up};
+use util::arena::{Arena, List, NoDrop};
 use util::late::Late;
 use util::path::Path;
 use util::string_maker::Shower;
 use util::sym::Sym;
+use util::up::Up;
 
 use super::class::ClassDeclaration;
 use super::diag::Diagnostic;
@@ -49,20 +50,13 @@ impl<'a> ModuleSource<'a> {
 	}
 }
 
+#[derive(Copy, Clone)]
 pub enum ModuleOrFail<'a> {
 	Module(&'a Module<'a>),
 	Fail(&'a FailModule<'a>),
 }
 impl<'a> NoDrop for ModuleOrFail<'a> {}
 impl<'a> ModuleOrFail<'a> {
-	//TODO: just derive Copy
-	pub fn clone_as_ptr(&self) -> Self {
-		match *self {
-			ModuleOrFail::Module(m) => ModuleOrFail::Module(m),
-			ModuleOrFail::Fail(f) => ModuleOrFail::Fail(f),
-		}
-	}
-
 	pub fn copy_to_new_arena<'out>(&self, arena: &'out Arena) -> ModuleOrFail<'out> {
 		unused!(arena);
 		unimplemented!()

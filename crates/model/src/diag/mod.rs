@@ -1,8 +1,9 @@
-use util::arena::{NoDrop, Up};
+use util::arena::NoDrop;
 use util::loc::{LineAndColumnGetter, Loc};
 use util::path::{Path, RelPath};
 use util::string_maker::{Show, Shower};
 use util::sym::Sym;
+use util::up::Up;
 
 use super::class::{ClassDeclaration, MemberDeclaration, SlotDeclaration};
 use super::effect::Effect;

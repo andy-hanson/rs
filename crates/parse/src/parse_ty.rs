@@ -113,9 +113,9 @@ pub fn try_take_type_arguments<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a,
 pub fn take_type_arguments_after_passing_bracketl<'a, 't>(
 	l: &mut Lexer<'a, 't>,
 ) -> Result<List<'a, ast::Ty<'a>>> {
-	let b = l.list_builder::<ast::Ty>();
+	let mut b = l.list_builder::<ast::Ty>();
 	loop {
-		b.add() <- parse_ty(l)?;
+		&mut b <- parse_ty(l)?;
 		if l.try_take_bracketr() {
 			break Ok(b.finish())
 		}

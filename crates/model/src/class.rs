@@ -1,10 +1,11 @@
 use serde::{Serialize, Serializer};
 
-use util::arena::{NoDrop, SerializeUp};
+use util::arena::NoDrop;
 use util::arr::SliceOps;
 use util::late::Late;
 use util::loc::Loc;
 use util::sym::Sym;
+use util::up::SerializeUp;
 
 use super::method::{AbstractMethod, Impl, MethodWithBody};
 

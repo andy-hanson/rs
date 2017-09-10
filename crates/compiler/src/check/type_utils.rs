@@ -1,6 +1,7 @@
-use util::arena::{ptr_eq, Arena, ListBuilder};
+use util::arena::{Arena, ListBuilder};
 use util::arr::SliceOps;
 use util::loc::Loc;
+use util::up::ptr_eq;
 
 use model::diag::Diagnostic;
 use model::effect::Effect;

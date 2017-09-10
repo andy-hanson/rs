@@ -1,11 +1,12 @@
 use serde::{Serialize, Serializer};
 
-use util::arena::{ptr_eq, Arena, NoDrop, SerializeUp, Up};
+use util::arena::{Arena, NoDrop};
 use util::arr::SliceOps;
 use util::late::Late;
 use util::string_maker::{Show, Shower};
 use util::sym::Sym;
 use util::sync::UnsafeSync;
+use util::up::{ptr_eq, SerializeUp, Up};
 
 use super::class::ClassDeclaration;
 use super::effect::Effect;

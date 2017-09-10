@@ -1,9 +1,10 @@
 use serde::{Serialize, Serializer};
 
-use util::arena::{NoDrop, SerializeUp, Up};
+use util::arena::NoDrop;
 use util::arr::U8SliceOps;
 use util::loc::Loc;
 use util::sym::Sym;
+use util::up::{SerializeUp, Up};
 
 use super::class::SlotDeclaration;
 use super::method::{InstMethod, MethodOrImpl, Parameter};

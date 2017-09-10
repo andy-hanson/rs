@@ -284,13 +284,13 @@ fn parse_args_2<'a, 't>(
 	ctx: Ctx,
 	Next { pos: start, token: first_token }: Next,
 ) -> Result<(List<'a, &'a Expr<'a>>, Next)> {
-	let args = l.list_builder::<&'a Expr>(); //TODO:PERF use a List<Expr>, emplace new expressions into it
+	let mut args = l.list_builder::<&'a Expr>(); //TODO:PERF use a List<Expr>, emplace new expressions into it
 	let (first_arg, mut next) = parse_expr_2(l, ctx, start, first_token)?;
-	args.add() <- first_arg;
+	&mut args <- first_arg;
 	while next.token == Token::Comma {
 		l.take_space()?;
 		let (next_arg, next_next) = parse_expr(l, ctx)?;
-		args.add() <- next_arg;
+		&mut args <- next_arg;
 		next = next_next
 	}
 	Ok((args.finish(), next))
@@ -363,14 +363,14 @@ fn parse_when<'a, 't>(l: &mut Lexer<'a, 't>, start_pos: Pos) -> Result<&'a Expr<
 	*/
 	l.take_indent()?;
 
-	let cases = l.list_builder::<Case>();
+	let mut cases = l.list_builder::<Case>();
 	let mut case_start = start_pos;
 	let mut case_start_token = l.next_token();
 	loop {
 		let first_test =
 			parse_expr_and_expect_next_2(l, Ctx::YesOperators, Token::Indent, case_start, case_start_token)?;
 		let first_result = parse_block(l)?;
-		cases.add() <- Case(l.loc_from(case_start), first_test, first_result);
+		&mut cases <- Case(l.loc_from(case_start), first_test, first_result);
 
 		case_start = l.pos();
 		case_start_token = l.next_token();

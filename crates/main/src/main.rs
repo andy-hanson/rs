@@ -31,7 +31,7 @@ use interpreter::dummy;
 
 fn main() {
 	dummy(1);
-	let exit_code = do_test_single(&Path::of_slice(b"Main-Pass"), /*update_baselines*/ false);
+	let exit_code = do_test_single(Path::of_slice(b"Main-Pass"), /*update_baselines*/ false);
 	exit(exit_code)
 }
 

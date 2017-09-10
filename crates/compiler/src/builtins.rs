@@ -1,9 +1,10 @@
-use util::arena::{Arena, List, NoDrop, Up};
+use util::arena::{Arena, List, NoDrop};
 use util::file_utils::read_file;
 use util::late::Late;
 use util::path::Path;
 use util::sym::Sym;
 use util::sync::UnsafeSync;
+use util::up::Up;
 
 use util::string_maker::{Shower, WriteShower};
 
@@ -33,7 +34,7 @@ lazy_static! {
 fn load_builtin_file(path_slice: &[u8]) -> &[u8] {
 	let path = Path::of_slice(path_slice);
 	let arena = &BUILTINS_ARENA;
-	match read_file(&path, arena.get()).unwrap() {
+	match read_file(path, arena.get()).unwrap() {
 		Some(b) => b,
 		None => {
 			let str = String::from_utf8(path.slice().to_owned()).unwrap();

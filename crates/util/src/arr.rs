@@ -188,7 +188,7 @@ pub trait SliceOps<T>: Index<usize, Output = T> {
 		arena.map_from(self.len(), self.iter(), f)
 	}
 
-	fn zip<'slice, 'out, U, V: NoDrop, I: Iterator<Item = U>, F: Fn(&'slice T, U) -> V>(
+	fn zip<'slice, 'out, U, V: NoDrop, I: Iterator<Item = U>, F: FnMut(&'slice T, U) -> V>(
 		&'slice self,
 		other: I,
 		arena: &'out Arena,
@@ -200,11 +200,11 @@ pub trait SliceOps<T>: Index<usize, Output = T> {
 		self.try_zip(other, arena, f).unwrap()
 	}
 
-	fn try_zip<'slice, 'out, U, V: NoDrop, I: Iterator<Item = U>, F: Fn(&'slice T, U) -> V>(
+	fn try_zip<'slice, 'out, U, V: NoDrop, I: Iterator<Item = U>, F: FnMut(&'slice T, U) -> V>(
 		&'slice self,
 		other: I,
 		arena: &'out Arena,
-		f: F,
+		mut f: F,
 	) -> Result<&'out [V], (usize, usize)>
 	where
 		T: 'slice,

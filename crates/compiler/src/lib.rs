@@ -1,5 +1,6 @@
 #![allow(dead_code)] // TODO
 #![allow(unknown_lints)] // Clippy lints aren't known to rustc?
+#![feature(collection_placement)]
 #![feature(placement_in_syntax)]
 
 #[macro_use]

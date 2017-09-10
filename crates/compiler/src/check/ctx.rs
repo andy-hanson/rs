@@ -1,6 +1,7 @@
-use util::arena::{Arena, List, ListBuilder, Up};
+use util::arena::{Arena, List, ListBuilder};
 use util::loc::Loc;
 use util::sym::Sym;
+use util::up::Up;
 
 use model::class::ClassDeclaration;
 use model::diag::{Diag, Diagnostic};
@@ -43,13 +44,13 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		self.builtins.bool.unwrap().clone()
 	}
 
-	pub fn get_ty<'ast>(&self, ty_ast: &'ast ast::Ty<'ast>) -> Ty<'model> {
+	pub fn get_ty<'ast>(&mut self, ty_ast: &'ast ast::Ty<'ast>) -> Ty<'model> {
 		//TODO:PERF -- version without type parameters?
 		self.get_ty_or_type_parameter(ty_ast, &[])
 	}
 
 	pub fn get_ty_or_type_parameter<'ast>(
-		&self,
+		&mut self,
 		&ast::Ty { loc, effect, name, ref ty_args }: &'ast ast::Ty<'ast>,
 		extra_type_parameters: &'model [TypeParameter<'model>],
 	) -> Ty<'model> {
@@ -78,7 +79,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 	}
 
 	pub fn instantiate_class_from_ast<'ast>(
-		&self,
+		&mut self,
 		loc: Loc,
 		name: Sym,
 		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
@@ -88,7 +89,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 	}
 
 	pub fn instantiate_class<'ast>(
-		&self,
+		&mut self,
 		class: &'model ClassDeclaration<'model>,
 		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
 	) -> Option<InstCls<'model>> {
@@ -100,7 +101,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 	}
 
 	pub fn instantiate_method<'ast>(
-		&self,
+		&mut self,
 		method_decl: MethodOrAbstract<'model>,
 		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
 	) -> Option<&'model InstMethod<'model>> {
@@ -111,12 +112,12 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		}
 	}
 
-	fn get_ty_args<'ast>(&self, ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>) -> &'model [Ty<'model>] {
+	fn get_ty_args<'ast>(&mut self, ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>) -> &'model [Ty<'model>] {
 		ty_arg_asts.map(self.arena, |ty_ast| self.get_ty(ty_ast))
 	}
 
 	pub fn access_class_declaration_or_add_diagnostic(
-		&self,
+		&mut self,
 		loc: Loc,
 		name: Sym,
 	) -> Option<&'model ClassDeclaration<'model>> {
@@ -127,7 +128,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		res
 	}
 
-	fn access_class_declaration(&self, loc: Loc, name: Sym) -> Option<&'model ClassDeclaration<'model>> {
+	fn access_class_declaration(&mut self, loc: Loc, name: Sym) -> Option<&'model ClassDeclaration<'model>> {
 		if name == self.current_class.name {
 			return Some(self.current_class)
 		}
@@ -148,12 +149,12 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		None
 	}
 
-	pub fn add_diagnostic(&self, loc: Loc, data: Diag<'model>) {
-		self.diags.add() <- Diagnostic(loc, data);
+	pub fn add_diagnostic(&mut self, loc: Loc, data: Diag<'model>) {
+		&mut self.diags <- Diagnostic(loc, data);
 	}
 
 	//mv?
-	pub fn get_own_member_or_add_diagnostic(&self, loc: Loc, name: Sym) -> Option<InstMember<'model>> {
+	pub fn get_own_member_or_add_diagnostic(&mut self, loc: Loc, name: Sym) -> Option<InstMember<'model>> {
 		//TODO:neater
 		let res = try_get_member_from_class_declaration(self.current_class, name);
 		if res.is_none() {

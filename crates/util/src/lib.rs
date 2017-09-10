@@ -26,4 +26,5 @@ pub mod late;
 pub mod string_maker;
 pub mod sync;
 pub mod sym;
+pub mod up;
 pub mod utils;

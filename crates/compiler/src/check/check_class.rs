@@ -1,8 +1,9 @@
-use util::arena::{Arena, List, Up};
+use util::arena::{Arena, List};
 use util::arith::to_u8;
 use util::arr::SliceOps;
 use util::late::Late;
 use util::sym::Sym;
+use util::up::Up;
 
 use model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
 use model::diag::Diag;

@@ -1,3 +1,6 @@
+use std::ops::Placer;
+use std::vec::PlaceBack;
+
 use util::arith::{to_u8, u8_to_usize};
 
 use super::super::value::Value;
@@ -32,5 +35,12 @@ impl<'model> DataStack<'model> {
 			self.pop();
 		}
 		self.push(x);
+	}
+}
+impl<'a, 'model> Placer<Value<'model>> for &'a mut DataStack<'model> {
+	type Place = PlaceBack<'a, Value<'model>>;
+
+	fn make_place(self) -> Self::Place {
+		self.0.place_back()
 	}
 }

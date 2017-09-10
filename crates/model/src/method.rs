@@ -1,10 +1,11 @@
 use serde::{Serialize, Serializer};
 
-use util::arena::{NoDrop, SerializeUp, Up};
+use util::arena::NoDrop;
 use util::arith::to_u8;
 use util::late::Late;
 use util::loc::Loc;
 use util::sym::Sym;
+use util::up::{SerializeUp, Up};
 
 use super::class::ClassDeclaration;
 use super::effect::Effect;
@@ -150,6 +151,7 @@ pub struct Impl<'a> {
 }
 impl<'a> NoDrop for Impl<'a> {}
 
+#[derive(Copy, Clone)]
 pub enum MethodOrImpl<'a> {
 	Method(Up<'a, MethodWithBody<'a>>),
 	Impl(Up<'a, Impl<'a>>),

@@ -1,10 +1,11 @@
 use std::borrow::Borrow;
 
-use util::arena::{Arena, List, ListBuilder, Up};
+use util::arena::{Arena, List, ListBuilder};
 use util::dict::MutDict;
 use util::late::Late;
 use util::path::{Path, RelPath};
 use util::sym::Sym;
+use util::up::Up;
 
 use host::document_provider::DocumentProvider;
 
@@ -90,16 +91,16 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 				ModuleState::Compiling =>
 					// TODO: attach an error to the calling module
 					(CompileSingleResult::Circular, false),
-				ModuleState::CompiledFresh(ref module_or_fail) =>
-					(CompileSingleResult::Found(module_or_fail.clone_as_ptr()), false),
-				ModuleState::CompiledReused(ref module_or_fail) =>
+				ModuleState::CompiledFresh(module_or_fail) =>
+					(CompileSingleResult::Found(module_or_fail), false),
+				ModuleState::CompiledReused(module_or_fail) =>
 					// Already compiled in the new program.
 					// This can happen if the same module is a dependency of two other modules.
-					(CompileSingleResult::Found(module_or_fail.clone_as_ptr()), true),
+					(CompileSingleResult::Found(module_or_fail), true),
 			})
 		}
 
-		match get_document_from_logical_path(self.document_provider, &logical_path, self.arena)? {
+		match get_document_from_logical_path(self.document_provider, logical_path, self.arena)? {
 			GetDocumentResult::Found { full_path, is_index, document } =>
 				self.compile_module_from_document(logical_path, full_path, is_index, document),
 			GetDocumentResult::NotFound => Ok((CompileSingleResult::Missing, false)),
@@ -118,27 +119,24 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		let parse_result = parse(&parse_arena, document.text);
 		Ok(match parse_result {
 			Ok(ModuleAst { ref imports, class }) => {
-				self.modules
-					.add(logical_path.clone_path_as_ptr(), ModuleState::Compiling);
+				self.modules.add(logical_path, ModuleState::Compiling);
 				let (module_or_fail, is_reused) =
-					self.do_compile_single(&logical_path, document, imports, class, full_path, is_index)?;
+					self.do_compile_single(logical_path, document, imports, class, full_path, is_index)?;
 				let module_state = if is_reused {
-					ModuleState::CompiledReused(module_or_fail.clone_as_ptr())
+					ModuleState::CompiledReused(module_or_fail)
 				} else {
-					ModuleState::CompiledFresh(module_or_fail.clone_as_ptr())
+					ModuleState::CompiledFresh(module_or_fail)
 				};
 				self.modules.change(&logical_path, module_state);
 				(CompileSingleResult::Found(module_or_fail), is_reused)
 			}
 			Err(parse_diag) => {
-				let source = ModuleSourceEnum::Normal(
-					ModuleSource { logical_path: logical_path.clone_path_as_ptr(), is_index, document },
-				);
+				let source = ModuleSourceEnum::Normal(ModuleSource { logical_path, is_index, document });
 				let diag = Diagnostic(parse_diag.0, Diag::ParseError(parse_diag.1)); //TODO: duplicate code somewhere
 				let fail = self.arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, self.arena) };
 				let module_or_fail = ModuleOrFail::Fail(fail);
 				self.modules
-					.add(logical_path.clone_path_as_ptr(), ModuleState::CompiledFresh(module_or_fail));
+					.add(logical_path, ModuleState::CompiledFresh(module_or_fail));
 				(CompileSingleResult::Found(ModuleOrFail::Fail(fail)), false)
 			}
 		})
@@ -146,14 +144,14 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 
 	fn do_compile_single<'ast>(
 		&mut self,
-		logical_path: &Path<'model>,
+		logical_path: Path<'model>,
 		document: DocumentInfo<'model>,
 		import_asts: &'ast List<'ast, ImportAst<'ast>>,
 		class_ast: &'ast ClassAst<'ast>,
 		full_path: Path<'model>,
 		is_index: bool,
 	) -> Result<(ModuleOrFail<'model>, bool), D::Error> {
-		let (resolved_imports, all_dependencies_reused) = self.resolve_imports(&full_path, import_asts)?;
+		let (resolved_imports, all_dependencies_reused) = self.resolve_imports(full_path, import_asts)?;
 
 		// We will only bother looking at the old module if all of our dependencies were safely reused.
 		// If oldModule doesn't exactly match, we'll ignore it completely.
@@ -172,9 +170,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 			}
 		}
 
-		let source = ModuleSourceEnum::Normal(
-			ModuleSource { logical_path: logical_path.clone_path_as_ptr(), is_index, document },
-		);
+		let source = ModuleSourceEnum::Normal(ModuleSource { logical_path, is_index, document });
 		let res = match resolved_imports {
 			ResolvedImports::Success(imports) => {
 				let module =
@@ -196,7 +192,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 
 	fn resolve_imports<'ast>(
 		&mut self,
-		full_path: &Path<'model>,
+		full_path: Path<'model>,
 		import_asts: &'ast List<'ast, ImportAst<'ast>>,
 	) -> Result<(ResolvedImports<'model>, bool), D::Error> {
 		let mut diagnostics = self.arena.list_builder::<Diagnostic>();
@@ -236,7 +232,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		&mut self,
 		import_ast: &'ast ImportAst<'ast>,
 		import_diagnostics: &mut ListBuilder<'model, Diagnostic<'model>>,
-		full_path: &Path<'model>,
+		full_path: Path<'model>,
 		all_dependencies_reused: &mut bool,
 	) -> Result<Option<ModuleOrFail<'model>>, D::Error> {
 		match *import_ast {
@@ -250,13 +246,13 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 				*all_dependencies_reused &= is_import_reused;
 				Ok(match imported_module {
 					CompileSingleResult::Circular => {
-						import_diagnostics.add() <-
-							Diagnostic(loc, Diag::CircularDependency { from: full_path.clone_path_as_ptr(), to: relative_path });
+						import_diagnostics <-
+							Diagnostic(loc, Diag::CircularDependency { from: full_path, to: relative_path });
 						None
 					}
 					CompileSingleResult::Missing => {
-						import_diagnostics.add() <-
-							Diagnostic(loc, Diag::CantFindLocalModule { from: full_path.clone_path_as_ptr(), to: relative_path });
+						import_diagnostics <-
+							Diagnostic(loc, Diag::CantFindLocalModule { from: full_path, to: relative_path });
 						None
 					}
 					CompileSingleResult::Found(found) => Some(found),

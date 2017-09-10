@@ -1,9 +1,8 @@
-use std::cell::RefCell;
-
-use util::arena::{List, Up};
+use util::arena::List;
 use util::arr::SliceOps;
 use util::loc::Loc;
 use util::sym::Sym;
+use util::up::Up;
 use util::utils::todo;
 
 use model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration};
@@ -27,21 +26,21 @@ pub fn check_method_body<
 	'builtins_ctx: 'ctx,
 	'model: 'ctx + 'instantiator + 'builtins_ctx,
 >(
-	ctx: &'ctx Ctx<'builtins_ctx, 'model>,
+	ctx: &'ctx mut Ctx<'builtins_ctx, 'model>,
 	method_or_impl: MethodOrImpl<'model>,
 	method_instantiator: &'instantiator Instantiator<'model>,
 	is_static: bool,
 	body: &'ast ast::Expr<'ast>,
 ) -> &'model Expr<'model> {
 	let signature = method_or_impl.signature();
-	let ectx = CheckExprContext::<'ctx, 'instantiator, 'builtins_ctx, 'model> {
+	let mut ectx = CheckExprContext::<'ctx, 'instantiator, 'builtins_ctx, 'model> {
 		ctx,
 		method_or_impl,
 		method_instantiator,
 		is_static,
 		self_effect: signature.self_effect,
 		current_parameters: signature.parameters,
-		locals: RefCell::new(Vec::new()),
+		locals: Vec::new(),
 	};
 	let return_ty = ectx.instantiate_type(&signature.return_ty, method_instantiator);
 	ectx.check_return(return_ty, body)
@@ -53,48 +52,49 @@ struct CheckExprContext<
 	'builtins_ctx: 'ctx,
 	'model: 'ctx + 'instantiator + 'builtins_ctx,
 > {
-	ctx: &'ctx Ctx<'builtins_ctx, 'model>,
+	ctx: &'ctx mut Ctx<'builtins_ctx, 'model>,
 	method_or_impl: MethodOrImpl<'model>,
 	method_instantiator: &'instantiator Instantiator<'model>,
 	is_static: bool,
 	self_effect: Effect,
 	current_parameters: &'model [Parameter<'model>],
-	locals: RefCell<Vec<&'model Local<'model>>>,
+	locals: Vec<&'model Local<'model>>,
 }
 impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	CheckExprContext<'ctx, 'instantiator, 'builtins_ctx, 'model> {
-	fn add_diagnostic(&self, loc: Loc, data: Diag<'model>) {
+	fn add_diagnostic(&mut self, loc: Loc, data: Diag<'model>) {
 		self.ctx.add_diagnostic(loc, data)
 	}
 
 	//TODO:PERF use placement new to avoid copying stuff into here!
-	fn alloc(&self, e: Expr<'model>) -> &'model Expr<'model> {
+	fn alloc(&mut self, e: Expr<'model>) -> &'model Expr<'model> {
 		self.ctx.arena <- e
 	}
 
-	fn check_return<'ast>(&self, ty: Ty<'model>, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
+	fn check_return<'ast>(&mut self, ty: Ty<'model>, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
 		self.check_expr(&mut Expected::Return(ty), a)
 	}
 
-	fn check_subtype<'ast>(&self, ty: Ty<'model>, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
+	fn check_subtype<'ast>(&mut self, ty: Ty<'model>, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
 		self.check_expr(&mut Expected::SubTypeOf(ty), a)
 	}
 
-	fn check_void<'ast>(&self, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
-		// Need to access builtins::void
-		self.check_subtype(self.ctx.void(), a)
+	fn check_void<'ast>(&mut self, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
+		let void = self.ctx.void();
+		self.check_subtype(void, a)
 	}
 
-	fn check_bool<'ast>(&self, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
-		self.check_subtype(self.ctx.bool(), a)
+	fn check_bool<'ast>(&mut self, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
+		let bool = self.ctx.bool();
+		self.check_subtype(bool, a)
 	}
 
-	fn check_infer<'ast>(&self, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
+	fn check_infer<'ast>(&mut self, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
 		self.check_expr(&mut Expected::Infer(None), a)
 	}
 
 	fn check_expr<'ast>(
-		&self,
+		&mut self,
 		mut e: &mut Expected<'model>,
 		a: &'ast ast::Expr<'ast>,
 	) -> &'model Expr<'model> {
@@ -102,13 +102,13 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 
 	fn check_expr_worker<'ast>(
-		&self,
+		&mut self,
 		mut e: &mut Expected<'model>,
 		&ast::Expr(loc, ref ast_data): &'ast ast::Expr<'ast>,
 	) -> Handled<'model> {
 		match *ast_data {
 			ast::ExprData::Access(name) => {
-				if let Some(local) = self.locals.borrow().iter().find(|l| l.name == name) {
+				if let Some(local) = self.try_find_local(name) {
 					return self.handle(&mut e, loc, ExprData::AccessLocal(Up(local)))
 				}
 
@@ -144,12 +144,13 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				}
 				// For recursion, need to do substitution in case we are
 				// implementing an abstract method where the superclass took type arguments.
-				let moa = self.method_or_impl.method_or_abstract();
+				let method_or_impl = self.method_or_impl;
+				let moa = method_or_impl.method_or_abstract();
 				let inst = self.method_instantiator;
 				let args = unwrap_or_return!(
 					self.check_arguments(loc, moa, inst, arg_asts.iter().cloned()),
 					self.bogus(loc));
-				self.handle(&mut e, loc, ExprData::Recur(self.method_or_impl.copy(), args))
+				self.handle(&mut e, loc, ExprData::Recur(method_or_impl, args))
 			}
 			ast::ExprData::New(ref ty_arg_asts, ref arg_asts) => {
 				let slots = match *self.ctx.current_class.head {
@@ -176,8 +177,10 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					self.ctx.instantiate_class(self.ctx.current_class, ty_arg_asts),
 					self.bogus(loc));
 				let instantiator = Instantiator::of_inst_cls(&inst_cls);
-				let args = slots.zip(arg_asts.iter(), self.ctx.arena, |slot, arg|
-					self.check_subtype(self.instantiate_type(&slot.ty, &instantiator), arg));
+				let args = slots.zip(arg_asts.iter(), self.ctx.arena, |slot, arg| {
+					let ty = self.instantiate_type(&slot.ty, &instantiator);
+					self.check_subtype(ty, arg)
+				});
 				let ty = Ty::Plain(Effect::MAX, inst_cls);
 				self.handle(&mut e, loc, ExprData::New(ty, args))
 			}
@@ -228,15 +231,17 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				if !slot.mutable {
 					self.add_diagnostic(loc, Diag::SlotNotMutable(Up(slot)))
 				}
-				if !self.self_effect.can_set() {
+				let allowed_effect = self.self_effect;
+				if !allowed_effect.can_set() {
 					self.add_diagnostic(loc, Diag::MissingEffectToSetSlot {
-						allowed_effect: self.self_effect,
+						allowed_effect,
 						slot: Up(slot)
 					})
 				}
 
-				let value = self.check_subtype(self.instantiate_type(&slot.ty, &instantiator), value_ast);
-				self.handle(&mut e, loc, ExprData::SetSlot(Up(slot), self.ctx.arena <- value))
+				let ty = self.instantiate_type(&slot.ty, &instantiator);
+				let value = self.ctx.arena <- self.check_subtype(ty, value_ast);
+				self.handle(&mut e, loc, ExprData::SetSlot(Up(slot), value))
 			}
 			ast::ExprData::LetInProgress(_, _) =>
 				unreachable!(),
@@ -349,23 +354,33 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 
 	//mv
-	fn add_to_scope(&self, local: &'model Local<'model>) {
+	fn try_find_local(&self, name: Sym) -> Option<&'model Local<'model>> {
+		for local in &self.locals {
+			if local.name == name {
+				return Some(local)
+			}
+		}
+		None
+	}
+
+	//mv
+	fn add_to_scope(&mut self, local: &'model Local<'model>) {
 		// It's important that we push even in the presence of errors, because we will always pop.
 		if let Some(param) = self.current_parameters.find(|p| p.name == local.name) {
 			self.add_diagnostic(local.loc, Diag::CantReassignParameter(Up(param)))
 		}
-		if let Some(old_local) = self.locals.borrow().iter().find(|l| l.name == local.name) {
+		if let Some(old_local) = self.try_find_local(local.name) {
 			self.add_diagnostic(local.loc, Diag::CantReassignLocal(Up(old_local)))
 		}
-		self.locals.borrow_mut().push(local)
+		self.locals.place_back() <- local;
 	}
-	fn pop_from_scope(&self) {
-		let popped = self.locals.borrow_mut().pop();
+	fn pop_from_scope(&mut self) {
+		let popped = self.locals.pop();
 		assert!(popped.is_some())
 	}
 
 	fn check_call_ast_worker<'ast>(
-		&self,
+		&mut self,
 		mut expected: &mut Expected<'model>,
 		loc: Loc,
 		target: &'ast ast::Expr<'ast>,
@@ -413,7 +428,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 
 	fn call_static_method<'ast>(
-		&self,
+		&mut self,
 		mut expected: &mut Expected<'model>,
 		loc: Loc,
 		cls: &'model ClassDeclaration<'model>,
@@ -444,12 +459,12 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 
 	//mv
-	fn current_inst_cls(&self) -> InstCls<'model> {
+	fn current_inst_cls(&mut self) -> InstCls<'model> {
 		InstCls::generic_self_reference(self.ctx.current_class, self.ctx.arena)
 	}
 
 	fn call_own_method<'ast>(
-		&self,
+		&mut self,
 		mut expected: &mut Expected<'model>,
 		loc: Loc,
 		method_name: Sym,
@@ -458,8 +473,9 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	) -> Handled<'model> {
 		// Note: InstCls is still relevent here:
 		// Even if 'self' is not an inst, in a superclass we will fill in type parameters.
+		let current_inst_cls = self.current_inst_cls();
 		let InstMember(member_decl, member_instantiator) = unwrap_or_return!(
-			self.get_member_of_inst_cls(loc, &self.current_inst_cls(), method_name),
+			self.get_member_of_inst_cls(loc, &current_inst_cls, method_name),
 			self.bogus(loc)
 		);
 
@@ -492,11 +508,9 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				return self.bogus(loc)
 			}
 
-			if !self.self_effect.contains(method_decl.self_effect()) {
-				self.add_diagnostic(
-					loc,
-					Diag::IllegalSelfEffect { target_effect: self.self_effect, method: method_decl },
-				)
+			let target_effect = self.self_effect;
+			if !target_effect.contains(method_decl.self_effect()) {
+				self.add_diagnostic(loc, Diag::IllegalSelfEffect { target_effect, method: method_decl })
 			}
 
 			ExprData::MyInstanceMethodCall(inst_method, args, ty)
@@ -506,7 +520,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 
 	fn call_method<'ast, I: Iterator<Item = &'ast ast::Expr<'ast>>>(
-		&self,
+		&mut self,
 		mut expected: &mut Expected<'model>,
 		loc: Loc,
 		target_ast: &'ast ast::Expr<'ast>,
@@ -563,7 +577,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 
 	fn check_call_arguments<'ast, I: Iterator<Item = &'ast ast::Expr<'ast>>>(
-		&self,
+		&mut self,
 		loc: Loc,
 		inst_method: &'model InstMethod<'model>,
 		extra_instantiator: &Instantiator<'model>,
@@ -574,7 +588,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 
 	fn check_arguments<'ast, I: Iterator<Item = &'ast ast::Expr<'ast>>>(
-		&self,
+		&mut self,
 		loc: Loc,
 		method_decl: MethodOrAbstract<'model>,
 		instantiator: &Instantiator<'model>,
@@ -582,7 +596,8 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	) -> Option<&'model [&'model Expr<'model>]> {
 		let parameters = method_decl.parameters();
 		match parameters.try_zip(arg_asts, self.ctx.arena, |parameter, arg_ast| {
-			self.check_subtype(self.instantiate_type(&parameter.ty, instantiator), arg_ast)
+			let ty = self.instantiate_type(&parameter.ty, instantiator);
+			self.check_subtype(ty, arg_ast)
 		}) {
 			Ok(res) => Some(res),
 			Err((_, n_args)) => {
@@ -593,7 +608,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 
 	//mv
-	fn instantiate_type(&self, ty: &Ty<'model>, instantiator: &Instantiator<'model>) -> Ty<'model> {
+	fn instantiate_type(&mut self, ty: &Ty<'model>, instantiator: &Instantiator<'model>) -> Ty<'model> {
 		instantiate_type(ty, instantiator, self.ctx.arena)
 	}
 
@@ -602,7 +617,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	If this returns None, we've already handled the error reporting, so just call handleBogus.
 	*/
 	fn get_member_of_inst_cls(
-		&self,
+		&mut self,
 		loc: Loc,
 		inst_cls: &InstCls<'model>,
 		member_name: Sym,
@@ -616,7 +631,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 
 	//TODO:inline
 	fn get_own_slot(
-		&self,
+		&mut self,
 		mut expected: &mut Expected<'model>,
 		loc: Loc,
 		slot: &'model SlotDeclaration<'model>,
@@ -642,7 +657,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		self.handle(&mut expected, loc, ExprData::GetMySlot(Up(slot), slot_ty))
 	}
 
-	fn handle(&self, expected: &mut Expected<'model>, loc: Loc, e: ExprData<'model>) -> Handled<'model> {
+	fn handle(&mut self, expected: &mut Expected<'model>, loc: Loc, e: ExprData<'model>) -> Handled<'model> {
 		match *expected {
 			Expected::Return(ref ty) | Expected::SubTypeOf(ref ty) => self.check_ty(ty, loc, e),
 			Expected::Infer(ref mut inferred_ty) => {
@@ -659,7 +674,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		}
 	}
 
-	fn check_ty(&self, expected_ty: &Ty<'model>, loc: Loc, e: ExprData<'model>) -> Handled<'model> {
+	fn check_ty(&mut self, expected_ty: &Ty<'model>, loc: Loc, e: ExprData<'model>) -> Handled<'model> {
 		if is_assignable(expected_ty, e.ty(), self.ctx.arena) {
 			Handled(self.expr(loc, e))
 		} else {
@@ -667,11 +682,12 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				loc,
 				Diag::NotAssignable { expected: expected_ty.clone(), actual: e.ty().clone() },
 			);
-			Handled(self.expr(loc, ExprData::BogusCast(expected_ty.clone(), self.alloc(Expr(loc, e)))))
+			let inner = self.alloc(Expr(loc, e));
+			Handled(self.expr(loc, ExprData::BogusCast(expected_ty.clone(), inner)))
 		}
 	}
 
-	fn get_compatible_type(&self, loc: Loc, a: &Ty<'model>, b: &Ty<'model>) -> Ty<'model> {
+	fn get_compatible_type(&mut self, loc: Loc, a: &Ty<'model>, b: &Ty<'model>) -> Ty<'model> {
 		common_type(a, b).unwrap_or_else(|| {
 			self.add_diagnostic(loc, Diag::CantCombineTypes(a.clone(), b.clone()));
 			Ty::Bogus
@@ -679,12 +695,12 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 
 	//mv
-	fn instantiate_return_type(&self, inst_method: &InstMethod<'model>) -> Ty<'model> {
+	fn instantiate_return_type(&mut self, inst_method: &InstMethod<'model>) -> Ty<'model> {
 		self.instantiate_type(inst_method.0.return_ty(), &Instantiator::of_inst_method(inst_method))
 	}
 
 	fn instantiate_return_type_with_extra_instantiator(
-		&self,
+		&mut self,
 		inst_method: &InstMethod<'model>,
 		instantiator: &Instantiator<'model>,
 	) -> Ty<'model> {

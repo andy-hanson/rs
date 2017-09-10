@@ -1,6 +1,7 @@
-use util::arena::{Arena, Up};
+use util::arena::Arena;
 use util::dict::{MutDict, MutSet};
 use util::sym::Sym;
+use util::up::Up;
 
 use model::expr::Expr;
 use model::method::{Impl, MethodOrImpl, MethodWithBody, Parameter};

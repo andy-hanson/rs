@@ -1,12 +1,9 @@
-use serde::{Serialize, Serializer};
-
 use std::cell::{Cell, UnsafeCell};
 use std::fs::File;
-use std::hash::{Hash, Hasher};
 use std::io::{Read, Result as IoResult};
 use std::marker::PhantomData;
 use std::mem::size_of;
-use std::ops::{Deref, InPlace, Place, Placer};
+use std::ops::{InPlace, Place, Placer};
 use std::slice;
 
 use super::arith::{isize_to_usize, usize_to_isize};
@@ -190,7 +187,15 @@ impl<'a, T: 'a + Sized + NoDrop> ListBuilder<'a, T> {
 		}
 	}
 
-	pub fn add(&self) -> AddPlacer<T> {
+
+	pub fn finish(self) -> List<'a, T> {
+		unsafe { List { len: *self.len.get(), head: (*self.first.get()).map(|ptr| &*ptr) } }
+	}
+}
+impl<'l, 'a, T: 'a + Sized + NoDrop> Placer<T> for &'l mut ListBuilder<'a, T> {
+	type Place = PointerPlace<'a, T>;
+
+	fn make_place(self) -> Self::Place {
 		//TODO:duplciate code in make_place
 		unsafe {
 			*self.len.get().as_mut().unwrap() += 1;
@@ -210,20 +215,8 @@ impl<'a, T: 'a + Sized + NoDrop> ListBuilder<'a, T> {
 				//.next = old_head.map(|ptr| unsafe { &*ptr });
 				//*self.last.get() = Some(node);
 			}
-			AddPlacer(&mut (*new_last).value)
+			PointerPlace::new(&mut (*new_last).value)
 		}
-	}
-
-	pub fn finish(self) -> List<'a, T> {
-		unsafe { List { len: *self.len.get(), head: (*self.first.get()).map(|ptr| &*ptr) } }
-	}
-}
-
-pub struct AddPlacer<'a, T: 'a + Sized + NoDrop>(&'a mut T);
-impl<'a, T: 'a + Sized + NoDrop> Placer<T> for AddPlacer<'a, T> {
-	type Place = PointerPlace<'a, T>;
-	fn make_place(self) -> Self::Place {
-		PointerPlace::new(self.0)
 	}
 }
 
@@ -237,15 +230,7 @@ impl<'a, T: NoDrop + 'a> List<'a, T> {
 	}
 
 	pub fn single(value: T, arena: &'a Arena) -> Self {
-		List {
-			len: 1,
-			head: Some(
-				arena <- ListNode {
-				value,
-				next: UnsafeCell::new(None),
-			},
-			),
-		}
+		List { len: 1, head: Some(arena <- ListNode { value, next: UnsafeCell::new(None) }) }
 	}
 
 	pub fn any(&self) -> bool {
@@ -286,7 +271,7 @@ impl<'a, T: NoDrop + 'a> List<'a, T> {
 	}
 
 	//TODO:KILL
-	pub fn do_zip<'u, U, F: Fn(&'a T, &'u U) -> ()>(&'a self, other: &'u [U], f: F) {
+	pub fn do_zip<'u, U, F: FnMut(&'a T, &'u U) -> ()>(&'a self, other: &'u [U], mut f: F) {
 		assert_eq!(self.len, other.len());
 		for (i, x) in self.iter().enumerate() {
 			f(x, &other[i])
@@ -310,59 +295,6 @@ impl<'a, T: 'a> Iterator for ListIter<'a, T> {
 			value
 		})
 	}
-}
-
-pub struct Up<'a, T: 'a>(pub &'a T);
-impl<'a, T: NoDrop> NoDrop for Up<'a, T> {}
-impl<'a, T> Up<'a, T> {
-	//TODO: shouldn't be needed, this is Copy!
-	pub fn clone_as_up(&self) -> Up<'a, T> {
-		Up(self.0)
-	}
-}
-impl<'a, T> Copy for Up<'a, T> {}
-#[allow(expl_impl_clone_on_copy)] // If I derive(Copy) it doesn't seem to do anything.
-impl<'a, T> Clone for Up<'a, T> {
-	fn clone(&self) -> Self {
-		Up(self.0)
-	}
-}
-impl<'a, T> Deref for Up<'a, T> {
-	type Target = T;
-	fn deref(&self) -> &T {
-		self.0
-	}
-}
-impl<'a, T: SerializeUp> Serialize for Up<'a, T> {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
-		(*self).serialize_up(serializer)
-	}
-}
-impl<'a, T> Eq for Up<'a, T> {}
-impl<'a, T> Hash for Up<'a, T> {
-	fn hash<H: Hasher>(&self, state: &mut H) {
-		state.write_usize(self.0 as *const T as usize)
-	}
-}
-impl<'a, T> PartialEq for Up<'a, T> {
-	fn eq(&self, other: &Self) -> bool {
-		ptr_eq(self.0, other.0)
-	}
-}
-
-pub fn ptr_eq<T>(a: &T, b: &T) -> bool {
-	a as *const T == b as *const T
-}
-
-// Like Serialize, but since this is just a *reference* to the data,
-// don't serialize everything, just e.g. the name.
-pub trait SerializeUp {
-	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer;
 }
 
 struct ListNode<'a, T: 'a> {

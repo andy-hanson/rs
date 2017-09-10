@@ -1,7 +1,8 @@
-use util::arena::{ptr_eq, Arena, DirectArrBuilder};
+use util::arena::{Arena, DirectArrBuilder};
 use util::arith::{to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
 use util::arr::SliceOps;
 use util::loc::Loc;
+use util::up::ptr_eq;
 
 use model::expr::{Expr, ExprData, LiteralValue, Local, Pattern};
 use model::method::Parameter;

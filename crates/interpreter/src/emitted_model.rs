@@ -1,7 +1,8 @@
 use std::marker::PhantomData;
 
-use util::arena::{NoDrop, Up};
+use util::arena::NoDrop;
 use util::dict::Dict;
+use util::up::Up;
 
 use model::method::{Impl, MethodOrImpl, MethodWithBody};
 

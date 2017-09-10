@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
-use util::arena::Up;
 use util::arith::to_u8;
+use util::up::Up;
 
 use model::method::{MethodOrImpl, MethodWithBody};
 
@@ -39,14 +39,24 @@ fn exec<'model, 'emit>(
 		let instruction = &cur_instructions.0[instruction_index];
 		instruction_index += 1;
 		match *instruction {
-			Instruction::LiteralVoid => stack.push(Value::Void),
-			Instruction::LiteralBool(b) => stack.push(Value::Bool(b)),
-			Instruction::LiteralNat(n) => stack.push(Value::Nat(n)),
-			Instruction::LiteralInt(i) => stack.push(Value::Int(i)),
-			Instruction::LiteralFloat(f) => stack.push(Value::Float(f)),
+			Instruction::LiteralVoid => {
+				&mut stack <- Value::Void;
+			}
+			Instruction::LiteralBool(b) => {
+				&mut stack <- Value::Bool(b);
+			}
+			Instruction::LiteralNat(n) => {
+				&mut stack <- Value::Nat(n);
+			}
+			Instruction::LiteralInt(i) => {
+				&mut stack <- Value::Int(i);
+			}
+			Instruction::LiteralFloat(f) => {
+				&mut stack <- Value::Float(f);
+			}
 			Instruction::LiteralString(s) => {
 				unused!(s);
-				unimplemented!() //stack.push(Value::String(Rc::clone(s))),
+				unimplemented!() //stack <- Value::String(Rc::clone(s)),
 			}
 			Instruction::Fetch(n) => stack.fetch(n),
 			Instruction::UnLet(n) => stack.un_let(n),
@@ -58,7 +68,7 @@ fn exec<'model, 'emit>(
 				}
 			}
 			Instruction::Call(ref called_method, ref called_method_instructions) => {
-				return_stack.push((cur_method, cur_instructions, instruction_index));
+				return_stack.place_back() <- (cur_method, cur_instructions, instruction_index);
 				cur_method = called_method.copy();
 				cur_instructions = called_method_instructions;
 				instruction_index = 0
@@ -66,15 +76,17 @@ fn exec<'model, 'emit>(
 			Instruction::CallBuiltin(ref called_method, ref builtin) => {
 				unused!(called_method); //TODO: use this for error reporting
 				match *builtin {
-					BuiltinCode::Fn0(f) => stack.push(f(PhantomData)),
+					BuiltinCode::Fn0(f) => {
+						&mut stack <- f(PhantomData);
+					}
 					BuiltinCode::Fn1(f) => {
 						let a = stack.pop();
-						stack.push(f(a))
+						&mut stack <- f(a);
 					}
 					BuiltinCode::Fn2(f) => {
 						let a = stack.pop();
 						let b = stack.pop();
-						stack.push(f(a, b))
+						&mut stack <- f(a, b);
 					}
 				}
 			}

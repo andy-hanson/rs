@@ -35,7 +35,7 @@ impl<'model, 'emit> InstructionWriter<'model, 'emit> {
 
 	fn write(&mut self, loc: Loc, instruction: Instruction<'model, 'emit>) {
 		unused!(loc);
-		&self.instructions <- instruction;
+		&mut self.instructions <- instruction;
 	}
 
 	fn finish(self) -> Instructions<'model, 'emit> {

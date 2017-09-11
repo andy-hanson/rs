@@ -85,9 +85,9 @@ fn try_parse_class_generic<'a, 't>(
 	}
 
 	l.take_bracketl()?;
-	let type_parameters = l.arena.direct_builder::<Sym>();
+	let mut type_parameters = l.arena.direct_builder::<Sym>();
 	loop {
-		&type_parameters <- l.take_ty_name()?;
+		&mut type_parameters <- l.take_ty_name()?;
 		let is_next = !l.try_take_bracketr();
 		if !is_next {
 			break
@@ -289,15 +289,15 @@ fn parse_impls<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Impl<'a>>> {
 		let parameter_names: &'a [Sym] = if l.try_take_parenr() {
 			&[]
 		} else {
-			let b = l.arena.direct_builder::<Sym>();
-			&b <- l.take_name()?;
+			let mut b = l.arena.direct_builder::<Sym>();
+			&mut b <- l.take_name()?;
 			loop {
 				if l.try_take_parenr() {
 					break b.finish()
 				}
 				l.take_comma()?;
 				l.take_space()?;
-				&b <- l.take_name()?;
+				&mut b <- l.take_name()?;
 			}
 		};
 

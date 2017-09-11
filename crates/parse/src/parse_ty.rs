@@ -70,9 +70,9 @@ pub fn try_take_type_parameters<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<&'a [Sy
 	if !l.try_take_bracketl() {
 		Ok(&[])
 	} else {
-		let b = l.arena.direct_builder::<Sym>();
+		let mut b = l.arena.direct_builder::<Sym>();
 		loop {
-			&b <- l.take_ty_name()?;
+			&mut b <- l.take_ty_name()?;
 			if l.try_take_bracketr() {
 				break Ok(b.finish())
 			}

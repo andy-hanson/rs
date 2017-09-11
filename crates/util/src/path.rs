@@ -3,7 +3,7 @@ use serde::{Serialize, Serializer};
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 
-use super::arena::{Arena, NoDrop};
+use super::arena::{Arena, NoDrop, DirectBuilder};
 use super::string_maker::{Show, Shower};
 use super::u8_slice_ops::U8SliceOps;
 
@@ -26,9 +26,9 @@ impl<'a> Path<'a> {
 	}
 
 	pub fn resolve_with_root<'out>(root: Path, path: Path, arena: &'out Arena) -> Path<'out> {
-		let res = arena.direct_builder();
+		let mut res = arena.direct_builder();
 		res.add_slice(root.0);
-		&res <- b'/';
+		&mut res <- b'/';
 		res.add_slice(path.0);
 		Path(res.finish())
 	}
@@ -39,9 +39,9 @@ impl<'a> Path<'a> {
 
 	pub fn child<'out>(&self, child_name: &[u8], arena: &'out Arena) -> Path<'out> {
 		assert!(is_path_part(child_name));
-		let res = arena.direct_builder();
+		let mut res: DirectBuilder<'out, u8> = arena.direct_builder();
 		res.add_slice(self.0);
-		&res <- b'/';
+		&mut res <- b'/';
 		res.add_slice(child_name);
 		Path(res.finish())
 	}
@@ -87,7 +87,7 @@ impl<'a> Path<'a> {
 	}
 
 	pub fn add_extension<'out>(&self, extension: &[u8], arena: &'out Arena) -> Path<'out> {
-		let b = arena.direct_builder();
+		let mut b = arena.direct_builder();
 		b.add_slice(self.0);
 		b.add_slice(extension);
 		Path(b.finish())

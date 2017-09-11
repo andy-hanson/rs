@@ -22,7 +22,7 @@ pub enum CodeData<'model: 'emit, 'emit> {
 	Instructions(Instructions<'model, 'emit>),
 	Builtin(BuiltinCode),
 }
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub enum BuiltinCode {
 	Fn0(for<'a> fn(dummy: PhantomData<&'a ()>) -> Value<'a>),
 	Fn1(for<'a> fn(Value<'a>) -> Value<'a>),
@@ -32,6 +32,7 @@ pub enum BuiltinCode {
 pub struct Instructions<'model: 'emit, 'emit>(pub &'emit [Instruction<'model, 'emit>]);
 impl<'model, 'emit> NoDrop for Instructions<'model, 'emit> {}
 
+#[derive(Copy, Clone)]
 pub enum Instruction<'model: 'emit, 'emit> {
 	/** Push a literal value onto the stack. */
 	LiteralVoid,

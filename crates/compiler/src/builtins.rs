@@ -66,7 +66,7 @@ pub struct BuiltinsCtx<'model> {
 }
 
 pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
-	let all_successes = arena.max_len_builder(BUILTINS_FILES.len());
+	let mut all_successes = arena.max_len_builder(BUILTINS_FILES.len());
 	let own = arena <- BuiltinsOwn {
 		all: Late::new(),
 		all_successes: Late::new(),
@@ -77,12 +77,12 @@ pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 	let sym_bool = Sym::of("bool");
 
 	//TODO: let all = BUILTINS_FILES.map(arena, |&(name, text)| {
-	let all = arena.exact_len_builder(BUILTINS_FILES.len());
+	let mut all = arena.exact_len_builder(BUILTINS_FILES.len());
 	for &(name, text) in &*BUILTINS_FILES {
 		//println!("COMPILING: {:?}", name);
 		let source = ModuleSourceEnum::Builtin { name, text };
 		let ast_arena = Arena::new();
-		&all <- match parse(&ast_arena, text) {
+		&mut all <- match parse(&ast_arena, text) {
 			Ok(ModuleAst { imports, class }) => {
 				let module = arena <- Module {
 					source,
@@ -104,7 +104,7 @@ pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 				} else if name == sym_bool {
 					&own.bool <- primitive_ty(&module.class);
 				}
-				&all_successes <- Up(module);
+				&mut all_successes <- Up(module);
 				ModuleOrFail::Module(module)
 			}
 			Err((loc, parse_diag)) => {

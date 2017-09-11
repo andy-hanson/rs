@@ -22,36 +22,37 @@ impl NoDrop for f64 {}
 impl NoDrop for usize {}
 
 pub struct Arena {
+	// Use UnsafeCell because we will mutate the contents.
 	bytes: UnsafeCell<Box<[u8]>>,
-	next_index: Cell<usize>,
+	next: Cell<*mut u8>,
+	end: *mut u8,
 	//TODO:cfg[debug]
 	locked: Cell<bool>,
 }
 impl Arena {
 	pub fn new() -> Self {
+		const LEN: usize = 1_000_000;
+		let bytes = UnsafeCell::new(Box::new([0; LEN]));
+		let next = unsafe { bytes.get().as_mut() }.unwrap().as_mut_ptr();
 		Arena {
-			//TODO:PERF call the real allocator
-			bytes: UnsafeCell::new(Box::new([0; 1_000_000])),
-			next_index: Cell::new(0),
+			bytes,
+			next: Cell::new(next),
+			end: unsafe { next.offset(usize_to_isize(LEN)) },
 			locked: Cell::new(false),
 		}
 	}
 
-	fn cur_index(&self) -> usize {
-		self.next_index.get()
-	}
-
 	fn alloc_in_array<T: NoDrop>(&self) -> *mut T {
+		assert!(self.locked.get());
 		self.alloc_worker()
 	}
 
-	//TODO:not pub
-	pub fn alloc_single<T: NoDrop>(&self) -> *mut T {
-		self.check_lock();
+	fn alloc_single<T: NoDrop>(&self) -> *mut T {
+		self.check_unlocked();
 		self.alloc_worker()
 	}
 
-	fn check_lock(&self) {
+	fn check_unlocked(&self) {
 		if self.locked.get() {
 			panic!("Trying to allocate while in the middle of writing to an array.")
 		}
@@ -65,52 +66,49 @@ impl Arena {
 
 	fn alloc_n_bytes(&self, size: usize) -> *mut u8 {
 		unsafe {
-			let bytes = &mut *self.bytes.get();
-			let next_index = self.next_index.get();
-			let new_next_index = next_index + size;
-			if new_next_index > bytes.len() {
-				//Need to alloc more
+			let next = self.next.get();
+			let new_next = next.offset(usize_to_isize(size));
+			if new_next >= self.end {
+				// TODO: Need to alloc more
 				unimplemented!()
 			}
-			self.next_index.set(new_next_index);
-			bytes.as_mut_ptr().offset(usize_to_isize(next_index))
+			self.next.set(new_next);
+			next
 		}
 	}
 
 	pub fn clone_slice<T: NoDrop + Copy>(&self, slice: &[T]) -> &[T] {
 		unsafe {
-			let len_t = slice.len();
-			let my_start = self.next_ptr() as *mut T;
-			let my_end = my_start.offset(usize_to_isize(len_t));
-			let slice_start = slice.as_ptr();
-			let slice_end = slice_start.offset(usize_to_isize(len_t));
+			let len = slice.len();
+			let (my_start, my_end, my_slice) = self.alloc_n::<T>(len);
 			// Assert no overlap
+			let slice_start = slice.as_ptr();
+			let slice_end = slice_start.offset(usize_to_isize(len));
 			assert!((my_end as *const T) < slice_start || (my_start as *const T) > slice_end);
-			copy_nonoverlapping(/*src*/ slice_start, /*dst*/ my_start, len_t);
-			let len_bytes = len_t * size_of::<T>();
-			self.next_index.set(self.next_index.get() + len_bytes);
-			slice::from_raw_parts(my_start, len_t)
+			copy_nonoverlapping(/*src*/ slice_start, /*dst*/ my_start, len);
+			my_slice
 		}
 	}
 
-	fn alloc_n<T>(&self, len: usize) -> *mut T {
-		self.alloc_n_bytes(size_of::<T>() * len) as *mut T
+	unsafe fn alloc_n<T>(&self, len: usize) -> (*mut T, *mut T, &mut [T]) {
+		let start = self.alloc_n_bytes(size_of::<T>() * len) as *mut T;
+		let end = start.offset(usize_to_isize(len));
+		let slice = slice::from_raw_parts_mut(start, len);
+		(start, end, slice)
 	}
 
 	pub fn map<T, U: NoDrop, I: KnownLen<Item = T>, F: FnMut(T) -> U>(&self, input: I, mut f: F) -> &[U] {
-		//TODO:PERF don't even need to check the max size
 		let len = input.len();
-		let start = self.alloc_n::<U>(len);
+		let (start, end, slice) = unsafe { self.alloc_n::<U>(len) };
 		let mut next = start;
-		unsafe {
-			let max = next.offset(usize_to_isize(len));
-			for x in input {
+		for x in input {
+			unsafe {
 				*next = f(x);
-				next = next.offset(1)
+				next = next.offset(1);
 			}
-			assert_eq!(next, max);
-			slice::from_raw_parts(start, len)
 		}
+		assert_eq!(next, end);
+		slice
 	}
 
 	pub fn map_defined_probably_all<T, U: NoDrop, I: KnownLen<Item = T>, F: FnMut(T) -> Option<U>>(
@@ -119,46 +117,70 @@ impl Arena {
 		mut f: F,
 	) -> &[U] {
 		let len = input.len();
-		let start = self.alloc_n::<U>(len);
+		let (start, end, slice) = unsafe { self.alloc_n::<U>(len) };
 		let mut next = start;
-		unsafe {
-			let max = next.offset(usize_to_isize(len));
-			for x in input {
-				if let Some(u) = f(x) {
+		for x in input {
+			if let Some(u) = f(x) {
+				unsafe {
 					*next = u;
 					next = next.offset(1)
 				}
 			}
-			assert!(next <= max);
-			slice::from_raw_parts(start, len)
 		}
+		assert!(next <= end);
+		slice
 	}
 
 	pub fn exact_len_builder<T: NoDrop>(&self, len: usize) -> ExactLenBuilder<T> {
-		self.check_lock();
-		MaxLenBuilder::new(self.alloc_n::<T>(len), len, /*is_exact*/ true)
+		self.max_len_builder_worker(len, /*is_exact*/ true)
 	}
 
 	pub fn max_len_builder<T: NoDrop>(&self, max_len: usize) -> MaxLenBuilder<T> {
-		self.check_lock();
-		MaxLenBuilder::new(self.alloc_n::<T>(max_len), max_len, /*is_exact*/ false)
+		self.max_len_builder_worker(max_len, /*is_exact*/ false)
 	}
 
-	unsafe fn next_ptr(&self) -> *mut u8 {
-		(*self.bytes.get())
-			.as_mut_ptr()
-			.offset(usize_to_isize(self.cur_index()))
+	fn max_len_builder_worker<T : NoDrop>(&self, max_len: usize, is_exact: bool) -> MaxLenBuilder<T> {
+		self.check_unlocked();
+		let (start, end, _) = unsafe { self.alloc_n::<T>(max_len) };
+		MaxLenBuilder::new(start, end, is_exact)
+
 	}
 
 	// Writes directly into the arena. Other allocations aren't allowed to happen at the same time.
-	pub fn direct_builder<T: NoDrop>(&self) -> DirectBuilder<T> {
+	pub fn direct_builder<'a, T: Copy + NoDrop>(&'a self) -> DirectBuilder<'a, T> {
 		self.locked.set(true);
-		let start_byte_index = self.cur_index();
-		DirectBuilder { arena: self, start_ptr: unsafe { self.next_ptr() as *mut T }, start_byte_index }
+		DirectBuilder { arena: self, start: self.next.get() as *mut T }
 	}
 
 	pub fn read_from_file(&self, mut f: File) -> IoResult<&[u8]> {
 		unsafe {
+			//let b = self.direct_builder();
+			//let mut buff = slice_from_to(self.next, self.end);
+			let start = self.next.get();
+			let mut next = start;
+			loop {
+				//let n_bytes_read = f.read(b.remaining_slice();
+				let mut buff = slice_from_to(next, self.end);
+				let n_bytes_read = f.read(&mut buff)?;
+				if n_bytes_read == 0 {
+					break
+				}
+				next = next.offset(usize_to_isize(n_bytes_read));
+				//`- 1` to make room for the '\0' we add at the end.
+				if next >= self.end.offset(-1) {
+					// Need to alloc more
+					unimplemented!()
+				}
+			}
+
+			*next = b'\0';
+			next = next.offset(1);
+			self.next.set(next);
+			Ok(slice_from_to(start, next))
+		}
+
+
+		/*unsafe {
 			let bytes = &mut *self.bytes.get();
 			let next_index = self.next_index.get();
 			let buff_start = self.next_ptr();
@@ -184,7 +206,7 @@ impl Arena {
 			self.next_index.set(next_index + buff_idx);
 			//Also add '\0' at the end!
 			Ok(&buff[0..buff_idx])
-		}
+		}*/
 	}
 }
 impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a Arena {
@@ -198,81 +220,80 @@ impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a Arena {
 type ExactLenBuilder<'a, T> = MaxLenBuilder<'a, T>;
 pub struct MaxLenBuilder<'a, T: 'a + Sized + NoDrop> {
 	start: *mut T,
-	max: *mut T,
+	end: *mut T,
 	is_exact: bool,
-	next: Cell<*mut T>,
+	next: *mut T,
 	phantom: PhantomData<&'a T>,
 }
 impl<'a, T: 'a + Sized + NoDrop> MaxLenBuilder<'a, T> {
-	fn new(start: *mut T, max_len: usize, is_exact: bool) -> Self {
+	fn new(start: *mut T, end: *mut T, is_exact: bool) -> Self {
 		MaxLenBuilder {
 			start,
-			max: unsafe { start.offset(usize_to_isize(max_len)) },
+			end,
 			is_exact,
-			next: Cell::new(start),
+			next: start,
 			phantom: PhantomData,
 		}
 	}
 
 	pub fn slice_so_far(&self) -> &'a [T] {
 		// unwrap() should succeed since we assert T to be non-zero in size.
-		let len = isize_to_usize(self.start.offset_to(self.next.get()).unwrap());
-		unsafe { slice::from_raw_parts(self.start, len) }
+		unsafe { slice_from_to(self.start, self.next) }
 	}
 
 	pub fn finish(self) -> &'a [T] {
 		if self.is_exact {
-			assert_eq!(self.next.get(), self.max)
+			assert_eq!(self.next, self.end)
 		}
 		self.slice_so_far()
 	}
 }
 impl<'a, T: 'a + Sized + NoDrop + Copy> MaxLenBuilder<'a, T> {
-	pub fn add_slice(&self, slice: &[T]) {
-		//TODO:PERF fast copy
-		for x in slice {
-			self <- *x;
+	pub fn add_slice(&mut self, slice: &[T]) {
+		unsafe {
+			let old_next = self.next;
+			self.next = self.next.offset(usize_to_isize(slice.len()));
+			assert!(self.next < self.end);
+			copy_nonoverlapping(slice.as_ptr(), old_next, slice.len());
 		}
 	}
 }
-impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a MaxLenBuilder<'arena, T> {
+impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a mut MaxLenBuilder<'arena, T> {
 	type Place = PointerPlace<'arena, T>;
 
 	fn make_place(self) -> Self::Place {
-		let next = self.next.get();
-		let place = PointerPlace::new(next);
-		let new_next = unsafe { next.offset(1) };
-		assert!(new_next <= self.max);
-		self.next.set(new_next);
+		let place = PointerPlace::new(self.next);
+		self.next = unsafe { self.next.offset(1) };
+		assert!(self.next <= self.end);
 		place
 	}
 }
 
-pub struct DirectBuilder<'a, T: Sized + NoDrop> {
+// T must be in Copy because we might have to move the array if the arena runs out of length.
+pub struct DirectBuilder<'a, T: 'a + Copy + Sized + NoDrop> {
 	arena: &'a Arena,
-	start_ptr: *mut T,
-	start_byte_index: usize,
+	start: *mut T,
+	// Use arena.next as my next pointer
 }
-impl<'a, T: 'a + Sized + NoDrop> DirectBuilder<'a, T> {
+impl<'a, T: 'a + Copy + Sized + NoDrop> DirectBuilder<'a, T> {
 	pub fn finish(self) -> &'a mut [T] {
 		self.arena.locked.set(false);
-		let len_bytes = self.arena.cur_index() - self.start_byte_index;
-		let t_size = size_of::<T>();
-		assert_eq!(len_bytes % t_size, 0);
-		let len = len_bytes / t_size;
-		unsafe { slice::from_raw_parts_mut(self.start_ptr, len) }
+		unsafe { slice_from_to(self.start, self.arena.next.get() as *mut T) }
 	}
-}
-impl<'a, T: 'a + Sized + NoDrop + Copy> DirectBuilder<'a, T> {
-	pub fn add_slice(&self, slice: &[T]) {
-		//TODO:PERF fast copy
-		for x in slice {
-			self <- *x;
+
+	pub fn add_slice(&mut self, slice: &[T]) {
+		unsafe {
+			//TODO:duplicate code from Arena::copy_slice
+			let next = self.arena.next.get() as *mut T;
+			let new_next = next.offset(usize_to_isize(slice.len()));
+			assert!(new_next < (self.arena.end as *mut T));
+			self.arena.next.set(new_next as *mut u8);
+			copy_nonoverlapping(slice.as_ptr(), next, slice.len());
 		}
 	}
 }
-impl<'a, T: 'a + Sized + NoDrop> Placer<T> for &'a DirectBuilder<'a, T> {
-	type Place = PointerPlace<'a, T>;
+impl<'builder, 'arena, T: 'arena + Copy + Sized + NoDrop> Placer<T> for &'builder mut DirectBuilder<'arena, T> {
+	type Place = PointerPlace<'arena, T>;
 
 	fn make_place(self) -> Self::Place {
 		PointerPlace::new(self.arena.alloc_in_array())
@@ -303,3 +324,12 @@ impl<'a, T: 'a + Sized + NoDrop> InPlace<T> for PointerPlace<'a, T> {
 		self.ptr.as_mut().unwrap()
 	}
 }
+
+unsafe fn slice_from_to<'a, T>(start: *mut T, end: *mut T) -> &'a mut [T] {
+	let offset_bytes = isize_to_usize(((start as *mut u8).offset_to(end as *mut u8)).unwrap());
+	assert!(offset_bytes % size_of::<T>() == 0);
+	let len = isize_to_usize(start.offset_to(end).unwrap());
+	slice::from_raw_parts_mut(start, len)
+}
+
+

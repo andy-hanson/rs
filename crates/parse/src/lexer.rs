@@ -120,7 +120,7 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 	}
 
 	fn next_quote_part(&mut self) -> QuoteEnd {
-		let b = self.arena.direct_builder();
+		let mut b = self.arena.direct_builder();
 		let mut is_end = false;
 		loop {
 			match self.read_char() {
@@ -135,11 +135,11 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 				b'\n' => unimplemented!(),
 				b'\\' => {
 					let ch = self.read_char();
-					&b <- escape(ch);
+					&mut b <- escape(ch);
 					break
 				}
 				ch => {
-					&b <- ch;
+					&mut b <- ch;
 					break
 				}
 			}

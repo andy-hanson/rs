@@ -66,8 +66,8 @@ fn parse_expected_errors<'a>(code: &'a [u8], arena: &'a Arena) -> (&'a [u8], &'a
 		return (code, &[])
 	}
 
-	let good_lines = arena.exact_len_builder::<u8>(good_lines_len);
-	let expected_diagnostics = arena.exact_len_builder::<ExpectedDiagnostic>(diagnostic_count);
+	let mut good_lines = arena.exact_len_builder::<u8>(good_lines_len);
+	let mut expected_diagnostics = arena.exact_len_builder::<ExpectedDiagnostic>(diagnostic_count);
 
 	let mut good_line_number = 0;
 	let mut last_good_start_index = 0;
@@ -140,10 +140,10 @@ fn parse_expected_errors<'a>(code: &'a [u8], arena: &'a Arena) -> (&'a [u8], &'a
 				}
 				i += 1;
 
-				let error_text = arena.direct_builder::<u8>();
+				let mut error_text = arena.direct_builder::<u8>();
 				while i != code.len() && code[i] != b'\n' {
 					//TODO:PERF maybe just add_slice at the end
-					&error_text <- code[i];
+					&mut error_text <- code[i];
 					i += 1
 				}
 				if i != code.len() {
@@ -157,9 +157,9 @@ fn parse_expected_errors<'a>(code: &'a [u8], arena: &'a Arena) -> (&'a [u8], &'a
 						// error: Must always begin with `! `
 						unimplemented!()
 					}
-					&error_text <- b'\n';
+					&mut error_text <- b'\n';
 					while i != code.len() && code[i] != b'\n' {
-						&error_text <- code[i];
+						&mut error_text <- code[i];
 						i += 1
 					}
 					if i != code.len() {
@@ -167,7 +167,7 @@ fn parse_expected_errors<'a>(code: &'a [u8], arena: &'a Arena) -> (&'a [u8], &'a
 					}
 				}
 
-				&expected_diagnostics <- ExpectedDiagnostic(err_lc, error_text.finish());
+				&mut expected_diagnostics <- ExpectedDiagnostic(err_lc, error_text.finish());
 
 				last_good_start_index = i;
 				last_good_line_end = i

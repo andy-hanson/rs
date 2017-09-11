@@ -1,4 +1,4 @@
-use util::arena::{Arena, DirectArrBuilder};
+use util::arena::{Arena, DirectBuilder};
 use util::arith::{to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
 use util::loc::Loc;
 use util::up::ptr_eq;
@@ -26,11 +26,11 @@ pub fn emit_method<'model, 'emit>(
 }
 
 struct InstructionWriter<'model: 'emit, 'emit> {
-	instructions: DirectArrBuilder<'emit, Instruction<'model, 'emit>>,
+	instructions: DirectBuilder<'emit, Instruction<'model, 'emit>>,
 }
 impl<'model, 'emit> InstructionWriter<'model, 'emit> {
 	fn new(arena: &'emit Arena) -> Self {
-		InstructionWriter { instructions: arena.direct_arr_builder() }
+		InstructionWriter { instructions: arena.direct_builder() }
 	}
 
 	fn write(&mut self, loc: Loc, instruction: Instruction<'model, 'emit>) {

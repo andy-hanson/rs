@@ -23,6 +23,6 @@ use self::parse_module::parse_module;
 
 pub use self::lexer::Result;
 
-pub fn parse<'a, 't>(arena: &'a Arena, source: &'t [u8]) -> Result<ast::Module<'a>> {
+pub fn parse<'ast, 'text: 'ast>(arena: &'ast Arena, source: &'text [u8]) -> Result<ast::Module<'ast>> {
 	parse_module(&mut Lexer::new(arena, source))
 }

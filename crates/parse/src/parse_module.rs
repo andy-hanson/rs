@@ -1,4 +1,4 @@
-use util::list::List;
+use util::list::{List, ListBuilder};
 use util::loc::Pos;
 use util::path::{Path, RelPath};
 use util::sym::Sym;
@@ -29,7 +29,7 @@ pub fn parse_module<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Module<'a>> {
 }
 
 fn parse_imports<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Import<'a>>> {
-	let mut b = l.list_builder::<Import>();
+	let mut b = ListBuilder::<Import>::new(l.arena);
 	loop {
 		if l.try_take_newline()? {
 			break Ok(b.finish())
@@ -85,7 +85,7 @@ fn try_parse_class_generic<'a, 't>(
 	}
 
 	l.take_bracketl()?;
-	let type_parameters = l.direct_arr_builder::<Sym>();
+	let type_parameters = l.arena.direct_builder::<Sym>();
 	loop {
 		&type_parameters <- l.take_ty_name()?;
 		let is_next = !l.try_take_bracketr();
@@ -129,7 +129,7 @@ fn parse_head<'a, 't>(
 
 fn parse_abstract_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ClassHead<'a>> {
 	l.take_indent()?;
-	let mut abstract_methods = l.list_builder::<AbstractMethod>();
+	let mut abstract_methods = ListBuilder::<AbstractMethod>::new(l.arena);
 	loop {
 		let method_start = l.pos();
 		let type_parameters = try_take_type_parameters(l)?;
@@ -158,7 +158,7 @@ fn parse_methods<'a, 't>(
 	mut start: Pos,
 	mut next: MethodKw,
 ) -> Result<List<'a, Method<'a>>> {
-	let mut methods = l.list_builder::<Method>();
+	let mut methods = ListBuilder::<Method>::new(l.arena);
 	loop {
 		match next {
 			MethodKw::Def | MethodKw::Fun => {
@@ -224,7 +224,7 @@ fn parse_parameters<'a, 't>(
 	l: &mut Lexer<'a, 't>,
 	first: Option<Parameter<'a>>,
 ) -> Result<List<'a, Parameter<'a>>> {
-	let mut parameters = l.list_builder::<Parameter<'a>>();
+	let mut parameters = ListBuilder::<Parameter<'a>>::new(l.arena);
 	if let Some(f) = first {
 		&mut parameters <- f;
 	}
@@ -247,7 +247,7 @@ fn parse_supers<'a, 't>(
 	mut start: Pos,
 	mut next: MethodKw,
 ) -> Result<(List<'a, Super<'a>>, Pos, MethodKw)> {
-	let mut supers = l.list_builder::<Super>();
+	let mut supers = ListBuilder::<Super>::new(l.arena);
 	loop {
 		if next != MethodKw::Is {
 			break Ok((supers.finish(), start, next))
@@ -280,7 +280,7 @@ fn take_optional_body<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<&'a Expr<'
 }
 
 fn parse_impls<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Impl<'a>>> {
-	let mut impls = l.list_builder::<Impl<'a>>();
+	let mut impls = ListBuilder::<Impl<'a>>::new(l.arena);
 	loop {
 		// foo(x, y)
 		let start = l.pos();
@@ -289,7 +289,7 @@ fn parse_impls<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Impl<'a>>> {
 		let parameter_names: &'a [Sym] = if l.try_take_parenr() {
 			&[]
 		} else {
-			let b = l.direct_arr_builder::<Sym>();
+			let b = l.arena.direct_builder::<Sym>();
 			&b <- l.take_name()?;
 			loop {
 				if l.try_take_parenr() {
@@ -311,7 +311,7 @@ fn parse_impls<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Impl<'a>>> {
 
 fn parse_slots<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<ClassHead<'a>> {
 	l.take_indent()?;
-	let mut slots = l.list_builder::<Slot>();
+	let mut slots = ListBuilder::<Slot>::new(l.arena);
 	loop {
 		let start = l.pos();
 		let next = l.take_slot_keyword()?;

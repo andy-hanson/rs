@@ -77,7 +77,7 @@ impl Arena {
 
 	pub fn clone_slice<T: NoDrop + Copy>(&self, slice: &[T]) -> &[T] {
 		//TODO:PERF faster copy
-		let b = self.direct_arr_builder::<T>();
+		let b = self.direct_builder::<T>();
 		for em in slice {
 			&b <- *em;
 		}
@@ -125,17 +125,21 @@ impl Arena {
 		}
 	}
 
-	pub fn max_size_arr_builder<T: NoDrop>(&self, max_len: usize) -> MaxSizeArrBuilder<T> {
+	pub fn exact_len_builder<T: NoDrop>(&self, len: usize) -> ExactLenBuilder<T> {
 		self.check_lock();
-		let ptr = self.alloc_n_bytes(size_of::<T>() * max_len) as *mut T;
-		MaxSizeArrBuilder::new(ptr, max_len)
+		MaxLenBuilder::new(self.alloc_n::<T>(len), len, /*is_exact*/ true)
+	}
+
+	pub fn max_len_builder<T: NoDrop>(&self, max_len: usize) -> MaxLenBuilder<T> {
+		self.check_lock();
+		MaxLenBuilder::new(self.alloc_n::<T>(max_len), max_len, /*is_exact*/ false)
 	}
 
 	// Writes directly into the arena. Other allocations aren't allowed to happen at the same time.
-	pub fn direct_arr_builder<T: NoDrop>(&self) -> DirectArrBuilder<T> {
+	pub fn direct_builder<T: NoDrop>(&self) -> DirectBuilder<T> {
 		self.locked.set(true);
 		let start_byte_index = self.cur_index();
-		DirectArrBuilder {
+		DirectBuilder {
 			arena: self,
 			start_ptr: unsafe {
 				(*self.bytes.get())
@@ -184,33 +188,39 @@ impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a Arena {
 	}
 }
 
-pub struct MaxSizeArrBuilder<'a, T: 'a + Sized + NoDrop> {
-	start_ptr: *mut T,
-	max_ptr: *mut T,
-	next_ptr: Cell<*mut T>,
+type ExactLenBuilder<'a, T> = MaxLenBuilder<'a, T>;
+pub struct MaxLenBuilder<'a, T: 'a + Sized + NoDrop> {
+	start: *mut T,
+	max: *mut T,
+	is_exact: bool,
+	next: Cell<*mut T>,
 	phantom: PhantomData<&'a T>,
 }
-impl<'a, T: 'a + Sized + NoDrop> MaxSizeArrBuilder<'a, T> {
-	fn new(start_ptr: *mut T, max_len: usize) -> Self {
-		MaxSizeArrBuilder {
-			start_ptr,
-			max_ptr: unsafe { start_ptr.offset(usize_to_isize(max_len)) },
-			next_ptr: Cell::new(start_ptr),
+impl<'a, T: 'a + Sized + NoDrop> MaxLenBuilder<'a, T> {
+	fn new(start: *mut T, max_len: usize, is_exact: bool) -> Self {
+		MaxLenBuilder {
+			start,
+			max: unsafe { start.offset(usize_to_isize(max_len)) },
+			is_exact,
+			next: Cell::new(start),
 			phantom: PhantomData,
 		}
 	}
 
 	pub fn slice_so_far(&self) -> &'a [T] {
 		// unwrap() should succeed since we assert T to be non-zero in size.
-		let len = isize_to_usize(self.start_ptr.offset_to(self.next_ptr.get()).unwrap());
-		unsafe { slice::from_raw_parts(self.start_ptr, len) }
+		let len = isize_to_usize(self.start.offset_to(self.next.get()).unwrap());
+		unsafe { slice::from_raw_parts(self.start, len) }
 	}
 
 	pub fn finish(self) -> &'a [T] {
+		if self.is_exact {
+			assert_eq!(self.next.get(), self.max)
+		}
 		self.slice_so_far()
 	}
 }
-impl<'a, T: 'a + Sized + NoDrop + Copy> MaxSizeArrBuilder<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop + Copy> MaxLenBuilder<'a, T> {
 	pub fn add_slice(&self, slice: &[T]) {
 		//TODO:PERF fast copy
 		for x in slice {
@@ -218,24 +228,25 @@ impl<'a, T: 'a + Sized + NoDrop + Copy> MaxSizeArrBuilder<'a, T> {
 		}
 	}
 }
-impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a MaxSizeArrBuilder<'arena, T> {
+impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a MaxLenBuilder<'arena, T> {
 	type Place = PointerPlace<'arena, T>;
 
 	fn make_place(self) -> Self::Place {
-		let place = PointerPlace::new(self.next_ptr.get());
-		let new_next = unsafe { self.next_ptr.get().offset(1) };
-		self.next_ptr.set(new_next);
-		assert!(new_next <= self.max_ptr);
+		let next = self.next.get();
+		let place = PointerPlace::new(next);
+		let new_next = unsafe { next.offset(1) };
+		assert!(new_next <= self.max);
+		self.next.set(new_next);
 		place
 	}
 }
 
-pub struct DirectArrBuilder<'a, T: Sized + NoDrop> {
+pub struct DirectBuilder<'a, T: Sized + NoDrop> {
 	arena: &'a Arena,
 	start_ptr: *mut T,
 	start_byte_index: usize,
 }
-impl<'a, T: 'a + Sized + NoDrop> DirectArrBuilder<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop> DirectBuilder<'a, T> {
 	pub fn finish(self) -> &'a mut [T] {
 		self.arena.locked.set(false);
 		let len_bytes = self.arena.cur_index() - self.start_byte_index;
@@ -245,7 +256,7 @@ impl<'a, T: 'a + Sized + NoDrop> DirectArrBuilder<'a, T> {
 		unsafe { slice::from_raw_parts_mut(self.start_ptr, len) }
 	}
 }
-impl<'a, T: 'a + Sized + NoDrop + Copy> DirectArrBuilder<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop + Copy> DirectBuilder<'a, T> {
 	pub fn add_slice(&self, slice: &[T]) {
 		//TODO:PERF fast copy
 		for x in slice {
@@ -253,7 +264,7 @@ impl<'a, T: 'a + Sized + NoDrop + Copy> DirectArrBuilder<'a, T> {
 		}
 	}
 }
-impl<'a, T: 'a + Sized + NoDrop> Placer<T> for &'a DirectArrBuilder<'a, T> {
+impl<'a, T: 'a + Sized + NoDrop> Placer<T> for &'a DirectBuilder<'a, T> {
 	type Place = PointerPlace<'a, T>;
 
 	fn make_place(self) -> Self::Place {

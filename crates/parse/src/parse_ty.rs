@@ -1,4 +1,4 @@
-use util::list::List;
+use util::list::{List, ListBuilder};
 use util::loc::Pos;
 use util::sym::Sym;
 
@@ -70,7 +70,7 @@ pub fn try_take_type_parameters<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<&'a [Sy
 	if !l.try_take_bracketl() {
 		Ok(&[])
 	} else {
-		let b = l.direct_arr_builder::<Sym>();
+		let b = l.arena.direct_builder::<Sym>();
 		loop {
 			&b <- l.take_ty_name()?;
 			if l.try_take_bracketr() {
@@ -113,7 +113,7 @@ pub fn try_take_type_arguments<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a,
 pub fn take_type_arguments_after_passing_bracketl<'a, 't>(
 	l: &mut Lexer<'a, 't>,
 ) -> Result<List<'a, ast::Ty<'a>>> {
-	let mut b = l.list_builder::<ast::Ty>();
+	let mut b = ListBuilder::<ast::Ty>::new(l.arena);
 	loop {
 		&mut b <- parse_ty(l)?;
 		if l.try_take_bracketr() {

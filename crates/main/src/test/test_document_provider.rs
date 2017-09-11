@@ -60,15 +60,14 @@ impl<'a> DocumentProvider<'a> for TestDocumentProvider<'a> {
 }
 
 fn parse_expected_errors<'a>(code: &'a [u8], arena: &'a Arena) -> (&'a [u8], &'a [ExpectedDiagnostic<'a>]) {
-	#[allow(naive_bytecount)] // Expect less than 2^32 matches
-	//TODO:PERF only count the number of runs
-	let diagnostic_count = code.iter().filter(|ch| **ch == b'~').count();
+	let (good_lines_len, diagnostic_count) = count_diagnostics(code);
 	if diagnostic_count == 0 {
+		assert_eq!(good_lines_len, code.len());
 		return (code, &[])
 	}
 
-	let good_lines = arena.max_size_arr_builder::<u8>(code.len());
-	let expected_diagnostics = arena.max_size_arr_builder::<ExpectedDiagnostic>(diagnostic_count);
+	let good_lines = arena.exact_len_builder::<u8>(good_lines_len);
+	let expected_diagnostics = arena.exact_len_builder::<ExpectedDiagnostic>(diagnostic_count);
 
 	let mut good_line_number = 0;
 	let mut last_good_start_index = 0;
@@ -141,7 +140,7 @@ fn parse_expected_errors<'a>(code: &'a [u8], arena: &'a Arena) -> (&'a [u8], &'a
 				}
 				i += 1;
 
-				let error_text = arena.direct_arr_builder::<u8>();
+				let error_text = arena.direct_builder::<u8>();
 				while i != code.len() && code[i] != b'\n' {
 					//TODO:PERF maybe just add_slice at the end
 					&error_text <- code[i];
@@ -189,4 +188,29 @@ fn parse_expected_errors<'a>(code: &'a [u8], arena: &'a Arena) -> (&'a [u8], &'a
 
 	good_lines.add_slice(&code[last_good_start_index..code.len()]);
 	(good_lines.finish(), expected_diagnostics.finish())
+}
+
+fn count_diagnostics(text: &[u8]) -> (usize, usize) {
+	let mut good_lines_len = 0;
+	let mut diagnostics_count = 0;
+	let mut iter = text.iter();
+	'outer: while let Some(ch) = iter.next() {
+		if *ch == b'~' {
+			diagnostics_count += 1;
+			// Eat any more '~'
+			loop {
+				match iter.next() {
+					Some(ch) =>
+						if *ch != b'~' {
+							good_lines_len += 1;
+							break
+						},
+					None => break 'outer,
+				}
+			}
+		} else {
+			good_lines_len += 1
+		}
+	}
+	(good_lines_len, diagnostics_count)
 }

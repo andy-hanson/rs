@@ -202,10 +202,10 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		let mut all_imports_reused = true;
 		//TODO:PERF probably, all imports will succeed, so allocate whole array.
 		let all_successes = self.arena
-			.max_size_arr_builder::<Up<'model, Module<'model>>>(import_asts.len());
+			.max_len_builder::<Up<'model, Module<'model>>>(import_asts.len());
 		//TODO:PERF probably, this will not be necessary, somehow avoid allocating?
 		let all = self.arena
-			.max_size_arr_builder::<ModuleOrFail<'model>>(import_asts.len());
+			.exact_len_builder::<ModuleOrFail<'model>>(import_asts.len());
 		let mut any_failure = false;
 		for import_ast in import_asts {
 			match self.resolve_import(import_ast, &mut diagnostics, full_path, &mut all_imports_reused)? {

@@ -1,7 +1,6 @@
 use std::mem::replace;
 
-use util::arena::{Arena, DirectArrBuilder, NoDrop};
-use util::list::ListBuilder;
+use util::arena::Arena;
 use util::loc::{Loc, Pos};
 use util::sym::Sym;
 
@@ -18,7 +17,7 @@ pub struct Next {
 	pub token: Token,
 }
 
-pub struct Lexer<'ast, 'text> {
+pub struct Lexer<'ast, 'text: 'ast> {
 	pub arena: &'ast Arena,
 	reader: Reader<'text>,
 	indent: u32,
@@ -26,7 +25,7 @@ pub struct Lexer<'ast, 'text> {
 	quote_part_value: &'ast [u8],
 	diagnostic: Option<(Loc, ParseDiag)>,
 }
-impl<'ast, 'text> Lexer<'ast, 'text> {
+impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 	pub fn new(arena: &'ast Arena, source: &'text [u8]) -> Self {
 		Lexer {
 			arena,
@@ -110,14 +109,6 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		self.arena <- Expr(self.loc_from(start), data)
 	}
 
-	pub fn direct_arr_builder<T: Sized + NoDrop>(&self) -> DirectArrBuilder<'ast, T> {
-		self.arena.direct_arr_builder()
-	}
-
-	pub fn list_builder<T: Sized + NoDrop>(&self) -> ListBuilder<'ast, T> {
-		ListBuilder::new(self.arena)
-	}
-
 	fn skip_while<F: Fn(u8) -> bool>(&mut self, pred: F) {
 		while pred(self.peek()) {
 			self.reader.skip();
@@ -129,7 +120,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 	}
 
 	fn next_quote_part(&mut self) -> QuoteEnd {
-		let b = self.direct_arr_builder();
+		let b = self.arena.direct_builder();
 		let mut is_end = false;
 		loop {
 			match self.read_char() {
@@ -171,8 +162,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 			}
 			self.skip_while(is_digit);
 		}
-		// TODO:PERF less copying
-		self.quote_part_value = self.arena.clone_slice(self.slice_from(start_pos));
+		self.quote_part_value = self.slice_from(start_pos);
 		if is_float {
 			Token::FloatLiteral
 		} else if is_signed {
@@ -514,8 +504,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 		let start_pos = self.pos();
 		self.expect_character_by_predicate(is_upper_case_letter, b"type name")?;
 		self.skip_while(is_name_char);
-		//TODO:PERf less copying
-		Ok(self.arena.clone_slice(self.slice_from(start_pos)))
+		Ok(self.slice_from(start_pos))
 	}
 
 	fn take_name_slice(&mut self) -> Result<&[u8]> {

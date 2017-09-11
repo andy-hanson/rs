@@ -1,4 +1,4 @@
-use util::list::List;
+use util::list::{List, ListBuilder};
 use util::loc::Pos;
 
 use model::diag::ParseDiag;
@@ -284,7 +284,8 @@ fn parse_args_2<'a, 't>(
 	ctx: Ctx,
 	Next { pos: start, token: first_token }: Next,
 ) -> Result<(List<'a, Expr<'a>>, Next)> {
-	let mut args = l.list_builder::<&'a Expr>(); //TODO:PERF use a List<Expr>, emplace new expressions into it
+	//TODO:PERF use a List<Expr>, emplace new expressions into it
+	let mut args = ListBuilder::<&'a Expr>::new(l.arena);
 	let (first_arg, mut next) = parse_expr_2(l, ctx, start, first_token)?;
 	&mut args <- first_arg;
 	while next.token == Token::Comma {
@@ -364,7 +365,7 @@ fn parse_when<'a, 't>(l: &mut Lexer<'a, 't>, start_pos: Pos) -> Result<&'a Expr<
 	*/
 	l.take_indent()?;
 
-	let mut cases = l.list_builder::<Case>();
+	let mut cases = ListBuilder::<Case>::new(l.arena);
 	let mut case_start = start_pos;
 	let mut case_start_token = l.next_token();
 	loop {

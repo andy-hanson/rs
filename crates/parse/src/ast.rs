@@ -1,4 +1,5 @@
 use util::arena::NoDrop;
+use util::late::Late;
 use util::list::List;
 use util::loc::Loc;
 use util::path::{Path, RelPath};
@@ -67,7 +68,7 @@ pub struct Impl<'a> {
 	pub name: Sym,
 	pub parameter_names: &'a [Sym],
 	// May be missing for a builtin
-	pub body: Option<&'a Expr<'a>>, //TODO:PERF doesn't actually need to be a reference...
+	pub body: Option<Expr<'a>>,
 }
 impl<'a> NoDrop for Impl<'a> {}
 
@@ -79,7 +80,7 @@ pub struct Method<'a> {
 	pub name: Sym,
 	pub self_effect: Effect,
 	pub parameters: List<'a, Parameter<'a>>,
-	pub body: Option<&'a Expr<'a>>, //TODO:PERF doesn't actually need to be a reference...
+	pub body: Option<Expr<'a>>,
 }
 impl<'a> NoDrop for Method<'a> {}
 
@@ -110,44 +111,89 @@ impl<'a> NoDrop for PatternData<'a> {}
 pub struct Expr<'a>(pub Loc, pub ExprData<'a>);
 impl<'a> NoDrop for Expr<'a> {}
 
+// Make sure every variant takes less than one word in size!
 pub enum ExprData<'a> {
 	Access(Sym),
+	// Sym is u32, so this will fit inside a word on a 64-bit system.
 	StaticAccess(/*class_name*/ Sym, /*static_method_name*/ Sym),
-	OperatorCall(&'a Expr<'a>, Sym, &'a Expr<'a>),
-	TypeArguments(&'a Expr<'a>, List<'a, Ty<'a>>),
-	Call(&'a Expr<'a>, List<'a, Expr<'a>>),
+	OperatorCall(&'a OperatorCallData<'a>),
+	TypeArguments(&'a TypeArgumentsData<'a>),
+	//TODO:PERF use separate Call0, Call1, Call2 tags?
+	Call(&'a CallData<'a>),
 	Recur(List<'a, Expr<'a>>),
-	New(List<'a, Ty<'a>>, List<'a, Expr<'a>>),
-	ArrayLiteral(Option<Ty<'a>>, List<'a, Expr<'a>>),
-	GetProperty(&'a Expr<'a>, Sym),
-	SetProperty(Sym, &'a Expr<'a>),
-	// This one shouldn't escape parse_expr.
-	LetInProgress(Pattern<'a>, &'a Expr<'a>),
-	//TODO:PERF pattern should be owned, not a reference
-	Let(&'a Pattern<'a>, &'a Expr<'a>, &'a Expr<'a>),
-	Seq(&'a Expr<'a>, &'a Expr<'a>),
-	Literal(LiteralValue<'a>),
+	New(&'a NewData<'a>),
+	ArrayLiteral(&'a ArrayLiteralData<'a>),
+	GetProperty(&'a GetPropertyData<'a>),
+	SetProperty(&'a SetPropertyData<'a>),
+	Let(&'a LetData<'a>),
+	Seq(&'a SeqData<'a>),
+	LiteralPass,
+	LiteralBool(bool),
+	LiteralNat(u32),
+	LiteralInt(i32),
+	LiteralFloat(f64),
+	LiteralString(&'a [u8]),
 	SelfExpr,
-	IfElse(&'a Expr<'a>, &'a Expr<'a>, &'a Expr<'a>),
-	WhenTest(List<'a, Case<'a>>, &'a Expr<'a>),
+	IfElse(&'a IfElseData<'a>),
+	WhenTest(&'a WhenTestData<'a>),
 	Assert(&'a Expr<'a>),
-	Try(&'a Expr<'a>, Option<Catch<'a>>, Option<&'a Expr<'a>>),
-	For(Sym, /*looper*/ &'a Expr<'a>, /*body*/ &'a Expr<'a>),
+	Try(&'a TryData<'a>),
+	For(&'a ForData<'a>),
 }
+
 impl<'a> NoDrop for ExprData<'a> {}
 
-pub enum LiteralValue<'a> {
-	Pass,
-	Bool(bool),
-	Nat(u32),
-	Int(i32),
-	Float(f64),
-	String(&'a [u8]),
-}
-impl<'a> NoDrop for LiteralValue<'a> {}
+pub struct OperatorCallData<'a>(pub Expr<'a>, pub Sym, pub Expr<'a>);
+impl<'a> NoDrop for OperatorCallData<'a> {}
 
-//TODO:PERF Should own its Exprs, not reference them
-pub struct Case<'a>(pub Loc, /*test*/ pub &'a Expr<'a>, /*result*/ pub &'a Expr<'a>);
+pub struct TypeArgumentsData<'a>(pub Expr<'a>, pub List<'a, Ty<'a>>);
+impl<'a> NoDrop for TypeArgumentsData<'a> {}
+
+pub struct CallData<'a>(pub Expr<'a>, pub List<'a, Expr<'a>>);
+impl<'a> NoDrop for CallData<'a> {}
+
+pub struct NewData<'a>(pub List<'a, Ty<'a>>, pub List<'a, Expr<'a>>);
+impl<'a> NoDrop for NewData<'a> {}
+
+pub struct ArrayLiteralData<'a>(pub Option<Ty<'a>>, pub List<'a, Expr<'a>>);
+impl<'a> NoDrop for ArrayLiteralData<'a> {}
+
+pub struct GetPropertyData<'a>(pub Expr<'a>, pub Sym);
+impl<'a> NoDrop for GetPropertyData<'a> {}
+
+pub struct SetPropertyData<'a>(pub Sym, pub Expr<'a>);
+impl<'a> NoDrop for SetPropertyData<'a> {}
+
+pub struct LetData<'a>(pub Pattern<'a>, pub Expr<'a>, pub Late<Expr<'a>>);
+impl<'a> NoDrop for LetData<'a> {}
+
+pub struct SeqData<'a>(pub Expr<'a>, pub Expr<'a>);
+impl<'a> NoDrop for SeqData<'a> {}
+
+pub struct IfElseData<'a>(pub Expr<'a>, pub Expr<'a>, pub Expr<'a>);
+impl<'a> NoDrop for IfElseData<'a> {}
+
+pub struct WhenTestData<'a> {
+	pub cases: List<'a, Case<'a>>,
+	pub elze: Expr<'a>,
+}
+impl<'a> NoDrop for WhenTestData<'a> {}
+
+pub struct TryData<'a> {
+	pub try: Expr<'a>,
+	pub catch: Option<Catch<'a>>,
+	pub finally: Option<Expr<'a>>,
+}
+impl<'a> NoDrop for TryData<'a> {}
+
+pub struct ForData<'a> {
+	pub local_name: Sym,
+	pub looper: Expr<'a>,
+	pub body: Expr<'a>,
+}
+impl<'a> NoDrop for ForData<'a> {}
+
+pub struct Case<'a>(pub Loc, /*test*/ pub Expr<'a>, /*result*/ pub Expr<'a>);
 impl<'a> NoDrop for Case<'a> {}
 
 pub struct Catch<'a> {
@@ -155,6 +201,6 @@ pub struct Catch<'a> {
 	pub exception_type: Ty<'a>,
 	pub exception_name_loc: Loc,
 	pub exception_name: Sym,
-	pub then: &'a Expr<'a>,
+	pub then: Expr<'a>,
 }
 impl<'a> NoDrop for Catch<'a> {}

@@ -7,9 +7,7 @@ use super::iter::KnownLen;
 
 pub struct List<'a, T: NoDrop + 'a>(Option<&'a ListHead<'a, T>>);
 impl<'a, T: NoDrop + 'a> List<'a, T> {
-	pub fn empty() -> Self {
-		List(None)
-	}
+	pub const EMPTY: List<'a, T> = List(None);
 
 	pub fn single(value: T, arena: &'a Arena) -> Self {
 		List(Some(

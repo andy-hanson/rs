@@ -82,7 +82,7 @@ fn fill_impl_bodies<'ast, 'builtins_ctx, 'model>(
 		let impl_asts = &super_ast.impls;
 		for (impl_ast, real_impl) in impl_asts.zip(zuper.impls) {
 			let body = match impl_ast.body {
-				Some(body_ast) =>
+				Some(ref body_ast) =>
 					Some(check_method_body(
 						ctx,
 						MethodOrImpl::Impl(Up(real_impl)),
@@ -102,7 +102,7 @@ fn fill_method_bodies<'ast>(ctx: &mut Ctx, method_asts: List<'ast, ast::Method<'
 	for (i, method_ast) in method_asts.iter().enumerate() {
 		let method = &ctx.current_class.methods[i];
 		let body = match method_ast.body {
-			Some(body_ast) =>
+			Some(ref body_ast) =>
 				Some(check_method_body(
 					ctx,
 					MethodOrImpl::Method(Up(method)),

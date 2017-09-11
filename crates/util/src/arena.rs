@@ -4,6 +4,7 @@ use std::io::{Read, Result as IoResult};
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::ops::{InPlace, Place, Placer};
+use std::ptr::copy_nonoverlapping;
 use std::slice;
 
 use super::arith::{isize_to_usize, usize_to_isize};
@@ -29,6 +30,7 @@ pub struct Arena {
 impl Arena {
 	pub fn new() -> Self {
 		Arena {
+			//TODO:PERF call the real allocator
 			bytes: UnsafeCell::new(Box::new([0; 1_000_000])),
 			next_index: Cell::new(0),
 			locked: Cell::new(false),
@@ -76,12 +78,19 @@ impl Arena {
 	}
 
 	pub fn clone_slice<T: NoDrop + Copy>(&self, slice: &[T]) -> &[T] {
-		//TODO:PERF faster copy
-		let b = self.direct_builder::<T>();
-		for em in slice {
-			&b <- *em;
+		unsafe {
+			let len_t = slice.len();
+			let my_start = self.next_ptr() as *mut T;
+			let my_end = my_start.offset(usize_to_isize(len_t));
+			let slice_start = slice.as_ptr();
+			let slice_end = slice_start.offset(usize_to_isize(len_t));
+			// Assert no overlap
+			assert!((my_end as *const T) < slice_start || (my_start as *const T) > slice_end);
+			copy_nonoverlapping(/*src*/ slice_start, /*dst*/ my_start, len_t);
+			let len_bytes = len_t * size_of::<T>();
+			self.next_index.set(self.next_index.get() + len_bytes);
+			slice::from_raw_parts(my_start, len_t)
 		}
-		b.finish()
 	}
 
 	fn alloc_n<T>(&self, len: usize) -> *mut T {
@@ -135,26 +144,24 @@ impl Arena {
 		MaxLenBuilder::new(self.alloc_n::<T>(max_len), max_len, /*is_exact*/ false)
 	}
 
+	unsafe fn next_ptr(&self) -> *mut u8 {
+		(*self.bytes.get())
+			.as_mut_ptr()
+			.offset(usize_to_isize(self.cur_index()))
+	}
+
 	// Writes directly into the arena. Other allocations aren't allowed to happen at the same time.
 	pub fn direct_builder<T: NoDrop>(&self) -> DirectBuilder<T> {
 		self.locked.set(true);
 		let start_byte_index = self.cur_index();
-		DirectBuilder {
-			arena: self,
-			start_ptr: unsafe {
-				(*self.bytes.get())
-					.as_mut_ptr()
-					.offset(usize_to_isize(start_byte_index)) as *mut T
-			},
-			start_byte_index,
-		}
+		DirectBuilder { arena: self, start_ptr: unsafe { self.next_ptr() as *mut T }, start_byte_index }
 	}
 
 	pub fn read_from_file(&self, mut f: File) -> IoResult<&[u8]> {
 		unsafe {
 			let bytes = &mut *self.bytes.get();
 			let next_index = self.next_index.get();
-			let buff_start = bytes.as_mut_ptr().offset(usize_to_isize(next_index));
+			let buff_start = self.next_ptr();
 			let capacity = bytes.len() - next_index;
 			if capacity == 0 {
 				unimplemented!()

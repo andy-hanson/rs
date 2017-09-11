@@ -117,10 +117,11 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					return self.handle(&mut e, loc, ExprData::AccessParameter(Up(param), ty))
 				}
 
-				if let Some(InstMember(decl, instantiator)) = self.ctx.get_own_member_or_add_diagnostic(loc, name) {
+				if let Some(InstMember(decl, instantiator)) =
+					self.ctx.get_own_member_or_add_diagnostic(loc, name)
+				{
 					return match decl {
-						MemberDeclaration::Slot(slot) =>
-							self.get_own_slot(&mut e, loc, slot, instantiator),
+						MemberDeclaration::Slot(slot) => self.get_own_slot(&mut e, loc, slot, instantiator),
 						MemberDeclaration::Method(_) | MemberDeclaration::AbstractMethod(_) =>
 							unimplemented!(), //diagnostic
 					}
@@ -128,15 +129,15 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 
 				self.bogus(loc)
 			}
-			ast::ExprData::StaticAccess(_, _) | ast::ExprData::TypeArguments(_, _) => {
+			ast::ExprData::StaticAccess(_, _) | ast::ExprData::TypeArguments(_) => {
 				self.add_diagnostic(loc, Diag::MethodUsedAsValue);
 				self.bogus(loc)
 			}
-			ast::ExprData::OperatorCall(left, operator, right) => {
-				let ty_args = todo();//List::empty(); // No way to provide these to an operator call.
+			ast::ExprData::OperatorCall(&ast::OperatorCallData(ref left, operator, ref right)) => {
+				let ty_args = todo(); //List::empty(); // No way to provide these to an operator call.
 				self.call_method(&mut e, loc, left, operator, ty_args, OptionIter(Some(right)))
 			}
-			ast::ExprData::Call(target, args) =>
+			ast::ExprData::Call(&ast::CallData(ref target, args)) =>
 				self.check_call_ast_worker(&mut e, loc, target, args),
 			ast::ExprData::Recur(arg_asts) => {
 				if !e.in_tail_call_position() {
@@ -147,12 +148,10 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let method_or_impl = self.method_or_impl;
 				let moa = method_or_impl.method_or_abstract();
 				let inst = self.method_instantiator;
-				let args = unwrap_or_return!(
-					self.check_arguments(loc, moa, inst, arg_asts),
-					self.bogus(loc));
+				let args = unwrap_or_return!(self.check_arguments(loc, moa, inst, arg_asts), self.bogus(loc));
 				self.handle(&mut e, loc, ExprData::Recur(method_or_impl, args))
 			}
-			ast::ExprData::New(ty_arg_asts, arg_asts) => {
+			ast::ExprData::New(&ast::NewData(ty_arg_asts, arg_asts)) => {
 				let slots = match *self.ctx.current_class.head {
 					ClassHead::Slots(_, slots) => slots,
 					_ => {
@@ -161,11 +160,14 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					}
 				};
 				if arg_asts.len() != slots.len() {
-					self.add_diagnostic(loc, Diag::NewArgumentCountMismatch {
-						class: Up(self.ctx.current_class),
-						n_slots: slots.len(),
-						n_arguments: arg_asts.len(),
-					});
+					self.add_diagnostic(
+						loc,
+						Diag::NewArgumentCountMismatch {
+							class: Up(self.ctx.current_class),
+							n_slots: slots.len(),
+							n_arguments: arg_asts.len(),
+						},
+					);
 					return self.bogus(loc)
 				}
 
@@ -174,8 +176,10 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				}
 
 				let inst_cls = unwrap_or_return!(
-					self.ctx.instantiate_class(self.ctx.current_class, ty_arg_asts),
-					self.bogus(loc));
+					self.ctx
+						.instantiate_class(self.ctx.current_class, ty_arg_asts),
+					self.bogus(loc)
+				);
 				let instantiator = Instantiator::of_inst_cls(&inst_cls);
 				let args = self.ctx.arena.map(slots.zip(arg_asts), |(slot, arg)| {
 					let ty = self.instantiate_type(&slot.ty, &instantiator);
@@ -184,15 +188,14 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let ty = Ty::Plain(Effect::MAX, inst_cls);
 				self.handle(&mut e, loc, ExprData::New(ty, args))
 			}
-			ast::ExprData::ArrayLiteral(ref element_ty, ref args) => {
+			ast::ExprData::ArrayLiteral(&ast::ArrayLiteralData(ref element_ty, args)) => {
 				unused!(element_ty, args);
 				unimplemented!()
 			}
-			ast::ExprData::GetProperty(target_ast, property_name) => {
+			ast::ExprData::GetProperty(&ast::GetPropertyData(ref target_ast, property_name)) => {
 				let target = self.check_infer(target_ast);
 				let (slot, slot_ty) = match *target.ty() {
-					Ty::Bogus =>
-						return self.bogus(loc),
+					Ty::Bogus => return self.bogus(loc),
 					Ty::Plain(target_effect, ref target_class) => {
 						let InstMember(member_decl, instantiator) =
 							//TODO: just get_slot_of_inst_cls
@@ -210,17 +213,25 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 							self.add_diagnostic(loc, Diag::MissingEffectToGetSlot(Up(slot)))
 						}
 						let slot_ty = instantiate_and_narrow_effects(
-							target_effect, &slot.ty, &instantiator, loc, &mut self.ctx.diags, self.ctx.arena);
+							target_effect,
+							&slot.ty,
+							&instantiator,
+							loc,
+							&mut self.ctx.diags,
+							self.ctx.arena,
+						);
 						(slot, slot_ty)
-					},
-					Ty::Param(_) =>
-						unimplemented!()
+					}
+					Ty::Param(_) => unimplemented!(),
 				};
 				self.handle(&mut e, loc, ExprData::GetSlot(target, Up(slot), slot_ty))
 			}
-			ast::ExprData::SetProperty(property_name, value_ast) => {
-				let InstMember(member_decl, instantiator) =
-					unwrap_or_return!(self.ctx.get_own_member_or_add_diagnostic(loc, property_name), self.bogus(loc));
+			ast::ExprData::SetProperty(&ast::SetPropertyData(property_name, ref value_ast)) => {
+				let InstMember(member_decl, instantiator) = unwrap_or_return!(
+					self.ctx
+						.get_own_member_or_add_diagnostic(loc, property_name),
+					self.bogus(loc)
+				);
 				let slot = match member_decl {
 					MemberDeclaration::Slot(s) => s,
 					_ => {
@@ -233,33 +244,27 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				}
 				let allowed_effect = self.self_effect;
 				if !allowed_effect.can_set() {
-					self.add_diagnostic(loc, Diag::MissingEffectToSetSlot {
-						allowed_effect,
-						slot: Up(slot)
-					})
+					self.add_diagnostic(loc, Diag::MissingEffectToSetSlot { allowed_effect, slot: Up(slot) })
 				}
 
 				let ty = self.instantiate_type(&slot.ty, &instantiator);
 				let value = self.ctx.arena <- self.check_subtype(ty, value_ast);
 				self.handle(&mut e, loc, ExprData::SetSlot(Up(slot), value))
 			}
-			ast::ExprData::LetInProgress(_, _) =>
-				unreachable!(),
-			ast::ExprData::Let(pattern_ast, value_ast, then_ast) => {
+			ast::ExprData::Let(&ast::LetData(ref pattern_ast, ref value_ast, ref then_ast)) => {
 				let value = self.check_infer(value_ast);
-				let (pattern, n_added) = {//self.start_check_pattern(value.ty(), pattern_ast);
+				let (pattern, n_added) = {
+					//self.start_check_pattern(value.ty(), pattern_ast);
 					let &ast::Pattern(pattern_loc, ref pattern_data) = pattern_ast;
 					match *pattern_data {
-						ast::PatternData::Ignore =>
-							(Pattern::Ignore, 0),
+						ast::PatternData::Ignore => (Pattern::Ignore, 0),
 						ast::PatternData::Single(name) => {
-							let local = self.ctx.arena <- Local { loc: pattern_loc, ty: value.ty().clone(), name };
+							let local =
+								self.ctx.arena <- Local { loc: pattern_loc, ty: value.ty().clone(), name };
 							self.add_to_scope(local);
 							(Pattern::Single(local), 1)
 						}
-						ast::PatternData::Destruct(_) => {
-							unimplemented!()
-						}
+						ast::PatternData::Destruct(_) => unimplemented!(),
 					}
 				};
 				let then = self.check_expr(&mut e, then_ast);
@@ -269,16 +274,18 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				// 'expected' was handled in 'then'
 				Handled(self.expr(loc, ExprData::Let(pattern, value, then)))
 			}
-			ast::ExprData::Seq(first_ast, then_ast) => {
+			ast::ExprData::Seq(&ast::SeqData(ref first_ast, ref then_ast)) => {
 				let first = self.check_void(first_ast);
 				let then = self.check_expr(&mut e, then_ast);
 				// 'expected' was handled in 'then'
 				Handled(self.expr(loc, ExprData::Seq(first, then)))
 			}
-			ast::ExprData::Literal(ref value) => {
-				unused!(value);
-				unimplemented!()
-			}
+			ast::ExprData::LiteralPass => unimplemented!(),
+			ast::ExprData::LiteralBool(_) => unimplemented!(),
+			ast::ExprData::LiteralNat(_) => unimplemented!(),
+			ast::ExprData::LiteralInt(_) => unimplemented!(),
+			ast::ExprData::LiteralFloat(_) => unimplemented!(),
+			ast::ExprData::LiteralString(_) => unimplemented!(),
 			ast::ExprData::SelfExpr => {
 				/*
 				Create an InstCls for the current class that just maps type parameters to theirselves.
@@ -292,28 +299,26 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 						|| so it will be instantiated to return Foo[Int].
 						foo.get-self()
 				*/
-                let expr = ExprData::SelfExpr(Ty::Plain(self.self_effect, self.current_inst_cls()));
+				let expr = ExprData::SelfExpr(Ty::Plain(self.self_effect, self.current_inst_cls()));
 				self.handle(&mut e, loc, expr)
 			}
-			ast::ExprData::IfElse(test_ast, then_ast, else_ast) => {
+			ast::ExprData::IfElse(&ast::IfElseData(ref test_ast, ref then_ast, ref else_ast)) => {
 				let test = self.check_bool(test_ast);
 				let then = self.check_expr(&mut e, then_ast);
 				let elze = self.check_expr(&mut e, else_ast);
-                let ifelse = ExprData::IfElse {
-					test,
-					then,
-					elze,
-					ty: e.inferred_ty().clone(),
-				};
+				let ifelse = ExprData::IfElse { test, then, elze, ty: e.inferred_ty().clone() };
 				// 'expected' was handled in both 'then' and 'else'.
 				Handled(self.expr(loc, ifelse))
 			}
-			ast::ExprData::WhenTest(case_asts, else_ast) => {
-				let cases = self.ctx.arena.map(case_asts, |&ast::Case(case_loc, test_ast, result_ast)| {
-					let test = self.check_bool(test_ast);
-					let result = self.check_expr(&mut e, result_ast);
-					Case(case_loc, test, result)
-				});
+			ast::ExprData::WhenTest(&ast::WhenTestData { cases: case_asts, elze: ref else_ast }) => {
+				let cases = self.ctx.arena.map(
+					case_asts,
+					|&ast::Case(case_loc, ref test_ast, ref result_ast)| {
+						let test = self.check_bool(test_ast);
+						let result = self.check_expr(&mut e, result_ast);
+						Case(case_loc, test, result)
+					},
+				);
 				let elze = self.check_expr(&mut e, else_ast);
 				// 'expected' handled in each case result and in 'elze'.
 				Handled(self.expr(loc, ExprData::WhenTest(cases, elze, e.inferred_ty().clone())))
@@ -322,15 +327,17 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let asserted = self.check_bool(asserted_ast);
 				self.handle(&mut e, loc, ExprData::Assert(asserted))
 			}
-			ast::ExprData::Try(do_ast, ref op_catch_ast, op_finally_ast) => {
+			ast::ExprData::Try(
+				&ast::TryData { try: ref do_ast, catch: ref op_catch_ast, finally: ref op_finally_ast },
+			) => {
 				let body = self.check_expr(&mut e, do_ast);
 				let catch = op_catch_ast.as_ref().map(|catch| {
-                    let &ast::Catch {
+					let &ast::Catch {
 						loc: catch_loc,
 						exception_type: ref exception_type_ast,
 						exception_name_loc,
 						exception_name,
-						then: then_ast
+						then: ref then_ast
 					} = catch;
 					let exception_ty = self.ctx.get_ty(exception_type_ast);
 					let caught = self.ctx.arena <- Local {
@@ -348,8 +355,10 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				// 'expected' handled when checking 'do' and 'catch'
 				Handled(self.expr(loc, try))
 			}
-			ast::ExprData::For(_, _, _) => //(local_name, ref looper, ref body) =>
-				unimplemented!(),
+			ast::ExprData::For(&ast::ForData { local_name, looper: ref looper_ast, body: ref body_ast }) => {
+				unused!(local_name, looper_ast, body_ast);
+				unimplemented!()
+			}
 		}
 	}
 
@@ -390,19 +399,10 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		args: List<'ast, ast::Expr<'ast>>,
 	) -> Handled<'model> {
 		let &ast::Expr(target_loc, ref target_data) = target;
-		let empty_list = todo(); //List::empty(); //TODO:PERF
 		let (&ast::Expr(real_target_loc, ref real_target_data), ty_arg_asts) = match *target_data {
-			ast::ExprData::TypeArguments(real_target, ty_arg_asts) => {
-				//TODO:SIMPLIFY
-				let a: &ast::Expr = real_target;
-				let b: List<ast::Ty> = ty_arg_asts;
-				(a, b)
-			}
-			_ => {
-				let a: &ast::Expr = target;
-				let b: List<ast::Ty> = empty_list;
-				(a, b)
-			}
+			ast::ExprData::TypeArguments(&ast::TypeArgumentsData(ref real_target, ty_arg_asts)) =>
+				(real_target, ty_arg_asts),
+			_ => (target, List::EMPTY),
 		};
 		match *real_target_data {
 			ast::ExprData::StaticAccess(class_name, static_method_name) => {
@@ -413,7 +413,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				);
 				self.call_static_method(&mut expected, loc, cls, static_method_name, ty_arg_asts, args)
 			}
-			ast::ExprData::GetProperty(property_target, property_name) =>
+			ast::ExprData::GetProperty(&ast::GetPropertyData(ref property_target, property_name)) =>
 				self.call_method(&mut expected, loc, property_target, property_name, ty_arg_asts, args),
 			ast::ExprData::Access(name) => self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
 			_ => {

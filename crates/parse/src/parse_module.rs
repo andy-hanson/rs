@@ -21,7 +21,7 @@ pub fn parse_module<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Module<'a>> {
 		let next_kw = l.next_token();
 		(imports, class_start, next_kw)
 	} else {
-		(List::empty(), l.pos(), kw)
+		(List::EMPTY, l.pos(), kw)
 	};
 
 	let class = parse_class(l, class_start, next_kw)?;
@@ -195,13 +195,13 @@ fn parse_method_head<'a, 't>(
 	l.take_parenl()?;
 
 	let (self_effect, parameters) = if l.try_take_parenr() {
-		(Effect::Pure, List::empty())
+		(Effect::Pure, List::EMPTY)
 	} else {
 		let first_start = l.pos();
 		match parse_self_effect_or_ty(l)? {
 			SelfEffectOrTy::SelfEffect(self_effect) => {
 				let parameters = if l.try_take_parenr() {
-					List::empty()
+					List::EMPTY
 				} else {
 					parse_parameters(l, None)?
 				};
@@ -263,16 +263,16 @@ fn parse_supers<'a, 't>(
 fn parse_super<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<Super<'a>> {
 	l.take_space()?;
 	let name = l.take_ty_name()?;
-	let ty_args = List::empty(); // TODO
+	let ty_args = List::EMPTY; // TODO: parse type arguments
 	let impls = match l.take_newline_or_indent()? {
 		NewlineOrIndent::Indent => parse_impls(l)?,
-		NewlineOrIndent::Newline => List::empty(),
+		NewlineOrIndent::Newline => List::EMPTY,
 	};
 	Ok(Super { loc: l.loc_from(start), name, ty_args, impls })
 }
 
 //mv
-fn take_optional_body<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<&'a Expr<'a>>> {
+fn take_optional_body<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<Expr<'a>>> {
 	Ok(match l.take_newline_or_indent()? {
 		NewlineOrIndent::Indent => Some(parse_block(l)?),
 		NewlineOrIndent::Newline => None,

@@ -106,7 +106,7 @@ pub fn try_take_type_arguments<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a,
 	if l.try_take_bracketl() {
 		take_type_arguments_after_passing_bracketl(l)
 	} else {
-		Ok(List::empty())
+		Ok(List::EMPTY)
 	}
 }
 

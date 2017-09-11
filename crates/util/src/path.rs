@@ -3,7 +3,7 @@ use serde::{Serialize, Serializer};
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 
-use super::arena::{Arena, NoDrop, DirectBuilder};
+use super::arena::{Arena, DirectBuilder, NoDrop};
 use super::string_maker::{Show, Shower};
 use super::u8_slice_ops::U8SliceOps;
 
@@ -14,7 +14,7 @@ impl<'a> Path<'a> {
 	pub const EMPTY: Path<'static> = Path(&[]);
 
 	pub fn clone_path_to_arena<'out>(&self, arena: &'out Arena) -> Path<'out> {
-		Path(arena.clone_slice(self.0))
+		Path(arena.copy_slice(self.0))
 	}
 
 	pub fn of_slice(slice: &'a [u8]) -> Self {

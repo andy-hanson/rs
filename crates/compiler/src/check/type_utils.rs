@@ -10,7 +10,7 @@ use model::ty::{InstCls, Ty};
 
 use super::instantiator::Instantiator;
 
-pub fn common_type<'a>(a: &Ty<'a>, b: &Ty<'a>) -> Option<Ty<'a>> {
+pub fn common_ty<'a>(a: &Ty<'a>, b: &Ty<'a>) -> Option<Ty<'a>> {
 	match *a {
 		Ty::Bogus => Some(b.clone()),
 		Ty::Plain(effect_a, ref inst_cls_a) =>
@@ -179,19 +179,19 @@ fn instantiate_inst_cls<'a>(
 	instantiator: &Instantiator<'a>,
 	arena: &'a Arena,
 ) -> InstCls<'a> {
-	map_inst_cls(inst_cls, arena, |arg| instantiate_type(arg, instantiator, arena))
+	map_inst_cls(inst_cls, arena, |arg| instantiate_ty(arg, instantiator, arena))
 }
 
 fn map_inst_cls<'a, F: FnMut(&Ty<'a>) -> Ty<'a>>(
 	&InstCls(decl, type_args): &InstCls<'a>,
 	arena: &'a Arena,
-	replace_type_arg: F,
+	replace_ty_arg: F,
 ) -> InstCls<'a> {
-	let new_ty_arguments = arena.map(type_args, replace_type_arg);
+	let new_ty_arguments = arena.map(type_args, replace_ty_arg);
 	InstCls(decl, new_ty_arguments)
 }
 
-pub fn instantiate_type<'a>(ty: &Ty<'a>, instantiator: &Instantiator<'a>, arena: &'a Arena) -> Ty<'a> {
+pub fn instantiate_ty<'a>(ty: &Ty<'a>, instantiator: &Instantiator<'a>, arena: &'a Arena) -> Ty<'a> {
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
 		Ty::Param(p) => instantiator.replace_or_same(p),

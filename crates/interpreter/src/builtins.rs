@@ -13,9 +13,8 @@ pub fn get_builtin(module: &Module, implemented: Sym) -> BuiltinCode {
 			unimplemented!(),
 		ModuleSourceEnum::Builtin { name, .. } => name,
 	};
-	let x = PATH_TO_IMPLS.get(&name).unwrap();
-	let y = x.get(&implemented).unwrap();
-	(*y).clone()
+	let name_to_code = PATH_TO_IMPLS.get(&name).unwrap();
+	*name_to_code.get(&implemented).unwrap()
 }
 
 lazy_static! {

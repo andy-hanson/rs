@@ -66,7 +66,7 @@ pub fn parse_ty<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<ast::Ty<'a>> {
 	}
 }
 
-pub fn try_take_type_parameters<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<&'a [Sym]> {
+pub fn try_take_ty_parameters<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<&'a [Sym]> {
 	if !l.try_take_bracketl() {
 		Ok(&[])
 	} else {
@@ -88,11 +88,11 @@ fn finish_parse_ty<'a, 't>(
 	effect: Effect,
 	name: Sym,
 ) -> Result<ast::Ty<'a>> {
-	let ty_args = try_take_type_arguments(l)?;
+	let ty_args = try_take_ty_arguments(l)?;
 	Ok(ast::Ty { loc: l.loc_from(start), effect, name, ty_args })
 }
 
-pub fn try_take_type_argument<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<ast::Ty<'a>>> {
+pub fn try_take_ty_argument<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<ast::Ty<'a>>> {
 	if l.try_take_bracketl() {
 		let ty = parse_ty(l)?;
 		l.take_bracketr()?;
@@ -102,15 +102,15 @@ pub fn try_take_type_argument<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<as
 	}
 }
 
-pub fn try_take_type_arguments<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, ast::Ty<'a>>> {
+pub fn try_take_ty_arguments<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, ast::Ty<'a>>> {
 	if l.try_take_bracketl() {
-		take_type_arguments_after_passing_bracketl(l)
+		take_ty_arguments_after_passing_bracketl(l)
 	} else {
 		Ok(List::EMPTY)
 	}
 }
 
-pub fn take_type_arguments_after_passing_bracketl<'a, 't>(
+pub fn take_ty_arguments_after_passing_bracketl<'a, 't>(
 	l: &mut Lexer<'a, 't>,
 ) -> Result<List<'a, ast::Ty<'a>>> {
 	let mut b = ListBuilder::<ast::Ty>::new(l.arena);

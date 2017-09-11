@@ -48,18 +48,18 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 
 	pub fn get_ty<'ast>(&mut self, ty_ast: &'ast ast::Ty<'ast>) -> Ty<'model> {
 		//TODO:PERF -- version without type parameters?
-		self.get_ty_or_type_parameter(ty_ast, &[])
+		self.get_ty_or_ty_parameter(ty_ast, &[])
 	}
 
-	pub fn get_ty_or_type_parameter<'ast>(
+	pub fn get_ty_or_ty_parameter<'ast>(
 		&mut self,
 		&ast::Ty { loc, effect, name, ty_args }: &'ast ast::Ty<'ast>,
-		extra_type_parameters: &'model [TypeParameter<'model>],
+		extra_ty_parameters: &'model [TypeParameter<'model>],
 	) -> Ty<'model> {
 		for tp in self.current_class
 			.type_parameters
 			.iter()
-			.chain(extra_type_parameters)
+			.chain(extra_ty_parameters)
 		{
 			if name == tp.name {
 				if effect != Effect::Pure {
@@ -77,7 +77,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 
 		let cls = unwrap_or_return!(self.access_class_declaration_or_add_diagnostic(loc, name), Ty::Bogus);
 		let args = self.arena
-			.map(ty_args, |ty_ast| self.get_ty_or_type_parameter(ty_ast, extra_type_parameters));
+			.map(ty_args, |ty_ast| self.get_ty_or_ty_parameter(ty_ast, extra_ty_parameters));
 		Ty::Plain(effect, InstCls(cls, args))
 	}
 

@@ -9,7 +9,7 @@ use super::ast::{AbstractMethod, Class, ClassHead, ClassHeadData, Expr, Impl, Im
                  Parameter, Slot, Super, Ty};
 use super::lexer::{Lexer, MethodKw, NewlineOrDedent, NewlineOrIndent, Result, SlotKw};
 use super::parse_expr::parse_block;
-use super::parse_ty::{parse_self_effect_or_ty, parse_ty, try_take_type_parameters, SelfEffectOrTy};
+use super::parse_ty::{parse_self_effect_or_ty, parse_ty, try_take_ty_parameters, SelfEffectOrTy};
 use super::token::Token;
 
 pub fn parse_module<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Module<'a>> {
@@ -132,7 +132,7 @@ fn parse_abstract_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<Clas
 	let mut abstract_methods = ListBuilder::<AbstractMethod>::new(l.arena);
 	loop {
 		let method_start = l.pos();
-		let type_parameters = try_take_type_parameters(l)?;
+		let type_parameters = try_take_ty_parameters(l)?;
 		if !type_parameters.is_empty() {
 			l.take_space()?;
 		}
@@ -163,7 +163,7 @@ fn parse_methods<'a, 't>(
 		match next {
 			MethodKw::Def | MethodKw::Fun => {
 				let is_static = next == MethodKw::Fun;
-				let type_parameters = try_take_type_parameters(l)?;
+				let type_parameters = try_take_ty_parameters(l)?;
 				l.take_space()?;
 				let (return_ty, name, self_effect, parameters) = parse_method_head(l)?;
 				let body = take_optional_body(l)?;

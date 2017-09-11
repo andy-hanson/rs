@@ -196,7 +196,7 @@ fn assert_baseline<'a, T: Serialize>(
 fn to_json<'out, T: Serialize>(value: &T, arena: &'out Arena) -> &'out [u8] {
 	//TODO:PERF (also sanity)
 	//to_json_string(actual).unwrap().into_boxed_str().as_bytes(),
-	arena.clone_slice(to_json_string(value).unwrap().as_bytes())
+	arena.copy_slice(to_json_string(value).unwrap().as_bytes())
 }
 
 fn assert_baseline_worker<'a>(

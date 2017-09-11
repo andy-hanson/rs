@@ -8,8 +8,8 @@ use super::ast::{ArrayLiteralData, CallData, Case, Catch, Expr, ExprData, ForDat
                  IfElseData, LetData, NewData, OperatorCallData, Pattern, PatternData, SeqData,
                  SetPropertyData, TryData, TypeArgumentsData, WhenTestData};
 use super::lexer::{CatchOrFinally, Lexer, Next, Result};
-use super::parse_ty::{parse_ty, take_type_arguments_after_passing_bracketl, try_take_type_argument,
-                      try_take_type_arguments};
+use super::parse_ty::{parse_ty, take_ty_arguments_after_passing_bracketl, try_take_ty_argument,
+					  try_take_ty_arguments};
 use super::token::Token;
 
 pub fn parse_block<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Expr<'a>> {
@@ -189,7 +189,7 @@ fn parse_first_expr<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, token: Token) -> 
 	let (data, next) = match token {
 		Token::New => {
 			// e.g. `new[Nat] 1, 2`
-			let type_arguments = try_take_type_arguments(l)?;
+			let type_arguments = try_take_ty_arguments(l)?;
 			let ctx = Ctx::operators_if(l.try_take_colon());
 			l.take_space()?;
 			let (args, next) = parse_args(l, ctx)?;
@@ -197,7 +197,7 @@ fn parse_first_expr<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, token: Token) -> 
 		}
 
 		Token::Array => {
-			let type_argument = try_take_type_argument(l)?;
+			let type_argument = try_take_ty_argument(l)?;
 			let ctx = Ctx::operators_if(l.try_take_colon());
 			l.take_space()?;
 			let (args, next) = parse_args(l, ctx)?;
@@ -306,7 +306,7 @@ fn parse_simple_expr<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, token: Token) ->
 				ExprData::GetProperty(l.arena <- GetPropertyData(expr, name))
 			}
 			Token::BracketL => {
-				let type_arguments = take_type_arguments_after_passing_bracketl(l)?;
+				let type_arguments = take_ty_arguments_after_passing_bracketl(l)?;
 				ExprData::TypeArguments(l.arena <- TypeArgumentsData(expr, type_arguments))
 			}
 			Token::ParenL => {
@@ -409,7 +409,7 @@ fn parse_try<'a, 't>(l: &mut Lexer<'a, 't>, start_pos: Pos) -> Result<Expr<'a>> 
 	let (catch, finally) = match l.take_catch_or_finally()? {
 		CatchOrFinally::Catch => {
 			l.take_space()?;
-			let exception_type = parse_ty(l)?;
+			let exception_ty = parse_ty(l)?;
 			l.take_space()?;
 			let name_start = l.pos();
 			let exception_name = l.take_name()?;
@@ -418,7 +418,7 @@ fn parse_try<'a, 't>(l: &mut Lexer<'a, 't>, start_pos: Pos) -> Result<Expr<'a>> 
 			let then = parse_block(l)?;
 			let catch = Catch {
 				loc: l.loc_from(catch_start),
-				exception_type,
+				exception_ty,
 				exception_name_loc,
 				exception_name,
 				then,

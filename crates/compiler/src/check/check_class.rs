@@ -183,7 +183,7 @@ fn check_method_initial<'ast, 'builtins_ctx, 'model>(
 	} = ast;
 	let type_parameters = ctx.arena
 		.map(type_parameter_asts, |name| TypeParameter::create(*name));
-	let return_ty = ctx.get_ty_or_type_parameter(return_ty_ast, type_parameters);
+	let return_ty = ctx.get_ty_or_ty_parameter(return_ty_ast, type_parameters);
 	let parameters = check_parameters(ctx, parameter_asts, type_parameters);
 	let method = ctx.arena <- MethodWithBody {
 		signature: MethodSignature {
@@ -217,7 +217,7 @@ fn check_parameters<'builtins_ctx, 'ast, 'model>(
 			}
 			Parameter {
 				loc,
-				ty: ctx.get_ty_or_type_parameter(ty_ast, type_parameters),
+				ty: ctx.get_ty_or_ty_parameter(ty_ast, type_parameters),
 				name,
 				index: to_u8(index),
 			}

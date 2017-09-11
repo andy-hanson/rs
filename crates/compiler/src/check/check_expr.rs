@@ -17,7 +17,7 @@ use super::super::parse::ast;
 use super::class_utils::{try_get_member_of_inst_cls, InstMember};
 use super::ctx::Ctx;
 use super::instantiator::Instantiator;
-use super::type_utils::{common_type, instantiate_and_narrow_effects, instantiate_type, is_assignable};
+use super::type_utils::{common_ty, instantiate_and_narrow_effects, instantiate_ty, is_assignable};
 
 pub fn check_method_body<
 	'ast,
@@ -42,7 +42,7 @@ pub fn check_method_body<
 		current_parameters: signature.parameters,
 		locals: Vec::new(),
 	};
-	let return_ty = ectx.instantiate_type(&signature.return_ty, method_instantiator);
+	let return_ty = ectx.instantiate_ty(&signature.return_ty, method_instantiator);
 	ectx.check_return(return_ty, body)
 }
 
@@ -113,7 +113,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				}
 
 				if let Some(param) = self.current_parameters.iter().find(|p| p.name == name) {
-					let ty = self.instantiate_type(&param.ty, self.method_instantiator);
+					let ty = self.instantiate_ty(&param.ty, self.method_instantiator);
 					return self.handle(&mut e, loc, ExprData::AccessParameter(Up(param), ty))
 				}
 
@@ -182,7 +182,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				);
 				let instantiator = Instantiator::of_inst_cls(&inst_cls);
 				let args = self.ctx.arena.map(slots.zip(arg_asts), |(slot, arg)| {
-					let ty = self.instantiate_type(&slot.ty, &instantiator);
+					let ty = self.instantiate_ty(&slot.ty, &instantiator);
 					self.check_subtype(ty, arg)
 				});
 				let ty = Ty::Plain(Effect::MAX, inst_cls);
@@ -247,7 +247,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					self.add_diagnostic(loc, Diag::MissingEffectToSetSlot { allowed_effect, slot: Up(slot) })
 				}
 
-				let ty = self.instantiate_type(&slot.ty, &instantiator);
+				let ty = self.instantiate_ty(&slot.ty, &instantiator);
 				let value = self.ctx.arena <- self.check_subtype(ty, value_ast);
 				self.handle(&mut e, loc, ExprData::SetSlot(Up(slot), value))
 			}
@@ -334,12 +334,12 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let catch = op_catch_ast.as_ref().map(|catch| {
 					let &ast::Catch {
 						loc: catch_loc,
-						exception_type: ref exception_type_ast,
+						exception_ty: ref exception_ty_ast,
 						exception_name_loc,
 						exception_name,
 						then: ref then_ast
 					} = catch;
-					let exception_ty = self.ctx.get_ty(exception_type_ast);
+					let exception_ty = self.ctx.get_ty(exception_ty_ast);
 					let caught = self.ctx.arena <- Local {
                         loc: exception_name_loc,
                         ty: exception_ty,
@@ -450,7 +450,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			self.bogus(loc)
 		);
 
-		let ty = self.instantiate_return_type(inst_method);
+		let ty = self.instantiate_return_ty(inst_method);
 		self.handle(&mut expected, loc, ExprData::StaticMethodCall(inst_method, args, ty))
 	}
 
@@ -493,7 +493,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			self.bogus(loc)
 		);
 
-		let ty = self.instantiate_return_type(inst_method);
+		let ty = self.instantiate_return_ty(inst_method);
 
 		let expr = if method_decl.is_static() {
 			// Calling own static method is OK.
@@ -562,7 +562,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					self.check_call_arguments(loc, inst_method, &member_instantiator, arg_asts),
 					self.bogus(loc));
 
-				let ty = self.instantiate_return_type_with_extra_instantiator(inst_method, &member_instantiator);
+				let ty = self.instantiate_return_ty_with_extra_instantiator(inst_method, &member_instantiator);
 				(inst_method, args, ty)
 			}
 			Ty::Param(_) =>
@@ -596,7 +596,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				self.ctx
 					.arena
 					.map(parameters.zip(arg_asts), |(parameter, arg_ast)| {
-						let ty = self.instantiate_type(&parameter.ty, instantiator);
+						let ty = self.instantiate_ty(&parameter.ty, instantiator);
 						self.check_subtype(ty, arg_ast)
 					}),
 			)
@@ -607,8 +607,8 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 
 	//mv
-	fn instantiate_type(&mut self, ty: &Ty<'model>, instantiator: &Instantiator<'model>) -> Ty<'model> {
-		instantiate_type(ty, instantiator, self.ctx.arena)
+	fn instantiate_ty(&mut self, ty: &Ty<'model>, instantiator: &Instantiator<'model>) -> Ty<'model> {
+		instantiate_ty(ty, instantiator, self.ctx.arena)
 	}
 
 	/*
@@ -664,7 +664,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let expr_ty = expr.ty();
 				let new_inferred_ty = match *inferred_ty {
 					Some(ref mut last_inferred_ty) =>
-						self.get_compatible_type(loc, last_inferred_ty, expr_ty),
+						self.get_compatible_ty(loc, last_inferred_ty, expr_ty),
 					None => expr_ty.clone(),
 				};
 				*inferred_ty = Some(new_inferred_ty);
@@ -686,24 +686,24 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		}
 	}
 
-	fn get_compatible_type(&mut self, loc: Loc, a: &Ty<'model>, b: &Ty<'model>) -> Ty<'model> {
-		common_type(a, b).unwrap_or_else(|| {
+	fn get_compatible_ty(&mut self, loc: Loc, a: &Ty<'model>, b: &Ty<'model>) -> Ty<'model> {
+		common_ty(a, b).unwrap_or_else(|| {
 			self.add_diagnostic(loc, Diag::CantCombineTypes(a.clone(), b.clone()));
 			Ty::Bogus
 		})
 	}
 
 	//mv
-	fn instantiate_return_type(&mut self, inst_method: &InstMethod<'model>) -> Ty<'model> {
-		self.instantiate_type(inst_method.0.return_ty(), &Instantiator::of_inst_method(inst_method))
+	fn instantiate_return_ty(&mut self, inst_method: &InstMethod<'model>) -> Ty<'model> {
+		self.instantiate_ty(inst_method.0.return_ty(), &Instantiator::of_inst_method(inst_method))
 	}
 
-	fn instantiate_return_type_with_extra_instantiator(
+	fn instantiate_return_ty_with_extra_instantiator(
 		&mut self,
 		inst_method: &InstMethod<'model>,
 		instantiator: &Instantiator<'model>,
 	) -> Ty<'model> {
-		self.instantiate_type(
+		self.instantiate_ty(
 			inst_method.0.return_ty(),
 			&Instantiator::of_inst_method(inst_method).combine(instantiator),
 		)

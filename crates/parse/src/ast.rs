@@ -198,7 +198,7 @@ impl<'a> NoDrop for Case<'a> {}
 
 pub struct Catch<'a> {
 	pub loc: Loc,
-	pub exception_type: Ty<'a>,
+	pub exception_ty: Ty<'a>,
 	pub exception_name_loc: Loc,
 	pub exception_name: Sym,
 	pub then: Expr<'a>,

@@ -1,7 +1,6 @@
 use serde::{Serialize, Serializer};
 
 use util::arena::NoDrop;
-use util::arr::SliceOps;
 use util::late::Late;
 use util::loc::Loc;
 use util::sym::Sym;
@@ -26,6 +25,7 @@ impl<'a> ClassDeclaration<'a> {
 	//mv
 	pub fn find_static_method(&self, name: Sym) -> Option<&'a MethodWithBody<'a>> {
 		self.methods
+			.iter()
 			.find(|m| m.is_static && m.name() == name)
 			.map(|m| *m)
 	}

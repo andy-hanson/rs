@@ -1,7 +1,7 @@
 use serde::{Serialize, Serializer};
 
 use util::arena::{Arena, NoDrop};
-use util::arr::SliceOps;
+use util::iter::KnownLen;
 use util::late::Late;
 use util::string_maker::{Show, Shower};
 use util::sym::Sym;
@@ -103,7 +103,7 @@ impl<'t, 'a> Show for &'t Ty<'a> {
 pub struct InstCls<'a>(pub &'a ClassDeclaration<'a>, pub &'a [Ty<'a>]);
 impl<'a> InstCls<'a> {
 	pub fn generic_self_reference(cls: &'a ClassDeclaration<'a>, arena: &'a Arena) -> Self {
-		let type_arguments = cls.type_parameters.map(arena, |tp| Ty::Param(tp));
+		let type_arguments = arena.map(cls.type_parameters, |tp| Ty::Param(tp));
 		InstCls(cls, type_arguments)
 	}
 
@@ -124,7 +124,7 @@ impl<'a> Clone for InstCls<'a> {
 impl<'i, 'a> Show for &'i InstCls<'a> {
 	fn show<S: Shower>(self, s: &mut S) {
 		s.add(self.0.name);
-		if self.1.any() {
+		if !self.1.is_empty() {
 			s.add('[');
 			s.join(self.1);
 			s.add(']');
@@ -158,8 +158,8 @@ impl<'a> TypeParameter<'a> {
 	}
 
 	pub fn set_origins(type_parameters: &[TypeParameter<'a>], origin: TypeParameterOrigin<'a>) {
-		for tp in type_parameters.iter() {
-			tp.origin.init(origin.copy());
+		for tp in type_parameters {
+			&tp.origin <- origin.copy();
 		}
 	}
 

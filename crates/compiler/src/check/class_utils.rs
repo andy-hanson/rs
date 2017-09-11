@@ -21,7 +21,7 @@ fn get_member_worker<'a>(
 	instantiator: Instantiator<'a>,
 	member_name: Sym,
 ) -> Option<InstMember<'a>> {
-	for method in cls.methods.iter() {
+	for method in *cls.methods {
 		if method.name() == member_name {
 			return Some(InstMember(MemberDeclaration::Method(method), instantiator))
 		}
@@ -30,20 +30,20 @@ fn get_member_worker<'a>(
 	match *cls.head {
 		ClassHead::Static | ClassHead::Builtin => {}
 		ClassHead::Slots(_, slots) =>
-			for slot in slots.iter() {
+			for slot in slots {
 				if slot.name == member_name {
 					return Some(InstMember(MemberDeclaration::Slot(slot), instantiator))
 				}
 			},
 		ClassHead::Abstract(_, methods) =>
-			for method in methods.iter() {
+			for method in methods {
 				if method.name() == member_name {
 					return Some(InstMember(MemberDeclaration::AbstractMethod(method), instantiator))
 				}
 			},
 	}
 
-	for zuper in cls.supers.iter() {
+	for zuper in *cls.supers {
 		let super_instantiator = instantiator.combine(&Instantiator::of_inst_cls(&zuper.super_class));
 		let got = get_member_worker(zuper.super_class.class(), super_instantiator, member_name);
 		if got.is_some() {

@@ -1,8 +1,8 @@
 use util::arena::Arena;
-use util::arr::U8SliceOps;
 use util::dict::MutDict;
 use util::file_utils::IoError;
 use util::path::Path;
+use util::u8_slice_ops::U8SliceOps;
 
 use host::document_provider::file_system_document_provider;
 

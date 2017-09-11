@@ -1,54 +1,64 @@
 use serde::{Serialize, Serializer};
 
-use std::cell::UnsafeCell;
-use std::ops::Deref;
+use std::cell::{Cell, UnsafeCell};
+use std::mem::uninitialized;
+use std::ops::{Deref, InPlace, Place, Placer};
 
 use super::arena::NoDrop;
 
-pub struct Late<T>(UnsafeCell<Option<T>>); //TODO:UnsafeCell
-impl<T> Late<T> {
+// Important that T : NoDrop because we don't want the Late to have a Drop impl,
+// since it might contain uninitialized memory.
+pub struct Late<T: NoDrop> {
+	initialized: Cell<bool>, //TODO: cfg[debug]
+	value: UnsafeCell<T>,
+}
+impl<T: NoDrop> Late<T> {
 	pub fn new() -> Late<T> {
-		Late(UnsafeCell::new(None))
+		Late { initialized: Cell::new(false), value: UnsafeCell::new(unsafe { uninitialized() }) }
 	}
 
 	pub fn try_get(&self) -> Option<&T> {
-		unsafe {
-			let data_ptr = self.0.get();
-			(*data_ptr).as_ref()
+		if self.initialized.get() {
+			Some(unsafe { self.value.get().as_ref().unwrap() })
+		} else {
+			None
 		}
-	}
-
-	pub fn into_value(self) -> T {
-		self.into_option().unwrap()
-	}
-
-	// Like `into_value`, but returns `None` if this was never initialized.
-	pub fn into_option(self) -> Option<T> {
-		unsafe { self.0.into_inner() }
-	}
-
-	pub fn init(&self, value: T) -> &T {
-		unsafe {
-			let data_ptr = self.0.get();
-			assert!((*data_ptr).is_none());
-			*data_ptr = Some(value)
-		}
-		&*self
 	}
 }
 impl<'a, T: NoDrop> NoDrop for Late<&'a T> {}
-impl<T> Deref for Late<T> {
+impl<T: NoDrop> Deref for Late<T> {
 	type Target = T;
 
 	fn deref(&self) -> &T {
 		self.try_get().unwrap()
 	}
 }
-impl<T: Serialize> Serialize for Late<T> {
+impl<T: NoDrop + Serialize> Serialize for Late<T> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: Serializer,
 	{
-		unsafe { self.0.get().as_ref().unwrap().serialize(serializer) }
+		self.deref().serialize(serializer)
+	}
+}
+impl<'a, T: NoDrop> Placer<T> for &'a Late<T> {
+	type Place = Self;
+
+	fn make_place(self) -> Self::Place {
+		self
+	}
+}
+impl<'a, T: NoDrop> Place<T> for &'a Late<T> {
+	fn pointer(&mut self) -> *mut T {
+		assert!(!self.initialized.get());
+		self.value.get()
+	}
+}
+impl<'a, T: NoDrop> InPlace<T> for &'a Late<T> {
+	type Owner = &'a T;
+
+	unsafe fn finalize(self) -> Self::Owner {
+		self.initialized.set(true);
+		self.deref()
 	}
 }

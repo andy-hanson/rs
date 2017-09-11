@@ -7,6 +7,7 @@ use std::ops::{InPlace, Place, Placer};
 use std::slice;
 
 use super::arith::{isize_to_usize, usize_to_isize};
+use super::iter::KnownLen;
 
 pub trait NoDrop {}
 impl<T: NoDrop> NoDrop for Option<T> {}
@@ -42,7 +43,8 @@ impl Arena {
 		self.alloc_worker()
 	}
 
-	fn alloc_single<T: NoDrop>(&self) -> *mut T {
+	//TODO:not pub
+	pub fn alloc_single<T: NoDrop>(&self) -> *mut T {
 		self.check_lock();
 		self.alloc_worker()
 	}
@@ -86,22 +88,39 @@ impl Arena {
 		self.alloc_n_bytes(size_of::<T>() * len) as *mut T
 	}
 
-	pub fn map_from<T, U, I: Iterator<Item = T>, F: FnMut(T) -> U>(
-		&self,
-		len: usize,
-		iter: I,
-		mut f: F,
-	) -> &[U] {
-		//TODO: don't even need to check the max size
-		let start = self.alloc_n(len);
+	pub fn map<T, U: NoDrop, I: KnownLen<Item = T>, F: FnMut(T) -> U>(&self, input: I, mut f: F) -> &[U] {
+		//TODO:PERF don't even need to check the max size
+		let len = input.len();
+		let start = self.alloc_n::<U>(len);
 		let mut next = start;
 		unsafe {
 			let max = next.offset(usize_to_isize(len));
-			for x in iter {
+			for x in input {
 				*next = f(x);
 				next = next.offset(1)
 			}
 			assert_eq!(next, max);
+			slice::from_raw_parts(start, len)
+		}
+	}
+
+	pub fn map_defined_probably_all<T, U: NoDrop, I: KnownLen<Item = T>, F: FnMut(T) -> Option<U>>(
+		&self,
+		input: I,
+		mut f: F,
+	) -> &[U] {
+		let len = input.len();
+		let start = self.alloc_n::<U>(len);
+		let mut next = start;
+		unsafe {
+			let max = next.offset(usize_to_isize(len));
+			for x in input {
+				if let Some(u) = f(x) {
+					*next = u;
+					next = next.offset(1)
+				}
+			}
+			assert!(next <= max);
 			slice::from_raw_parts(start, len)
 		}
 	}
@@ -125,10 +144,6 @@ impl Arena {
 			},
 			start_byte_index,
 		}
-	}
-
-	pub fn list_builder<T: NoDrop>(&self) -> ListBuilder<T> {
-		ListBuilder::new(self)
 	}
 
 	pub fn read_from_file(&self, mut f: File) -> IoResult<&[u8]> {
@@ -167,144 +182,6 @@ impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a Arena {
 	fn make_place(self) -> Self::Place {
 		PointerPlace::new(self.alloc_single())
 	}
-}
-
-pub struct ListBuilder<'a, T: 'a + Sized + NoDrop> {
-	arena: &'a Arena,
-	//Returned at the end
-	first: UnsafeCell<Option<*const ListNode<'a, T>>>,
-	//Used to append new elements
-	last: UnsafeCell<Option<*mut ListNode<'a, T>>>,
-	len: UnsafeCell<usize>,
-}
-impl<'a, T: 'a + Sized + NoDrop> ListBuilder<'a, T> {
-	fn new(arena: &'a Arena) -> Self {
-		ListBuilder {
-			arena,
-			first: UnsafeCell::new(None),
-			last: UnsafeCell::new(None),
-			len: UnsafeCell::new(0),
-		}
-	}
-
-
-	pub fn finish(self) -> List<'a, T> {
-		unsafe { List { len: *self.len.get(), head: (*self.first.get()).map(|ptr| &*ptr) } }
-	}
-}
-impl<'l, 'a, T: 'a + Sized + NoDrop> Placer<T> for &'l mut ListBuilder<'a, T> {
-	type Place = PointerPlace<'a, T>;
-
-	fn make_place(self) -> Self::Place {
-		//TODO:duplciate code in make_place
-		unsafe {
-			*self.len.get().as_mut().unwrap() += 1;
-			let new_last = self.arena.alloc_single::<ListNode<'a, T>>();
-			let first = self.first.get().as_mut().unwrap();
-			let last = self.last.get().as_mut().unwrap();
-			if first.is_none() {
-				//First node
-				*first = Some(new_last);
-				*last = Some(new_last);
-			} else {
-				//If `first` is Some, `last` must be too.
-				*(*last.unwrap()).next.get().as_mut().unwrap() = Some(&*new_last);
-				*last = Some(new_last);
-				//let old_last = replace(unsafe { self.last.get().as_mut() }.unwrap(), None);
-				//old_last.next = new_last;
-				//.next = old_head.map(|ptr| unsafe { &*ptr });
-				//*self.last.get() = Some(node);
-			}
-			PointerPlace::new(&mut (*new_last).value)
-		}
-	}
-}
-
-pub struct List<'a, T: NoDrop + 'a> {
-	pub len: usize,
-	head: Option<&'a ListNode<'a, T>>,
-}
-impl<'a, T: NoDrop + 'a> List<'a, T> {
-	pub fn empty() -> Self {
-		List { len: 0, head: None }
-	}
-
-	pub fn single(value: T, arena: &'a Arena) -> Self {
-		List { len: 1, head: Some(arena <- ListNode { value, next: UnsafeCell::new(None) }) }
-	}
-
-	pub fn any(&self) -> bool {
-		self.len != 0
-	}
-
-	pub fn map<'out, U, F: FnMut(&'a T) -> U>(&'a self, arena: &'out Arena, f: F) -> &'out [U] {
-		arena.map_from(self.len, self.iter(), f)
-	}
-
-	pub fn map_with_index<'out, U, F: FnMut(usize, &'a T) -> U>(
-		&'a self,
-		arena: &'out Arena,
-		mut f: F,
-	) -> &'out [U] {
-		arena.map_from(self.len, self.iter().enumerate(), |(i, x)| f(i, x))
-	}
-
-	//TODO:KILL
-	pub fn map_defined_probably_all<'out, U: NoDrop, F: FnMut(&'a T) -> Option<U>>(
-		&'a self,
-		arena: &'out Arena,
-		mut f: F,
-	) -> &'out [U] {
-		let b = arena.max_size_arr_builder(self.len);
-		for x in self.iter() {
-			if let Some(out) = f(x) {
-				&b <- out;
-			}
-		}
-		b.finish()
-	}
-
-	//TODO:KILL
-	pub fn map_defined<'out, U, F: FnMut(&'a T) -> Option<U>>(&'a self, f: F) -> &'out [U] {
-		unused!(f);
-		unimplemented!()
-	}
-
-	//TODO:KILL
-	pub fn do_zip<'u, U, F: FnMut(&'a T, &'u U) -> ()>(&'a self, other: &'u [U], mut f: F) {
-		assert_eq!(self.len, other.len());
-		for (i, x) in self.iter().enumerate() {
-			f(x, &other[i])
-		}
-	}
-
-	pub fn iter(&self) -> ListIter<'a, T> {
-		ListIter(self.head)
-	}
-}
-impl<'a, T: NoDrop + 'a> NoDrop for List<'a, T> {}
-
-pub struct ListIter<'a, T: 'a>(Option<&'a ListNode<'a, T>>);
-impl<'a, T: 'a> Iterator for ListIter<'a, T> {
-	type Item = &'a T;
-
-	fn next(&mut self) -> Option<&'a T> {
-		self.0.map(|n| {
-			let value = &n.value;
-			self.0 = unsafe { *n.next.get() };
-			value
-		})
-	}
-}
-
-struct ListNode<'a, T: 'a> {
-	value: T,
-	next: UnsafeCell<Option<&'a ListNode<'a, T>>>,
-}
-impl<'a, T> NoDrop for ListNode<'a, T>
-where
-	T: NoDrop,
-{
 }
 
 pub struct MaxSizeArrBuilder<'a, T: 'a + Sized + NoDrop> {
@@ -390,7 +267,8 @@ pub struct PointerPlace<'a, T: 'a + Sized + NoDrop> {
 	phantom: PhantomData<&'a T>,
 }
 impl<'a, T: 'a + Sized + NoDrop> PointerPlace<'a, T> {
-	fn new(ptr: *mut T) -> Self {
+	//TODO: not pub
+	pub fn new(ptr: *mut T) -> Self {
 		PointerPlace { ptr, phantom: PhantomData }
 	}
 }

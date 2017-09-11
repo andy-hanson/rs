@@ -1,5 +1,4 @@
-use util::arena::List;
-use util::arr::SliceOps;
+use util::list::List;
 use util::loc::Pos;
 use util::path::{Path, RelPath};
 use util::sym::Sym;
@@ -134,7 +133,7 @@ fn parse_abstract_head<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<Clas
 	loop {
 		let method_start = l.pos();
 		let type_parameters = try_take_type_parameters(l)?;
-		if type_parameters.any() {
+		if !type_parameters.is_empty() {
 			l.take_space()?;
 		}
 		let (return_ty, name, self_effect, parameters) = parse_method_head(l)?;

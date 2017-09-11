@@ -1,4 +1,5 @@
 use util::arena::NoDrop;
+use util::iter::KnownLen;
 use util::loc::{LineAndColumnGetter, Loc};
 use util::path::{Path, RelPath};
 use util::string_maker::{Show, Shower};
@@ -212,12 +213,12 @@ impl<'d, 'a> Show for &'d Diag<'a> {
 
 pub fn show_diagnostics<'a, S: Shower>(module: &ModuleOrFail<'a>, s: &mut S) {
 	let diags = module.diagnostics();
-	assert!(diags.any()); // Else don't call this.
+	assert!(!diags.is_empty()); // Else don't call this.
 
 	let source = module.source();
 	let text = source.text();
 	let lc = LineAndColumnGetter::new(text);
-	for &Diagnostic(loc, ref data) in diags.iter() {
+	for &Diagnostic(loc, ref data) in diags {
 		let lc_loc = lc.line_and_column_at_loc(loc);
 		source.show(s).add(&lc_loc).add(": ").add(data);
 	}

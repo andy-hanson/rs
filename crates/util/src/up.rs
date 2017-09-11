@@ -28,8 +28,8 @@ impl<'a, T> Deref for Up<'a, T> {
 }
 impl<'a, T: SerializeUp> Serialize for Up<'a, T> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where
-			S: Serializer,
+	where
+		S: Serializer,
 	{
 		(*self).serialize_up(serializer)
 	}
@@ -50,8 +50,8 @@ impl<'a, T> PartialEq for Up<'a, T> {
 // don't serialize everything, just e.g. the name.
 pub trait SerializeUp {
 	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where
-			S: Serializer;
+	where
+		S: Serializer;
 }
 
 pub fn ptr_eq<T>(a: &T, b: &T) -> bool {

@@ -1,6 +1,7 @@
 use std::mem::replace;
 
-use util::arena::{Arena, DirectArrBuilder, ListBuilder, NoDrop};
+use util::arena::{Arena, DirectArrBuilder, NoDrop};
+use util::list::ListBuilder;
 use util::loc::{Loc, Pos};
 use util::sym::Sym;
 
@@ -114,7 +115,7 @@ impl<'ast, 'text> Lexer<'ast, 'text> {
 	}
 
 	pub fn list_builder<T: Sized + NoDrop>(&self) -> ListBuilder<'ast, T> {
-		self.arena.list_builder()
+		ListBuilder::new(self.arena)
 	}
 
 	fn skip_while<F: Fn(u8) -> bool>(&mut self, pred: F) {

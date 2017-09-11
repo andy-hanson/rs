@@ -2,7 +2,6 @@ use std::cell::RefCell;
 
 use util::arena::{Arena, NoDrop};
 use util::arith::usize_to_u32;
-use util::arr::{EqSliceOps, SliceOps};
 use util::dict::MutDict;
 use util::file_utils::IoError;
 use util::loc::LineAndColumnLoc;
@@ -49,7 +48,7 @@ impl<'a> DocumentProvider<'a> for TestDocumentProvider<'a> {
 		self.file_input.read(path, arena).map(|op| {
 			op.map(|content| {
 				let (text_without_errors, errors) = parse_expected_errors(content, arena);
-				if errors.any() {
+				if !errors.is_empty() {
 					self.expected_diagnostics
 						.borrow_mut()
 						.add(path.clone_path_to_arena(arena), errors);
@@ -61,7 +60,9 @@ impl<'a> DocumentProvider<'a> for TestDocumentProvider<'a> {
 }
 
 fn parse_expected_errors<'a>(code: &'a [u8], arena: &'a Arena) -> (&'a [u8], &'a [ExpectedDiagnostic<'a>]) {
-	let diagnostic_count = code.count(b'~'); //TODO:PERF only count the number of runs
+	#[allow(naive_bytecount)] // Expect less than 2^32 matches
+	//TODO:PERF only count the number of runs
+	let diagnostic_count = code.iter().filter(|ch| **ch == b'~').count();
 	if diagnostic_count == 0 {
 		return (code, &[])
 	}

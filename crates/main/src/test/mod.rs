@@ -4,10 +4,10 @@ use serde::Serialize;
 use serde_json::to_string as to_json_string;
 
 use util::arena::Arena;
-use util::arr::SliceOps;
 use util::dict::{Dict, MutDict};
 use util::file_utils::{read_files_in_directory_recursive_if_exists, write_file,
                        write_file_and_ensure_directory, IoError};
+use util::iter::KnownLen;
 use util::path::Path;
 use util::string_maker::{Show, Shower, WriteShower};
 
@@ -23,7 +23,6 @@ lazy_static! {
 	static ref BASELINES_ROOT_DIR: Path<'static> = Path::of_slice(b"tests/cases");
 }
 
-//TODO: Path leaks memory?
 enum TestFailure<'a> {
 	NoIndex(Path<'a>),
 	IoError(IoError),
@@ -85,7 +84,7 @@ fn test_single<'a>(test_path: Path, update_baselines: bool, arena: &'a Arena) ->
 	};
 
 	for builtin_module in *program.builtins.all {
-		if builtin_module.diagnostics().any() {
+		if !builtin_module.diagnostics().is_empty() {
 			return Err(TestFailure::UnexpectedDiagnostics(*builtin_module))
 		}
 	}
@@ -102,7 +101,7 @@ fn test_single<'a>(test_path: Path, update_baselines: bool, arena: &'a Arena) ->
 					arena,
 				)
 			} else {
-				if expected_diagnostics.any() {
+				if !expected_diagnostics.is_empty() {
 					return Err(TestFailure::ExpectedDiagnostics(expected_diagnostics.freeze()))
 				}
 				test_with_no_diagnostics(
@@ -126,10 +125,10 @@ fn test_single<'a>(test_path: Path, update_baselines: bool, arena: &'a Arena) ->
 			),
 	}?;
 
-	let res = if expected_baselines.any() {
-		Err(TestFailure::ExtraBaselines(expected_baselines.into_keys(arena)))
-	} else {
+	let res = if expected_baselines.is_empty() {
 		Ok(())
+	} else {
+		Err(TestFailure::ExtraBaselines(arena.map(&expected_baselines, |(path, _)| *path)))
 	};
 
 	//TODO:KILL (and rely on implicit drop order)
@@ -151,8 +150,7 @@ fn test_with_diagnostics<'a>(
 ) -> TestResult<'a, ()> {
 	for module_or_fail in program.modules.values() {
 		let source = module_or_fail.source().assert_normal();
-		let module_full_path = source.full_path(arena);
-		let module_path = module_full_path.without_extension(EXTENSION);
+		let module_path = source.full_path.without_extension(EXTENSION);
 		unused!(baselines_directory, expected_baselines, expected_diagnostics_by_path, module_path);
 
 		if let ModuleOrFail::Module(module) = *module_or_fail {
@@ -259,5 +257,5 @@ fn test_with_no_diagnostics<'a>(
 }
 
 fn any_diagnostics(module: &Module) -> bool {
-	module.diagnostics.any() || module.imports.some(|m| any_diagnostics(m))
+	!module.diagnostics.is_empty() || module.imports.iter().any(|m| any_diagnostics(m))
 }

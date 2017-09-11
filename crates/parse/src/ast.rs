@@ -1,4 +1,5 @@
-use util::arena::{List, NoDrop};
+use util::arena::NoDrop;
+use util::list::List;
 use util::loc::Loc;
 use util::path::{Path, RelPath};
 use util::sym::Sym;
@@ -114,11 +115,10 @@ pub enum ExprData<'a> {
 	StaticAccess(/*class_name*/ Sym, /*static_method_name*/ Sym),
 	OperatorCall(&'a Expr<'a>, Sym, &'a Expr<'a>),
 	TypeArguments(&'a Expr<'a>, List<'a, Ty<'a>>),
-	//TODO:PERF These should use List<Expr>, not List<&Expr>
-	Call(&'a Expr<'a>, List<'a, &'a Expr<'a>>),
-	Recur(List<'a, &'a Expr<'a>>),
-	New(List<'a, Ty<'a>>, List<'a, &'a Expr<'a>>),
-	ArrayLiteral(Option<Ty<'a>>, List<'a, &'a Expr<'a>>),
+	Call(&'a Expr<'a>, List<'a, Expr<'a>>),
+	Recur(List<'a, Expr<'a>>),
+	New(List<'a, Ty<'a>>, List<'a, Expr<'a>>),
+	ArrayLiteral(Option<Ty<'a>>, List<'a, Expr<'a>>),
 	GetProperty(&'a Expr<'a>, Sym),
 	SetProperty(Sym, &'a Expr<'a>),
 	// This one shouldn't escape parse_expr.

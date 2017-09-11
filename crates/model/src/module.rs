@@ -1,5 +1,6 @@
-use util::arena::{Arena, List, NoDrop};
+use util::arena::{Arena, NoDrop};
 use util::late::Late;
+use util::list::List;
 use util::path::Path;
 use util::string_maker::Shower;
 use util::sym::Sym;
@@ -38,17 +39,12 @@ impl<'a> ModuleSourceEnum<'a> {
 }
 
 pub struct ModuleSource<'a> {
-	pub logical_path: Path<'a>, //TODO:Memory leak!
+	pub logical_path: Path<'a>, //This is a slice of full_path
+	pub full_path: Path<'a>,
 	pub is_index: bool,
 	pub document: DocumentInfo<'a>,
 }
 impl<'a> NoDrop for ModuleSource<'a> {}
-impl<'a> ModuleSource<'a> {
-	pub fn full_path<'out>(&self, arena: &'out Arena) -> Path<'out> {
-		unused!(arena);
-		unimplemented!() //full_path(&self.logical_path, self.is_index, arena)
-	}
-}
 
 #[derive(Copy, Clone)]
 pub enum ModuleOrFail<'a> {
@@ -76,10 +72,10 @@ impl<'a> ModuleOrFail<'a> {
 		}
 	}
 
-	pub fn diagnostics(&self) -> &'a List<'a, Diagnostic<'a>> {
+	pub fn diagnostics(&self) -> List<'a, Diagnostic<'a>> {
 		match *self {
-			ModuleOrFail::Module(m) => &*m.diagnostics,
-			ModuleOrFail::Fail(f) => &f.diagnostics,
+			ModuleOrFail::Module(m) => *m.diagnostics,
+			ModuleOrFail::Fail(f) => f.diagnostics,
 		}
 	}
 }

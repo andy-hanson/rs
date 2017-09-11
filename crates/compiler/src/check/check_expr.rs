@@ -1,5 +1,5 @@
-use util::arena::List;
-use util::arr::SliceOps;
+use util::iter::{KnownLen, OptionIter};
+use util::list::List;
 use util::loc::Loc;
 use util::sym::Sym;
 use util::up::Up;
@@ -134,11 +134,11 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			}
 			ast::ExprData::OperatorCall(left, operator, right) => {
 				let ty_args = todo();//List::empty(); // No way to provide these to an operator call.
-				self.call_method(&mut e, loc, left, operator, ty_args, Some(right).into_iter())
+				self.call_method(&mut e, loc, left, operator, ty_args, OptionIter(Some(right)))
 			}
-			ast::ExprData::Call(target, ref args) =>
+			ast::ExprData::Call(target, args) =>
 				self.check_call_ast_worker(&mut e, loc, target, args),
-			ast::ExprData::Recur(ref arg_asts) => {
+			ast::ExprData::Recur(arg_asts) => {
 				if !e.in_tail_call_position() {
 					self.add_diagnostic(loc, Diag::NotATailCall)
 				}
@@ -148,11 +148,11 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let moa = method_or_impl.method_or_abstract();
 				let inst = self.method_instantiator;
 				let args = unwrap_or_return!(
-					self.check_arguments(loc, moa, inst, arg_asts.iter().cloned()),
+					self.check_arguments(loc, moa, inst, arg_asts),
 					self.bogus(loc));
 				self.handle(&mut e, loc, ExprData::Recur(method_or_impl, args))
 			}
-			ast::ExprData::New(ref ty_arg_asts, ref arg_asts) => {
+			ast::ExprData::New(ty_arg_asts, arg_asts) => {
 				let slots = match *self.ctx.current_class.head {
 					ClassHead::Slots(_, slots) => slots,
 					_ => {
@@ -160,16 +160,16 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 						return self.bogus(loc)
 					}
 				};
-				if arg_asts.len != slots.len() {
+				if arg_asts.len() != slots.len() {
 					self.add_diagnostic(loc, Diag::NewArgumentCountMismatch {
 						class: Up(self.ctx.current_class),
 						n_slots: slots.len(),
-						n_arguments: arg_asts.len,
+						n_arguments: arg_asts.len(),
 					});
 					return self.bogus(loc)
 				}
 
-				if self.ctx.current_class.type_parameters.len() != ty_arg_asts.len {
+				if self.ctx.current_class.type_parameters.len() != ty_arg_asts.len() {
 					unimplemented!()
 				}
 
@@ -177,7 +177,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					self.ctx.instantiate_class(self.ctx.current_class, ty_arg_asts),
 					self.bogus(loc));
 				let instantiator = Instantiator::of_inst_cls(&inst_cls);
-				let args = slots.zip(arg_asts.iter(), self.ctx.arena, |slot, arg| {
+				let args = self.ctx.arena.map(slots.zip(arg_asts), |(slot, arg)| {
 					let ty = self.instantiate_type(&slot.ty, &instantiator);
 					self.check_subtype(ty, arg)
 				});
@@ -210,7 +210,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 							self.add_diagnostic(loc, Diag::MissingEffectToGetSlot(Up(slot)))
 						}
 						let slot_ty = instantiate_and_narrow_effects(
-							target_effect, &slot.ty, &instantiator, loc, &self.ctx.diags, self.ctx.arena);
+							target_effect, &slot.ty, &instantiator, loc, &mut self.ctx.diags, self.ctx.arena);
 						(slot, slot_ty)
 					},
 					Ty::Param(_) =>
@@ -308,8 +308,8 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				// 'expected' was handled in both 'then' and 'else'.
 				Handled(self.expr(loc, ifelse))
 			}
-			ast::ExprData::WhenTest(ref case_asts, else_ast) => {
-				let cases = case_asts.map(self.ctx.arena, |&ast::Case(case_loc, test_ast, result_ast)| {
+			ast::ExprData::WhenTest(case_asts, else_ast) => {
+				let cases = self.ctx.arena.map(case_asts, |&ast::Case(case_loc, test_ast, result_ast)| {
 					let test = self.check_bool(test_ast);
 					let result = self.check_expr(&mut e, result_ast);
 					Case(case_loc, test, result)
@@ -366,7 +366,10 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	//mv
 	fn add_to_scope(&mut self, local: &'model Local<'model>) {
 		// It's important that we push even in the presence of errors, because we will always pop.
-		if let Some(param) = self.current_parameters.find(|p| p.name == local.name) {
+		if let Some(param) = self.current_parameters
+			.iter()
+			.find(|p| p.name == local.name)
+		{
 			self.add_diagnostic(local.loc, Diag::CantReassignParameter(Up(param)))
 		}
 		if let Some(old_local) = self.try_find_local(local.name) {
@@ -384,20 +387,20 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		mut expected: &mut Expected<'model>,
 		loc: Loc,
 		target: &'ast ast::Expr<'ast>,
-		args: &'ast List<&'ast ast::Expr<'ast>>,
+		args: List<'ast, ast::Expr<'ast>>,
 	) -> Handled<'model> {
 		let &ast::Expr(target_loc, ref target_data) = target;
 		let empty_list = todo(); //List::empty(); //TODO:PERF
 		let (&ast::Expr(real_target_loc, ref real_target_data), ty_arg_asts) = match *target_data {
-			ast::ExprData::TypeArguments(real_target, ref ty_arg_asts) => {
+			ast::ExprData::TypeArguments(real_target, ty_arg_asts) => {
 				//TODO:SIMPLIFY
 				let a: &ast::Expr = real_target;
-				let b: &List<ast::Ty> = ty_arg_asts;
+				let b: List<ast::Ty> = ty_arg_asts;
 				(a, b)
 			}
 			_ => {
 				let a: &ast::Expr = target;
-				let b: &List<ast::Ty> = empty_list;
+				let b: List<ast::Ty> = empty_list;
 				(a, b)
 			}
 		};
@@ -411,14 +414,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				self.call_static_method(&mut expected, loc, cls, static_method_name, ty_arg_asts, args)
 			}
 			ast::ExprData::GetProperty(property_target, property_name) =>
-				self.call_method(
-					&mut expected,
-					loc,
-					property_target,
-					property_name,
-					ty_arg_asts,
-					args.iter().cloned(),
-				),
+				self.call_method(&mut expected, loc, property_target, property_name, ty_arg_asts, args),
 			ast::ExprData::Access(name) => self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
 			_ => {
 				self.add_diagnostic(loc, Diag::CallsNonMethod);
@@ -433,8 +429,8 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		loc: Loc,
 		cls: &'model ClassDeclaration<'model>,
 		method_name: Sym,
-		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
-		arg_asts: &'ast List<'ast, &'ast ast::Expr<'ast>>,
+		ty_arg_asts: List<'ast, ast::Ty<'ast>>,
+		arg_asts: List<'ast, ast::Expr<'ast>>,
 	) -> Handled<'model> {
 		let method_decl = unwrap_or_return!(cls.find_static_method(method_name), {
 			self.add_diagnostic(loc, Diag::StaticMethodNotFound(Up(cls), method_name));
@@ -450,7 +446,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		// No need to check selfEffect, because this is a static method.
 		// Static methods can't look at their class' type arguments
 		let args = unwrap_or_return!(
-			self.check_call_arguments(loc, inst_method, &Instantiator::NIL, arg_asts.iter().cloned()),
+			self.check_call_arguments(loc, inst_method, &Instantiator::NIL, arg_asts),
 			self.bogus(loc)
 		);
 
@@ -468,8 +464,8 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		mut expected: &mut Expected<'model>,
 		loc: Loc,
 		method_name: Sym,
-		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
-		arg_asts: &'ast List<'ast, &'ast ast::Expr<'ast>>,
+		ty_arg_asts: List<'ast, ast::Ty<'ast>>,
+		arg_asts: List<'ast, ast::Expr<'ast>>,
 	) -> Handled<'model> {
 		// Note: InstCls is still relevent here:
 		// Even if 'self' is not an inst, in a superclass we will fill in type parameters.
@@ -493,7 +489,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			unwrap_or_return!(self.ctx.instantiate_method(method_decl, ty_arg_asts), self.bogus(loc));
 
 		let args = unwrap_or_return!(
-			self.check_call_arguments(loc, inst_method, &member_instantiator, arg_asts.iter().cloned()),
+			self.check_call_arguments(loc, inst_method, &member_instantiator, arg_asts),
 			self.bogus(loc)
 		);
 
@@ -519,13 +515,13 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		self.handle(&mut expected, loc, expr)
 	}
 
-	fn call_method<'ast, I: Iterator<Item = &'ast ast::Expr<'ast>>>(
+	fn call_method<'ast, I: KnownLen<Item = &'ast ast::Expr<'ast>>>(
 		&mut self,
 		mut expected: &mut Expected<'model>,
 		loc: Loc,
 		target_ast: &'ast ast::Expr<'ast>,
 		method_name: Sym,
-		ty_arg_asts: &'ast List<'ast, ast::Ty<'ast>>,
+		ty_arg_asts: List<'ast, ast::Ty<'ast>>,
 		arg_asts: I,
 	) -> Handled<'model> {
 		let target = self.check_infer(target_ast);
@@ -563,7 +559,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let inst_method = unwrap_or_return!(self.ctx.instantiate_method(method, ty_arg_asts), self.bogus(loc));
 
 				let args = unwrap_or_return!(
-					self.check_call_arguments(loc, inst_method, &member_instantiator, arg_asts.into_iter()),
+					self.check_call_arguments(loc, inst_method, &member_instantiator, arg_asts),
 					self.bogus(loc));
 
 				let ty = self.instantiate_return_type_with_extra_instantiator(inst_method, &member_instantiator);
@@ -576,7 +572,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		self.handle(&mut expected, loc, e)
 	}
 
-	fn check_call_arguments<'ast, I: Iterator<Item = &'ast ast::Expr<'ast>>>(
+	fn check_call_arguments<'ast, I: KnownLen<Item = &'ast ast::Expr<'ast>>>(
 		&mut self,
 		loc: Loc,
 		inst_method: &'model InstMethod<'model>,
@@ -587,7 +583,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		self.check_arguments(loc, inst_method.0, &instantiator, arg_asts)
 	}
 
-	fn check_arguments<'ast, I: Iterator<Item = &'ast ast::Expr<'ast>>>(
+	fn check_arguments<'ast, I: KnownLen<Item = &'ast ast::Expr<'ast>>>(
 		&mut self,
 		loc: Loc,
 		method_decl: MethodOrAbstract<'model>,
@@ -595,15 +591,18 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		arg_asts: I,
 	) -> Option<&'model [&'model Expr<'model>]> {
 		let parameters = method_decl.parameters();
-		match parameters.try_zip(arg_asts, self.ctx.arena, |parameter, arg_ast| {
-			let ty = self.instantiate_type(&parameter.ty, instantiator);
-			self.check_subtype(ty, arg_ast)
-		}) {
-			Ok(res) => Some(res),
-			Err((_, n_args)) => {
-				self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl, n_args));
-				None
-			}
+		if arg_asts.len() == parameters.len() {
+			Some(
+				self.ctx
+					.arena
+					.map(parameters.zip(arg_asts), |(parameter, arg_ast)| {
+						let ty = self.instantiate_type(&parameter.ty, instantiator);
+						self.check_subtype(ty, arg_ast)
+					}),
+			)
+		} else {
+			self.add_diagnostic(loc, Diag::ArgumentCountMismatch(method_decl, arg_asts.len()));
+			None
 		}
 	}
 
@@ -651,7 +650,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			&slot.ty,
 			&instantiator,
 			loc,
-			&self.ctx.diags,
+			&mut self.ctx.diags,
 			self.ctx.arena,
 		);
 		self.handle(&mut expected, loc, ExprData::GetMySlot(Up(slot), slot_ty))

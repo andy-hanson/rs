@@ -1,4 +1,4 @@
-use util::arena::List;
+use util::list::List;
 use util::loc::Pos;
 
 use model::diag::ParseDiag;
@@ -274,7 +274,7 @@ fn slurp_operators<'a, 't>(
 	}
 }
 
-fn parse_args<'a, 't>(l: &mut Lexer<'a, 't>, ctx: Ctx) -> Result<(List<'a, &'a Expr<'a>>, Next)> {
+fn parse_args<'a, 't>(l: &mut Lexer<'a, 't>, ctx: Ctx) -> Result<(List<'a, Expr<'a>>, Next)> {
 	let next = l.next_pos_token();
 	parse_args_2(l, ctx, next)
 }
@@ -283,7 +283,7 @@ fn parse_args_2<'a, 't>(
 	l: &mut Lexer<'a, 't>,
 	ctx: Ctx,
 	Next { pos: start, token: first_token }: Next,
-) -> Result<(List<'a, &'a Expr<'a>>, Next)> {
+) -> Result<(List<'a, Expr<'a>>, Next)> {
 	let mut args = l.list_builder::<&'a Expr>(); //TODO:PERF use a List<Expr>, emplace new expressions into it
 	let (first_arg, mut next) = parse_expr_2(l, ctx, start, first_token)?;
 	&mut args <- first_arg;
@@ -293,7 +293,8 @@ fn parse_args_2<'a, 't>(
 		&mut args <- next_arg;
 		next = next_next
 	}
-	Ok((args.finish(), next))
+	unimplemented!()
+	//Ok((args.finish(), next))
 }
 
 fn parse_simple_expr<'a, 't>(

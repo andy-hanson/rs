@@ -17,14 +17,16 @@ pub mod macros;
 
 pub mod arena;
 pub mod arith;
-pub mod arr;
 pub mod dict;
 pub mod file_utils;
+pub mod iter;
 pub mod path;
 pub mod loc;
 pub mod late;
+pub mod list;
 pub mod string_maker;
 pub mod sync;
 pub mod sym;
 pub mod up;
 pub mod utils;
+pub mod u8_slice_ops;

@@ -7,8 +7,8 @@ use std::sync::Mutex;
 
 use super::arena::NoDrop;
 
-use super::arr::U8SliceOps;
 use super::string_maker::{Show, Shower};
+use super::u8_slice_ops::U8SliceOps;
 
 lazy_static! {
 	//TODO:PERF compare perf to https://github.com/kinghajj/shawshank

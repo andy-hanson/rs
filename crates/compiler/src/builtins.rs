@@ -1,6 +1,8 @@
-use util::arena::{Arena, List, NoDrop};
+use util::arena::{Arena, NoDrop};
 use util::file_utils::read_file;
+use util::iter::KnownLen;
 use util::late::Late;
+use util::list::List;
 use util::path::Path;
 use util::sym::Sym;
 use util::sync::UnsafeSync;
@@ -77,7 +79,7 @@ pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 	//TODO: let all = BUILTINS_FILES.map(arena, |&(name, text)| {
 	let all = arena.max_size_arr_builder(BUILTINS_FILES.len());
 
-	for &(name, text) in BUILTINS_FILES.iter() {
+	for &(name, text) in &*BUILTINS_FILES {
 		//println!("COMPILING: {:?}", name);
 		let source = ModuleSourceEnum::Builtin { name, text };
 		let ast_arena = Arena::new();
@@ -89,7 +91,7 @@ pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 					class: Late::new(),
 					diagnostics: Late::new(),
 				};
-				assert!(!imports.any());
+				assert!(imports.is_empty());
 				{
 					let cur_builtins = BuiltinsCtx {
 						all_successes: all_successes.slice_so_far(),
@@ -99,9 +101,9 @@ pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 					check_module(module, &cur_builtins, class, name, arena);
 				}
 				if name == sym_void {
-					own.void.init(primitive_ty(&module.class));
+					&own.void <- primitive_ty(&module.class);
 				} else if name == sym_bool {
-					own.bool.init(primitive_ty(&module.class));
+					&own.bool <- primitive_ty(&module.class);
 				}
 				&all_successes <- Up(module);
 				ModuleOrFail::Module(module)
@@ -120,8 +122,8 @@ pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 		};
 	}
 
-	own.all.init(all.finish());
-	own.all_successes.init(all_successes.finish());
+	&own.all <- all.finish();
+	&own.all_successes <- all_successes.finish();
 
 	own
 }

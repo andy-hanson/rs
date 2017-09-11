@@ -1,5 +1,6 @@
-use util::arena::{Arena, ListBuilder};
-use util::arr::SliceOps;
+use util::arena::Arena;
+use util::iter::KnownLen;
+use util::list::ListBuilder;
 use util::loc::Loc;
 use util::up::ptr_eq;
 
@@ -57,7 +58,7 @@ fn is_subclass<'a>(expected: &InstCls<'a>, actual: &InstCls<'a>, arena: &'a Aren
 		return true
 	}
 
-	for zuper in actual_cls.supers.iter() {
+	for zuper in *actual_cls.supers {
 		let instantiated_super_cls =
 			instantiate_inst_cls(&zuper.super_class, &Instantiator::of_inst_cls(actual), arena);
 		if is_subclass(expected, &instantiated_super_cls, arena) {
@@ -98,7 +99,7 @@ pub fn instantiate_and_narrow_effects<'a>(
 	ty: &Ty<'a>,
 	instantiator: &Instantiator<'a>,
 	loc: Loc,
-	diags: &ListBuilder<Diagnostic<'a>>,
+	diags: &mut ListBuilder<Diagnostic<'a>>,
 	arena: &'a Arena,
 ) -> Ty<'a> {
 	match *ty {
@@ -134,7 +135,7 @@ fn instantiate_ty_and_forbid_effects<'a>(
 	ty: &Ty<'a>,
 	instantiator: &Instantiator<'a>,
 	loc: Loc,
-	diags: &ListBuilder<Diagnostic<'a>>,
+	diags: &mut ListBuilder<Diagnostic<'a>>,
 	arena: &'a Arena,
 ) -> Ty<'a> {
 	match *ty {
@@ -165,7 +166,7 @@ fn instantiate_inst_cls_and_forbid_effects<'a>(
 	inst_cls: &InstCls<'a>,
 	instantiator: &Instantiator<'a>,
 	loc: Loc,
-	diags: &ListBuilder<Diagnostic<'a>>,
+	diags: &mut ListBuilder<Diagnostic<'a>>,
 	arena: &'a Arena,
 ) -> InstCls<'a> {
 	map_inst_cls(inst_cls, arena, |arg| {
@@ -186,7 +187,7 @@ fn map_inst_cls<'a, F: FnMut(&Ty<'a>) -> Ty<'a>>(
 	arena: &'a Arena,
 	replace_type_arg: F,
 ) -> InstCls<'a> {
-	let new_ty_arguments = type_args.map(arena, replace_type_arg);
+	let new_ty_arguments = arena.map(type_args, replace_type_arg);
 	InstCls(decl, new_ty_arguments)
 }
 

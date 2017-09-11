@@ -1,4 +1,4 @@
-use util::arena::List;
+use util::list::List;
 use util::loc::Pos;
 use util::sym::Sym;
 

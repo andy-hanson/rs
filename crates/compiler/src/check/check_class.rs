@@ -1,7 +1,8 @@
-use util::arena::{Arena, List};
+use util::arena::Arena;
 use util::arith::to_u8;
-use util::arr::SliceOps;
+use util::iter::KnownLen;
 use util::late::Late;
+use util::list::List;
 use util::sym::Sym;
 use util::up::Up;
 
@@ -25,37 +26,37 @@ pub fn check_module<'ast, 'builtins_ctx, 'model>(
 	name: Sym,
 	arena: &'model Arena,
 ) {
-	let type_parameters: &'model [TypeParameter<'model>] = ast.type_parameters
-		.map(arena, |name| TypeParameter::create(*name));
+	let type_parameters: &'model [TypeParameter<'model>] =
+		arena.map(ast.type_parameters, |name| TypeParameter::create(*name));
 	// Create the class early and assign its properties later.
 	// This allows us to access the class' type when checking type annotations.
-	let class: &'model ClassDeclaration<'model> = module.class.init(ClassDeclaration {
+	let class: &'model ClassDeclaration<'model> = &module.class <- ClassDeclaration {
 		type_parameters,
 		name,
 		head: Late::new(),
 		supers: Late::new(),
 		methods: Late::new(),
-	});
+	};
 	TypeParameter::set_origins(class.type_parameters, TypeParameterOrigin::Class(Up(class)));
 	let mut ctx: Ctx<'builtins_ctx, 'model> = Ctx::new(class, builtins, module.imports, arena);
 	do_check(&mut ctx, ast);
-	module.diagnostics.init(ctx.finish());
+	&module.diagnostics <- ctx.finish();
 }
 
 fn do_check<'ast, 'builtins_ctx, 'model>(ctx: &mut Ctx<'builtins_ctx, 'model>, ast: &'ast ast::Class<'ast>) {
 	// type parameters already handled before calling this.
-	let &ast::Class { head: ref head_ast, supers: ref super_asts, methods: ref method_asts, .. } = ast;
+	let &ast::Class { head: ref head_ast, supers: super_asts, methods: method_asts, .. } = ast;
 
-	let methods = method_asts.map(ctx.arena, |m| check_method_initial(ctx, m));
-	ctx.current_class.methods.init(methods);
+	let methods = ctx.arena.map(method_asts, |m| check_method_initial(ctx, m));
+	&ctx.current_class.methods <- methods;
 
 	// Adds slots too
 	let head = check_head(ctx, head_ast.as_ref());
-	ctx.current_class.head.init(head);
+	&ctx.current_class.head <- head;
 
-	let supers: &'model [Super<'model>] =
-		super_asts.map_defined_probably_all(ctx.arena, |s| check_super_initial(ctx, s));
-	ctx.current_class.supers.init(supers);
+	let supers = ctx.arena
+		.map_defined_probably_all(super_asts, |s| check_super_initial(ctx, s));
+	&ctx.current_class.supers <- supers;
 
 	// We delayed checking impl bodies until now
 	// because we need all supers present for method resolution.
@@ -66,20 +67,20 @@ fn do_check<'ast, 'builtins_ctx, 'model>(ctx: &mut Ctx<'builtins_ctx, 'model>, a
 //mv
 fn fill_impl_bodies<'ast, 'builtins_ctx, 'model>(
 	ctx: &mut Ctx<'builtins_ctx, 'model>,
-	super_asts: &'ast List<'ast, ast::Super<'ast>>,
+	super_asts: List<'ast, ast::Super<'ast>>,
 ) {
 	// There may be fewer supers than super_asts.
 	// TODO: but we can check that they correspond using the `loc`.
 
-	let supers = &ctx.current_class.supers;
-	if super_asts.len != supers.len() {
+	let supers = *ctx.current_class.supers;
+	if super_asts.len() != supers.len() {
 		unimplemented!()
 	}
 
-	super_asts.do_zip(supers, |super_ast, zuper| {
+	for (super_ast, zuper) in super_asts.zip(supers) {
 		let instantiator = Instantiator::of_inst_cls(&zuper.super_class);
 		let impl_asts = &super_ast.impls;
-		impl_asts.do_zip(zuper.impls, |impl_ast, real_impl| {
+		for (impl_ast, real_impl) in impl_asts.zip(zuper.impls) {
 			let body = match impl_ast.body {
 				Some(body_ast) =>
 					Some(check_method_body(
@@ -91,12 +92,12 @@ fn fill_impl_bodies<'ast, 'builtins_ctx, 'model>(
 					)),
 				None => None,
 			};
-			real_impl.body.init(body);
-		})
-	})
+			&real_impl.body <- body;
+		}
+	}
 }
 
-fn fill_method_bodies<'ast>(ctx: &mut Ctx, method_asts: &'ast List<'ast, ast::Method<'ast>>) {
+fn fill_method_bodies<'ast>(ctx: &mut Ctx, method_asts: List<'ast, ast::Method<'ast>>) {
 	// Now that all methods exist, fill in their bodies.
 	for (i, method_ast) in method_asts.iter().enumerate() {
 		let method = &ctx.current_class.methods[i];
@@ -111,13 +112,13 @@ fn fill_method_bodies<'ast>(ctx: &mut Ctx, method_asts: &'ast List<'ast, ast::Me
 				)),
 			None => None,
 		};
-		method.body.init(body);
+		&method.body <- body;
 	}
 }
 
 fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 	ctx: &mut Ctx<'builtins_ctx, 'model>,
-	&ast::Super { loc, name, ref ty_args, impls: ref impl_asts }: &'ast ast::Super<'ast>,
+	&ast::Super { loc, name, ty_args, impls: impl_asts }: &'ast ast::Super<'ast>,
 ) -> Option<Super<'model>> {
 	//let super_inst_cls = unwrap_or_return!(ctx.instantiate_class_from_ast(loc, name, ty_args), None);
 	//let super_class_declaration = super_inst_cls.class();
@@ -138,15 +139,14 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 		};
 
 		if !abstract_methods
-			.each_corresponds_list(impl_asts, |implemented, impl_ast| implemented.name() == impl_ast.name)
+			.each_corresponds(impl_asts, |implemented, impl_ast| implemented.name() == impl_ast.name)
 		{
 			ctx.add_diagnostic(loc, Diag::ImplsMismatch { expected: abstract_methods });
 			return None
 		}
-		abstract_methods.zip(
-			impl_asts.iter(),
-			ctx.arena,
-			|implemented, &ast::Impl { loc, parameter_names, .. }| {
+		ctx.arena.map(
+			abstract_methods.zip(impl_asts),
+			|(implemented, &ast::Impl { loc, parameter_names, .. })| {
 				let x: &'model AbstractMethod<'model> = implemented;
 				if !implemented
 					.parameters()
@@ -178,10 +178,11 @@ fn check_method_initial<'ast, 'builtins_ctx, 'model>(
 		return_ty: ref return_ty_ast,
 		name,
 		self_effect,
-		parameters: ref parameter_asts,
+		parameters: parameter_asts,
 		..
 	} = ast;
-	let type_parameters = type_parameter_asts.map(ctx.arena, |name| TypeParameter::create(*name));
+	let type_parameters = ctx.arena
+		.map(type_parameter_asts, |name| TypeParameter::create(*name));
 	let return_ty = ctx.get_ty_or_type_parameter(return_ty_ast, type_parameters);
 	let parameters = check_parameters(ctx, parameter_asts, type_parameters);
 	let method = ctx.arena <- MethodWithBody {
@@ -203,23 +204,24 @@ fn check_method_initial<'ast, 'builtins_ctx, 'model>(
 
 fn check_parameters<'builtins_ctx, 'ast, 'model>(
 	ctx: &mut Ctx<'builtins_ctx, 'model>,
-	param_asts: &'ast List<'ast, ast::Parameter<'ast>>,
+	param_asts: List<'ast, ast::Parameter<'ast>>,
 	type_parameters: &'model [TypeParameter<'model>],
 ) -> &'model [Parameter<'model>] {
-	param_asts.map_with_index(ctx.arena, |index, &ast::Parameter { loc, ty: ref ty_ast, name }| {
-		for prior_param in param_asts.iter().take(index) {
-			if prior_param.name == name {
-				unimplemented!()
-				//ctx.add_diagnostic(loc, )
+	ctx.arena
+		.map(param_asts.enumerate(), |(index, &ast::Parameter { loc, ty: ref ty_ast, name })| {
+			for prior_param in param_asts.iter().take(index) {
+				if prior_param.name == name {
+					unimplemented!()
+					//ctx.add_diagnostic(loc, )
+				}
 			}
-		}
-		Parameter {
-			loc,
-			ty: ctx.get_ty_or_type_parameter(ty_ast, type_parameters),
-			name,
-			index: to_u8(index),
-		}
-	})
+			Parameter {
+				loc,
+				ty: ctx.get_ty_or_type_parameter(ty_ast, type_parameters),
+				name,
+				index: to_u8(index),
+			}
+		})
 }
 
 fn check_head<'builtins_ctx, 'model>(
@@ -227,7 +229,7 @@ fn check_head<'builtins_ctx, 'model>(
 	ast: Option<&ast::ClassHead>,
 ) -> ClassHead<'model> {
 	let &ast::ClassHead(loc, ref head_data) = unwrap_or_return!(ast, {
-		if ctx.current_class.type_parameters.any() {
+		if !ctx.current_class.type_parameters.is_empty() {
 			unimplemented!() // Error: static class can't have type parameters
 		}
 		ClassHead::Static

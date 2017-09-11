@@ -3,7 +3,7 @@ use std::io::{stderr, Stderr, Write as IoWrite};
 use std::iter::Iterator;
 use std::marker::Sized;
 
-use super::arr::{SliceOps, U8SliceOps};
+use super::u8_slice_ops::U8SliceOps;
 
 pub trait Show
 where
@@ -79,7 +79,7 @@ where
 	where
 		&'a T: Show,
 	{
-		if arr.any() {
+		if !arr.is_empty() {
 			arr[0].show(self);
 			for x in arr.iter().skip(1) {
 				self.add(',');
@@ -92,7 +92,7 @@ where
 
 	//TODO:duplicate code (write join_iter)
 	fn join_map<'a, T, U: Show, F: FnMut(&T) -> U>(&mut self, arr: &'a [T], mut f: F) -> &mut Self {
-		if arr.any() {
+		if !arr.is_empty() {
 			f(&arr[0]).show(self);
 			for x in arr.iter().skip(1) {
 				self.add(',');

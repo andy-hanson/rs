@@ -1,8 +1,10 @@
 use std::borrow::Borrow;
 
-use util::arena::{Arena, List, ListBuilder};
+use util::arena::Arena;
 use util::dict::MutDict;
+use util::iter::KnownLen;
 use util::late::Late;
+use util::list::{List, ListBuilder};
 use util::path::{Path, RelPath};
 use util::sym::Sym;
 use util::up::Up;
@@ -118,7 +120,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		let parse_arena = Arena::new();
 		let parse_result = parse(&parse_arena, document.text);
 		Ok(match parse_result {
-			Ok(ModuleAst { ref imports, class }) => {
+			Ok(ModuleAst { imports, class }) => {
 				self.modules.add(logical_path, ModuleState::Compiling);
 				let (module_or_fail, is_reused) =
 					self.do_compile_single(logical_path, document, imports, class, full_path, is_index)?;
@@ -131,7 +133,8 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 				(CompileSingleResult::Found(module_or_fail), is_reused)
 			}
 			Err(parse_diag) => {
-				let source = ModuleSourceEnum::Normal(ModuleSource { logical_path, is_index, document });
+				let source =
+					ModuleSourceEnum::Normal(ModuleSource { logical_path, full_path, is_index, document });
 				let diag = Diagnostic(parse_diag.0, Diag::ParseError(parse_diag.1)); //TODO: duplicate code somewhere
 				let fail = self.arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, self.arena) };
 				let module_or_fail = ModuleOrFail::Fail(fail);
@@ -146,7 +149,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		&mut self,
 		logical_path: Path<'model>,
 		document: DocumentInfo<'model>,
-		import_asts: &'ast List<'ast, ImportAst<'ast>>,
+		import_asts: List<'ast, ImportAst<'ast>>,
 		class_ast: &'ast ClassAst<'ast>,
 		full_path: Path<'model>,
 		is_index: bool,
@@ -170,7 +173,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 			}
 		}
 
-		let source = ModuleSourceEnum::Normal(ModuleSource { logical_path, is_index, document });
+		let source = ModuleSourceEnum::Normal(ModuleSource { logical_path, full_path, is_index, document });
 		let res = match resolved_imports {
 			ResolvedImports::Success(imports) => {
 				let module =
@@ -193,18 +196,18 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 	fn resolve_imports<'ast>(
 		&mut self,
 		full_path: Path<'model>,
-		import_asts: &'ast List<'ast, ImportAst<'ast>>,
+		import_asts: List<'ast, ImportAst<'ast>>,
 	) -> Result<(ResolvedImports<'model>, bool), D::Error> {
-		let mut diagnostics = self.arena.list_builder::<Diagnostic>();
+		let mut diagnostics = ListBuilder::<Diagnostic>::new(self.arena);
 		let mut all_imports_reused = true;
 		//TODO:PERF probably, all imports will succeed, so allocate whole array.
 		let all_successes = self.arena
-			.max_size_arr_builder::<Up<'model, Module<'model>>>(import_asts.len);
+			.max_size_arr_builder::<Up<'model, Module<'model>>>(import_asts.len());
 		//TODO:PERF probably, this will not be necessary, somehow avoid allocating?
 		let all = self.arena
-			.max_size_arr_builder::<ModuleOrFail<'model>>(import_asts.len);
+			.max_size_arr_builder::<ModuleOrFail<'model>>(import_asts.len());
 		let mut any_failure = false;
-		for import_ast in import_asts.iter() {
+		for import_ast in import_asts {
 			match self.resolve_import(import_ast, &mut diagnostics, full_path, &mut all_imports_reused)? {
 				Some(import) => {
 					if let ModuleOrFail::Module(module) = import {
@@ -222,7 +225,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		let resolved = if any_failure {
 			ResolvedImports::Failure(all.finish(), diags)
 		} else {
-			assert_eq!(diags.len, 0);
+			assert!(diags.is_empty());
 			ResolvedImports::Success(all_successes.finish())
 		};
 		Ok((resolved, all_imports_reused))

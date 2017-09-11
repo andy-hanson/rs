@@ -1,3 +1,5 @@
+#![feature(placement_in_syntax)]
+
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;

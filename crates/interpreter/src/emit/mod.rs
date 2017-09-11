@@ -37,7 +37,7 @@ impl<'model, 'emit> Emitter<'model, 'emit> {
 
 	fn emit_module(&mut self, module: &Module<'model>) {
 		// Emit dependencies first, so we'll be able to refer to them.
-		for import in module.imports.iter() {
+		for import in module.imports {
 			if !self.is_module_already_emitted(import) {
 				self.emit_module(import)
 			}
@@ -47,8 +47,8 @@ impl<'model, 'emit> Emitter<'model, 'emit> {
 
 	fn emit_single_module(&mut self, module: &Module<'model>) {
 		let class = &module.class;
-		for zuper in class.supers.iter() {
-			for an_impl in zuper.impls.iter() {
+		for zuper in *class.supers {
+			for an_impl in zuper.impls {
 				let implemented = &an_impl.implemented;
 				let code = self.get_code(module, implemented.name(), implemented.parameters(), *an_impl.body);
 				self.impls
@@ -56,7 +56,7 @@ impl<'model, 'emit> Emitter<'model, 'emit> {
 			}
 		}
 
-		for method in class.methods.iter() {
+		for method in *class.methods {
 			let code = self.get_code(module, method.name(), method.parameters(), *method.body);
 			self.methods
 				.add(Up(method), Code { source: MethodOrImpl::Method(Up(method)), code })

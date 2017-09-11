@@ -3,11 +3,13 @@ use serde::{Serialize, Serializer};
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 
-use super::arena::Arena;
+use super::arena::{Arena, NoDrop};
 use super::string_maker::{Show, Shower};
+use super::u8_slice_ops::U8SliceOps;
 
 #[derive(Copy, Clone)]
 pub struct Path<'a>(&'a [u8]);
+impl<'a> NoDrop for Path<'a> {}
 impl<'a> Path<'a> {
 	pub const EMPTY: Path<'static> = Path(&[]);
 
@@ -81,16 +83,7 @@ impl<'a> Path<'a> {
 	}
 
 	pub fn without_extension(&self, extension: &[u8]) -> Self {
-		unused!(extension);
-		unimplemented!()
-		/*let mut b = ArrBuilder::<Arr<u8>>::new();
-		for part in self.0.slice_rtail() {
-			b.add(part.clone())
-		}
-		let last_part = self.last().unwrap();
-		assert!(last_part.ends_with(extension));
-		b.add(Arr::copy_from_slice(&last_part[0..last_part.len() - extension.len()]));
-		Path(b.finish())*/
+		Path(self.0.without_end_if_ends_with(extension))
 	}
 
 	pub fn add_extension<'out>(&self, extension: &[u8], arena: &'out Arena) -> Path<'out> {

@@ -4,7 +4,7 @@ use std::collections::hash_map::{IntoIter, Iter, Values};
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-use super::arena::Arena;
+use super::iter::KnownLen;
 
 // TODO:PERF don't use HashMap
 // Immutable hash map
@@ -47,10 +47,6 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 
 	pub fn values(&self) -> Values<K, V> {
 		self.0.values()
-	}
-
-	pub fn any(&self) -> bool {
-		!self.0.is_empty()
 	}
 
 	pub fn add(&mut self, key: K, value: V) {
@@ -106,10 +102,22 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 	fn move_into_iter(self) -> IntoIter<K, V> {
 		self.0.into_iter()
 	}
+}
+impl<'a, K: Hash + Eq, V> IntoIterator for &'a MutDict<K, V> {
+	type Item = (&'a K, &'a V);
+	type IntoIter = Iter<'a, K, V>;
 
-	#[allow(needless_lifetimes)] //TODO: is this a clippy bug?
-	pub fn into_keys<'out>(self, arena: &'out Arena) -> &'out [K] {
-		arena.map_from(self.0.len(), self.move_into_iter(), |(k, _)| k)
+	fn into_iter(self) -> Self::IntoIter {
+		self.0.iter()
+	}
+}
+impl<'a, K: Hash + Eq, V> KnownLen for &'a MutDict<K, V> {
+	fn len(self) -> usize {
+		self.0.len()
+	}
+
+	fn is_empty(self) -> bool {
+		self.0.is_empty()
 	}
 }
 

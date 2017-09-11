@@ -1,6 +1,5 @@
 use util::arena::{Arena, DirectArrBuilder};
 use util::arith::{to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
-use util::arr::SliceOps;
 use util::loc::Loc;
 use util::up::ptr_eq;
 
@@ -85,7 +84,7 @@ impl<'model, 'emit> ExprEmitter<'model, 'emit> {
 				self.fetch(loc, param.index),
 			ExprData::AccessLocal(ref local) => {
 				// Get the index of the local
-				let index = self.locals.find_index(|l| ptr_eq(l, &local.0)).unwrap();
+				let index = self.locals.iter().position(|l| ptr_eq(l, &local.0)).unwrap();
 				let local_depth = u8_add(self.n_parameters, to_u8(index));
 				self.fetch(loc, local_depth)
 			}

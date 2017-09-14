@@ -1,9 +1,10 @@
 use std::borrow::Borrow;
 use std::collections::HashMap;
-use std::collections::hash_map::{IntoIter, Iter, Values};
+use std::collections::hash_map::{Entry, IntoIter, Iter, Values};
 use std::hash::Hash;
 use std::iter::FromIterator;
 
+use super::arena::{NoDrop, PointerPlace};
 use super::iter::KnownLen;
 
 // TODO:PERF don't use HashMap
@@ -13,7 +14,7 @@ impl<K: Hash + Eq, V> Dict<K, V> {
 	pub fn of(keysvals: Vec<(K, V)>) -> Self {
 		let mut b = MutDict::new();
 		for (k, v) in keysvals {
-			b.add(k, v)
+			b.add(k) <- v
 		}
 		b.freeze()
 	}
@@ -49,10 +50,20 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 		self.0.values()
 	}
 
-	pub fn add(&mut self, key: K, value: V) {
-		if let Some(_old) = self.0.insert(key, value) {
-			panic!()
+	pub fn change<Q: Hash + Eq>(&mut self, key: &Q) -> PointerPlace<V>
+	where
+		K: Borrow<Q>,
+		V: NoDrop,
+	{
+		PointerPlace::new(self.0.get_mut(key).unwrap())
+	}
+
+	pub fn add(&mut self, key: K) -> Entry<K, V> {
+		let entry = self.0.entry(key);
+		if let Entry::Occupied(_) = entry {
+			unreachable!()
 		}
+		entry
 	}
 
 	pub fn try_extract<Q: ?Sized>(&mut self, key: &Q) -> Option<V>
@@ -61,14 +72,6 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 		Q: Hash + Eq,
 	{
 		self.0.remove(key)
-	}
-
-	pub fn change<Q: ?Sized>(&mut self, key: &Q, new_value: V)
-	where
-		K: Borrow<Q>,
-		Q: Hash + Eq,
-	{
-		*self.0.get_mut(key).unwrap() = new_value;
 	}
 
 	pub fn has_key<Q: ?Sized>(&self, k: &Q) -> bool
@@ -94,7 +97,7 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 	pub fn map_values<V2, F: Fn(V) -> V2>(self, f: F) -> MutDict<K, V2> {
 		let mut d = MutDict::<K, V2>::new();
 		for (k, v) in self.move_into_iter() {
-			d.add(k, f(v))
+			d.add(k) <- f(v)
 		}
 		d
 	}
@@ -128,7 +131,7 @@ impl<K: Hash + Eq> MutSet<K> {
 	}
 
 	pub fn add(&mut self, value: K) {
-		self.0.add(value, ())
+		self.0.add(value) <- ()
 	}
 
 	pub fn has<Q: ?Sized>(&self, value: &Q) -> bool

@@ -40,8 +40,7 @@ pub fn readdir_worker<'a>(
 			if file_type.is_dir() {
 				readdir_worker(child_path, arena, &mut res)?
 			} else if file_type.is_file() {
-				let text = arena.read_from_file(File::open(child_path.to_string())?)?;
-				res.add(child_path, text)
+				res.add(child_path) <- arena.read_from_file(File::open(child_path.to_string())?)?;
 			} else {
 				unimplemented!()
 			}

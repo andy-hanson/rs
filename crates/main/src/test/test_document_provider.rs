@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use util::arena::{Arena, NoDrop};
 use util::arith::usize_to_u32;
 use util::dict::MutDict;
@@ -13,12 +11,12 @@ use host::file_input::{FileInput, NativeFileInput};
 
 use model::document_info::DocumentInfo;
 
-pub struct ExpectedDiagnostic<'a>(LineAndColumnLoc, &'a [u8]);
+pub struct ExpectedDiagnostic<'a>(pub LineAndColumnLoc, pub &'a [u8]);
 impl<'a> NoDrop for ExpectedDiagnostic<'a> {}
 
 pub struct TestDocumentProvider<'a> {
 	file_input: NativeFileInput<'a>,
-	expected_diagnostics: RefCell<MutDict<Path<'a>, &'a [ExpectedDiagnostic<'a>]>>,
+	expected_diagnostics: MutDict<Path<'a>, &'a [ExpectedDiagnostic<'a>]>,
 }
 impl<'a> TestDocumentProvider<'a> {
 	pub fn into_root_dir(self) -> Path<'a> {
@@ -28,12 +26,12 @@ impl<'a> TestDocumentProvider<'a> {
 	pub fn new(test_directory: Path<'a>) -> Self {
 		TestDocumentProvider {
 			file_input: NativeFileInput::new(test_directory),
-			expected_diagnostics: RefCell::new(MutDict::new()),
+			expected_diagnostics: MutDict::new(),
 		}
 	}
 
 	pub fn get_expected_diagnostics(self) -> MutDict<Path<'a>, &'a [ExpectedDiagnostic<'a>]> {
-		self.expected_diagnostics.into_inner()
+		self.expected_diagnostics
 	}
 }
 impl<'a> DocumentProvider<'a> for TestDocumentProvider<'a> {
@@ -43,15 +41,18 @@ impl<'a> DocumentProvider<'a> for TestDocumentProvider<'a> {
 		self.file_input.root_name()
 	}
 
-	fn get_document(&self, path: Path, arena: &'a Arena) -> Result<Option<DocumentInfo<'a>>, Self::Error> {
+	fn get_document(
+		&mut self,
+		path: Path,
+		arena: &'a Arena,
+	) -> Result<Option<DocumentInfo<'a>>, Self::Error> {
 		//TODO:PERF parse while reading, avoid extra allocation
 		self.file_input.read(path, arena).map(|op| {
 			op.map(|content| {
 				let (text_without_errors, errors) = parse_expected_errors(content, arena);
 				if !errors.is_empty() {
 					self.expected_diagnostics
-						.borrow_mut()
-						.add(path.clone_path_to_arena(arena), errors);
+						.add(path.clone_path_to_arena(arena)) <- errors;
 				}
 				DocumentInfo::of(text_without_errors, /*version*/ 0)
 			})

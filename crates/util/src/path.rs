@@ -101,9 +101,10 @@ impl<'a> Path<'a> {
 		unimplemented!() //Path(self.0.copy_rtail())
 	}
 }
-impl<'p, 'a> Show for &'p Path<'a> {
-	fn show<S: Shower>(self, s: &mut S) {
-		s.add(self.0);
+impl<'a> Show for Path<'a> {
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		s.add(self.0)?;
+		Ok(())
 	}
 }
 impl<'a> Hash for Path<'a> {
@@ -138,7 +139,7 @@ fn is_path_part(s: &[u8]) -> bool {
 	})
 }
 
-#[derive(Serialize)]
+#[derive(Copy, Clone, Serialize)]
 pub struct RelPath<'a> {
 	pub n_parents: usize,
 	pub rel_to_parent: Path<'a>,
@@ -154,11 +155,12 @@ impl<'a> RelPath<'a> {
 	//	RelPath { n_parents: self.n_parents, rel_to_parent: self.rel_to_parent.clone_path() }
 	//}
 }
-impl<'p, 'a> Show for &'p RelPath<'a> {
-	fn show<S: Shower>(self, s: &mut S) {
+impl<'a> Show for RelPath<'a> {
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
 		for _ in 0..self.n_parents {
-			s.add("../");
+			s.add("../")?;
 		}
-		s.add(&self.rel_to_parent);
+		s.add(self.rel_to_parent)?;
+		Ok(())
 	}
 }

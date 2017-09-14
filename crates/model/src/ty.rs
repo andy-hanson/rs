@@ -68,18 +68,19 @@ impl<'a> Clone for Ty<'a> {
 	}
 }
 impl<'t, 'a> Show for &'t Ty<'a> {
-	fn show<S: Shower>(self, s: &mut S) {
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
 		match *self {
 			Ty::Bogus => {
-				s.add("<bogus>");
+				s.add("<bogus>")?;
 			}
 			Ty::Plain(effect, ref inst_cls) => {
-				s.add(effect).add(' ').add(inst_cls);
+				s.add(effect)?.add(' ')?.add(inst_cls)?;
 			}
 			Ty::Param(p) => {
-				s.add(p.name);
+				s.add(p.name)?;
 			}
 		}
+		Ok(())
 	}
 }
 /*impl Serialize for Ty {
@@ -122,13 +123,14 @@ impl<'a> Clone for InstCls<'a> {
 	}
 }
 impl<'i, 'a> Show for &'i InstCls<'a> {
-	fn show<S: Shower>(self, s: &mut S) {
-		s.add(self.0.name);
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		s.add(self.0.name)?;
 		if !self.1.is_empty() {
-			s.add('[');
-			s.join(self.1);
-			s.add(']');
+			s.add('[')?;
+			s.join(self.1)?;
+			s.add(']')?;
 		}
+		Ok(())
 	}
 }
 

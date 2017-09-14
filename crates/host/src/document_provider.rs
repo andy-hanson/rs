@@ -14,7 +14,8 @@ pub trait DocumentProvider<'a> {
 	None for document not found.
 	Result::Err for any other error.
 	*/
-	fn get_document(&self, path: Path, arena: &'a Arena) -> Result<Option<DocumentInfo<'a>>, Self::Error>;
+	fn get_document(&mut self, path: Path, arena: &'a Arena)
+		-> Result<Option<DocumentInfo<'a>>, Self::Error>;
 }
 
 //TODO: how to make this an impl on FileLoadingDocumentProvider?
@@ -32,7 +33,11 @@ impl<'a, FI: FileInput> DocumentProvider<'a> for FileLoadingDocumentProvider<FI>
 		self.file_input.root_name()
 	}
 
-	fn get_document(&self, path: Path, arena: &'a Arena) -> Result<Option<DocumentInfo<'a>>, Self::Error> {
+	fn get_document(
+		&mut self,
+		path: Path,
+		arena: &'a Arena,
+	) -> Result<Option<DocumentInfo<'a>>, Self::Error> {
 		self.file_input.read(path, arena).map(|result| {
 			result.map(|source| DocumentInfo::of(source, /*version*/ 0))
 		})

@@ -27,7 +27,7 @@ pub enum CompileResult<'a> {
 }
 
 pub fn compile_dir<'a>(dir: Path, arena: &'a Arena) -> Result<CompileResult<'a>, IoError> {
-	compile(Path::EMPTY, &file_system_document_provider(dir), None, arena)
+	compile(Path::EMPTY, &mut file_system_document_provider(dir), None, arena)
 }
 
 pub fn compile_file<'a>(path: Path<'a>, arena: &'a Arena) -> Result<CompileResult<'a>, IoError> {
@@ -37,5 +37,5 @@ pub fn compile_file<'a>(path: Path<'a>, arena: &'a Arena) -> Result<CompileResul
 	} else {
 		Path::of_slice(file_name)
 	};
-	compile(file_path, &file_system_document_provider(path.directory()), None, arena)
+	compile(file_path, &mut file_system_document_provider(path.directory()), None, arena)
 }

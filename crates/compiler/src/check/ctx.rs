@@ -152,8 +152,8 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		None
 	}
 
-	pub fn add_diagnostic(&mut self, loc: Loc, data: Diag<'model>) {
-		&mut self.diags <- Diagnostic(loc, data);
+	pub fn add_diagnostic(&mut self, loc: Loc, diag: Diag<'model>) {
+		&mut self.diags <- Diagnostic { loc, diag };
 	}
 
 	//mv?

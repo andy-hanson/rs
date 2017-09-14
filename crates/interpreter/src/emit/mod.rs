@@ -51,15 +51,13 @@ impl<'model, 'emit> Emitter<'model, 'emit> {
 			for an_impl in zuper.impls {
 				let implemented = &an_impl.implemented;
 				let code = self.get_code(module, implemented.name(), implemented.parameters(), *an_impl.body);
-				self.impls
-					.add(Up(an_impl), Code { source: MethodOrImpl::Impl(Up(an_impl)), code })
+				self.impls.add(Up(an_impl)) <- Code { source: MethodOrImpl::Impl(Up(an_impl)), code };
 			}
 		}
 
 		for method in *class.methods {
 			let code = self.get_code(module, method.name(), method.parameters(), *method.body);
-			self.methods
-				.add(Up(method), Code { source: MethodOrImpl::Method(Up(method)), code })
+			self.methods.add(Up(method)) <- Code { source: MethodOrImpl::Method(Up(method)), code };
 		}
 	}
 

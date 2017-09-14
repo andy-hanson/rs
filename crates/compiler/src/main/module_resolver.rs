@@ -6,7 +6,7 @@ use host::document_provider::DocumentProvider;
 use model::document_info::DocumentInfo;
 
 pub fn get_document_from_logical_path<'a, D: DocumentProvider<'a>>(
-	document_provider: &D,
+	document_provider: &mut D,
 	logical_path: Path,
 	arena: &'a Arena,
 ) -> Result<GetDocumentResult<'a>, D::Error> {

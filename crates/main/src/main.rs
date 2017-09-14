@@ -18,6 +18,7 @@ extern crate compiler;
 extern crate host;
 extern crate interpreter;
 extern crate model;
+extern crate parse;
 #[macro_use]
 extern crate util;
 

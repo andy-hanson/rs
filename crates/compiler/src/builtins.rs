@@ -108,13 +108,13 @@ pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 				ModuleOrFail::Module(module)
 			}
 			Err((loc, parse_diag)) => {
-				let diag = Diagnostic(loc, Diag::ParseError(parse_diag));
+				let diag = Diagnostic { loc, diag: Diag::ParseError(parse_diag) };
 				let mf = ModuleOrFail::Fail(
 					arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, arena) },
 				);
 				let mut shower = WriteShower::stderr();
-				show_diagnostics(&mf, &mut shower);
-				shower.nl();
+				show_diagnostics(&mf, &mut shower).unwrap();
+				shower.nl().unwrap();
 				panic!("Bai");
 				//TODO: just return it...
 			}

@@ -2,6 +2,9 @@ use std::cell::{Cell, UnsafeCell};
 use std::mem::uninitialized;
 use std::ops::Placer;
 
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeSeq;
+
 use super::arena::{Arena, NoDrop, PointerPlace};
 use super::iter::KnownLen;
 
@@ -51,6 +54,15 @@ impl<'a, T: NoDrop> KnownLen for List<'a, T> {
 
 	fn is_empty(self) -> bool {
 		self.0.is_none()
+	}
+}
+impl<'a, T: NoDrop + Serialize> Serialize for List<'a, T> {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		let mut seq = serializer.serialize_seq(Some(self.len()))?;
+		for e in *self {
+			seq.serialize_element(e)?;
+		}
+		seq.end()
 	}
 }
 

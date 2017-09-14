@@ -21,8 +21,7 @@ run:
 
 update_dev_dependencies:
 	rustup update
-	cargo +nightly install clippy -f
-	cargo +nightly install rustfmt-nightly -f
+	cargo +nightly install clippy rustfmt-nightly -f
 
 fmt:
 	cargo +nightly fmt --all

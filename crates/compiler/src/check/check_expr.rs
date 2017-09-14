@@ -663,8 +663,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let expr = self.expr(loc, e);
 				let expr_ty = expr.ty();
 				let new_inferred_ty = match *inferred_ty {
-					Some(ref mut last_inferred_ty) =>
-						self.get_compatible_ty(loc, last_inferred_ty, expr_ty),
+					Some(ref mut last_inferred_ty) => self.get_compatible_ty(loc, last_inferred_ty, expr_ty),
 					None => expr_ty.clone(),
 				};
 				*inferred_ty = Some(new_inferred_ty);

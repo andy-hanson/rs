@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::io::Error as IoError;
 use std::slice::Iter;
 
 use util::arith::u32_to_usize;
@@ -11,7 +11,7 @@ pub struct Reader<'text> {
 	source: &'text [u8],
 	iter: Iter<'text, u8>,
 	peek: u8,
-	pos_cell: Cell<Pos>,
+	pos: Pos,
 }
 impl<'text> Reader<'text> {
 	pub fn new(source: &'text [u8]) -> Self {
@@ -20,12 +20,12 @@ impl<'text> Reader<'text> {
 		assert_readable(source);
 		let mut iter = source.iter();
 		let peek = *iter.next().unwrap();
-		Reader { source, iter, peek, pos_cell: Cell::new(Pos::ZERO) }
+		Reader { source, iter, peek, pos: Pos::ZERO }
 	}
 
 	//TODO: cfg[debug]
 	pub fn debug_show(&self) {
-		let pos = u32_to_usize(self.pos_cell.get().index);
+		let pos = u32_to_usize(self.pos.index);
 		let mut nl_before = pos;
 		while nl_before > 0 && self.source[nl_before] != b'\n' {
 			nl_before -= 1
@@ -42,18 +42,29 @@ impl<'text> Reader<'text> {
 			}
 		}
 
+		self.debug_show_worker(line_no, pos, nl_before, nl_after)
+			.unwrap();
+	}
+	fn debug_show_worker(
+		&self,
+		line_no: usize,
+		pos: usize,
+		nl_before: usize,
+		nl_after: usize,
+	) -> Result<(), IoError> {
 		let mut s = WriteShower::stderr();
-		s.add("Line ")
-			.add(line_no)
-			.add(": ")
-			.add(&self.source[nl_before..pos])
-			.add("|")
-			.add(&self.source[pos..nl_after])
-			.nl();
+		s.add("Line ")?
+			.add(line_no)?
+			.add(": ")?
+			.add(&self.source[nl_before..pos])?
+			.add("|")?
+			.add(&self.source[pos..nl_after])?
+			.nl()?;
+		Ok(())
 	}
 
 	pub fn pos(&self) -> Pos {
-		self.pos_cell.get()
+		self.pos
 	}
 
 	pub fn peek(&self) -> u8 {
@@ -63,7 +74,7 @@ impl<'text> Reader<'text> {
 	pub fn skip(&mut self) {
 		// next() should always succeed, because source should end in a '\0' that ends lexing.
 		self.peek = *self.iter.next().unwrap();
-		self.pos_cell.set(self.pos_cell.get() + 1)
+		self.pos = self.pos.incr()
 	}
 
 	fn skip2(&mut self) {
@@ -78,8 +89,8 @@ impl<'text> Reader<'text> {
 	}
 
 	pub fn slice_from(&self, start_pos: Pos) -> &'text [u8] {
-		let a = start_pos.index as usize;
-		let b = self.pos_cell.get().index as usize;
+		let a = u32_to_usize(start_pos.index);
+		let b = u32_to_usize(self.pos.index);
 		assert_ne!(a, b);
 		&self.source[a..b]
 	}

@@ -43,10 +43,11 @@ impl Sym {
 	}
 }
 impl Show for Sym {
-	fn show<S: Shower>(self, s: &mut S) {
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
 		let map = SYMBOL_TO_STRING.lock().unwrap();
 		let str = map.get(&self).unwrap().deref();
-		s.add(str);
+		s.add(str)?;
+		Ok(())
 	}
 }
 impl Serialize for Sym {

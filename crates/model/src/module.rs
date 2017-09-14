@@ -2,7 +2,7 @@ use util::arena::{Arena, NoDrop};
 use util::late::Late;
 use util::list::List;
 use util::path::Path;
-use util::string_maker::Shower;
+use util::string_maker::{Show, Shower};
 use util::sym::Sym;
 use util::up::Up;
 
@@ -29,12 +29,18 @@ impl<'a> ModuleSourceEnum<'a> {
 			ModuleSourceEnum::Builtin { text, .. } => text,
 		}
 	}
-
-	pub fn show<'b, S: Shower>(&self, s: &'b mut S) -> &'b mut S {
+}
+impl<'m, 'a> Show for &'m ModuleSourceEnum<'a> {
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
 		match *self {
-			ModuleSourceEnum::Normal(ref ms) => s.add(&ms.logical_path),
-			ModuleSourceEnum::Builtin { name, .. } => s.add("Builtin ").add(name),
+			ModuleSourceEnum::Normal(ref ms) => {
+				s.add(ms.logical_path)?;
+			}
+			ModuleSourceEnum::Builtin { name, .. } => {
+				s.add("Builtin ")?.add(name)?;
+			}
 		}
+		Ok(())
 	}
 }
 

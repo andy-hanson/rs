@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use util::arena::Arena;
+use util::arena::{Arena, NoDrop};
 use util::dict::MutDict;
 use util::iter::KnownLen;
 use util::late::Late;
@@ -25,7 +25,7 @@ use super::module_resolver::{get_document_from_logical_path, GetDocumentResult};
 
 pub fn compile<'a, 'old, D: DocumentProvider<'a>>(
 	path: Path<'a>,
-	document_provider: &D,
+	document_provider: &mut D,
 	old_program: Option<CompiledProgram<'old>>,
 	arena: &'a Arena,
 ) -> Result<CompileResult<'a>, D::Error> {
@@ -76,7 +76,7 @@ Whether a document may be reused is indicated by its version vs the version the 
 struct Compiler<'document_provider, 'old, 'model, D: DocumentProvider<'model> + 'document_provider> {
 	arena: &'model Arena,
 	builtins: &'model BuiltinsOwn<'model>,
-	document_provider: &'document_provider D,
+	document_provider: &'document_provider mut D,
 	// We consume the old program, so we module values out of its map when we reuse them.
 	old_modules: MutDict<Path<'old>, ModuleOrFail<'old>>,
 	// Keys are logical paths.
@@ -121,7 +121,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		let parse_result = parse(&parse_arena, document.text);
 		Ok(match parse_result {
 			Ok(ModuleAst { imports, class }) => {
-				self.modules.add(logical_path, ModuleState::Compiling);
+				self.modules.add(logical_path) <- ModuleState::Compiling;
 				let (module_or_fail, is_reused) =
 					self.do_compile_single(logical_path, document, imports, class, full_path, is_index)?;
 				let module_state = if is_reused {
@@ -129,17 +129,17 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 				} else {
 					ModuleState::CompiledFresh(module_or_fail)
 				};
-				self.modules.change(&logical_path, module_state);
+				self.modules.change(&logical_path) <- module_state;
 				(CompileSingleResult::Found(module_or_fail), is_reused)
 			}
 			Err(parse_diag) => {
 				let source =
 					ModuleSourceEnum::Normal(ModuleSource { logical_path, full_path, is_index, document });
-				let diag = Diagnostic(parse_diag.0, Diag::ParseError(parse_diag.1)); //TODO: duplicate code somewhere
+				//TODO: duplicate code somewhere
+				let diag = Diagnostic { loc: parse_diag.0, diag: Diag::ParseError(parse_diag.1) };
 				let fail = self.arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, self.arena) };
 				let module_or_fail = ModuleOrFail::Fail(fail);
-				self.modules
-					.add(logical_path, ModuleState::CompiledFresh(module_or_fail));
+				self.modules.add(logical_path) <- ModuleState::CompiledFresh(module_or_fail);
 				(CompileSingleResult::Found(ModuleOrFail::Fail(fail)), false)
 			}
 		})
@@ -250,12 +250,12 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 				Ok(match imported_module {
 					CompileSingleResult::Circular => {
 						import_diagnostics <-
-							Diagnostic(loc, Diag::CircularDependency { from: full_path, to: relative_path });
+							Diagnostic { loc, diag: Diag::CircularDependency { from: full_path, to: relative_path } };
 						None
 					}
 					CompileSingleResult::Missing => {
 						import_diagnostics <-
-							Diagnostic(loc, Diag::CantFindLocalModule { from: full_path, to: relative_path });
+							Diagnostic { loc, diag: Diag::CantFindLocalModule { from: full_path, to: relative_path } };
 						None
 					}
 					CompileSingleResult::Found(found) => Some(found),
@@ -284,3 +284,4 @@ enum ModuleState<'model> {
 	CompiledFresh(ModuleOrFail<'model>),
 	CompiledReused(ModuleOrFail<'model>),
 }
+impl<'model> NoDrop for ModuleState<'model> {}

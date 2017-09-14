@@ -89,7 +89,8 @@ impl Arena {
 		(start, end, slice)
 	}
 
-	pub fn map<T, U: NoDrop, I: KnownLen<Item = T>, F: FnMut(T) -> U>(&self, input: I, mut f: F) -> &[U] {
+	#[allow(mut_from_ref)]
+	pub fn map<T, U: NoDrop, I: KnownLen<Item = T>, F: FnMut(T) -> U>(&self, input: I, mut f: F) -> &mut [U] {
 		unsafe {
 			let len = input.len();
 			let (start, end, slice) = self.alloc_n::<U>(len);
@@ -269,6 +270,13 @@ impl<'builder, 'arena, T: 'arena + Copy + Sized + NoDrop> Placer<T>
 pub struct PointerPlace<'a, T: 'a + Sized + NoDrop> {
 	ptr: *mut T,
 	phantom: PhantomData<&'a T>,
+}
+impl<'a, T: 'a + Sized + NoDrop> Placer<T> for PointerPlace<'a, T> {
+	type Place = Self;
+
+	fn make_place(self) -> Self::Place {
+		self
+	}
 }
 impl<'a, T: 'a + Sized + NoDrop> PointerPlace<'a, T> {
 	//TODO: not pub

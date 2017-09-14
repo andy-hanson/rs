@@ -3,10 +3,10 @@ use serde::{Serialize, Serializer};
 use std::ops::{Add, Sub};
 
 use super::arena::NoDrop;
-use super::arith::{mid, usize_to_u32};
+use super::arith::{mid, u32_to_usize, usize_to_u32};
 use super::string_maker::{Show, Shower};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Pos {
 	pub index: u32,
 }
@@ -44,7 +44,7 @@ impl Serialize for Pos {
 }
 impl NoDrop for Pos {}
 
-#[derive(Copy, Clone, Serialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Serialize)]
 pub struct Loc {
 	pub start: Pos,
 	pub end: Pos,
@@ -61,17 +61,19 @@ impl Loc {
 }
 impl NoDrop for Loc {}
 
-#[derive(Eq, PartialEq, Debug)] //TODO:shouldn't need this
+#[derive(Copy, Clone, Eq, PartialEq, Debug)] //TODO:shouldn't need Debug
 pub struct LineAndColumn {
 	pub line: u32,
 	pub column: u32,
 }
 impl<'a> Show for &'a LineAndColumn {
-	fn show<S: Shower>(self, s: &mut S) {
-		s.add(self.line).add(":").add(self.column);
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		s.add(self.line)?.add(":")?.add(self.column)?;
+		Ok(())
 	}
 }
 
+#[derive(Copy, Clone)]
 pub struct LineAndColumnLoc {
 	pub start: LineAndColumn,
 	pub end: LineAndColumn,
@@ -85,8 +87,9 @@ impl LineAndColumnLoc {
 	}
 }
 impl<'a> Show for &'a LineAndColumnLoc {
-	fn show<S: Shower>(self, s: &mut S) {
-		s.add(&self.start).add("-").add(&self.end);
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		s.add(&self.start)?.add("-")?.add(&self.end)?;
+		Ok(())
 	}
 }
 
@@ -103,6 +106,18 @@ impl LineAndColumnGetter {
 			}
 		}
 		LineAndColumnGetter { line_to_pos: line_to_pos.into_boxed_slice() }
+	}
+
+	pub fn loc_at_line_and_column(&self, lc_loc: LineAndColumnLoc) -> Loc {
+		Loc { start: self.pos_at_line_and_column(lc_loc.start), end: self.pos_at_line_and_column(lc_loc.end) }
+	}
+
+	pub fn pos_at_line_and_column(&self, lc_pos: LineAndColumn) -> Pos {
+		let line = u32_to_usize(lc_pos.line);
+		let index = self.line_to_pos[line] + lc_pos.column;
+		let next_line = line + 1;
+		assert!(next_line == self.line_to_pos.len() || index < self.line_to_pos[next_line]);
+		Pos { index }
 	}
 
 	pub fn line_and_column_at_loc(&self, loc: Loc) -> LineAndColumnLoc {

@@ -8,6 +8,7 @@ compiler = { path = "../compiler" }
 host = { path = "../host" }
 interpreter = { path = "../interpreter" }
 model = { path = "../model" }
+parse = { path = "../parse" }
 util = { path = "../util" }
 
 backtrace = "0.3"

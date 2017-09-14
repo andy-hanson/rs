@@ -9,7 +9,7 @@ use super::ast::{ArrayLiteralData, CallData, Case, Catch, Expr, ExprData, ForDat
                  SetPropertyData, TryData, TypeArgumentsData, WhenTestData};
 use super::lexer::{CatchOrFinally, Lexer, Next, Result};
 use super::parse_ty::{parse_ty, take_ty_arguments_after_passing_bracketl, try_take_ty_argument,
-					  try_take_ty_arguments};
+                      try_take_ty_arguments};
 use super::token::Token;
 
 pub fn parse_block<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Expr<'a>> {

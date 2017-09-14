@@ -1,8 +1,14 @@
 #![allow(dead_code)] // TODO
+#![allow(unknown_lints)]
 #![feature(placement_in_syntax)]
 
 #[macro_use]
 extern crate lazy_static;
+#[allow(useless_attribute)]
+#[allow(unused_extern_crates)] // This is used...
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 
 extern crate model;
 #[macro_use]

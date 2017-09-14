@@ -113,7 +113,7 @@ pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 					arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, arena) },
 				);
 				let mut shower = WriteShower::stderr();
-				show_diagnostics(&mf, &mut shower).unwrap();
+				show_diagnostics(mf, &mut shower).unwrap();
 				shower.nl().unwrap();
 				panic!("Bai");
 				//TODO: just return it...

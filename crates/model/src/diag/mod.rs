@@ -216,7 +216,7 @@ impl<'d, 'a> Show for &'d Diag<'a> {
 	}
 }
 
-pub fn show_diagnostics<'a, S: Shower>(module: &ModuleOrFail<'a>, s: &mut S) -> Result<(), S::Error> {
+pub fn show_diagnostics<'a, S: Shower>(module: ModuleOrFail<'a>, s: &mut S) -> Result<(), S::Error> {
 	let diags = module.diagnostics();
 	assert!(!diags.is_empty()); // Else don't call this.
 

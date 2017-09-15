@@ -34,7 +34,7 @@ impl<'m, 'a> Show for &'m ModuleSourceEnum<'a> {
 	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
 		match *self {
 			ModuleSourceEnum::Normal(ref ms) => {
-				s.add(ms.logical_path)?;
+				s.add('\'')?.add(ms.full_path)?.add('\'')?;
 			}
 			ModuleSourceEnum::Builtin { name, .. } => {
 				s.add("Builtin ")?.add(name)?;

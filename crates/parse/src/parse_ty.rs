@@ -2,15 +2,14 @@ use util::list::{List, ListBuilder};
 use util::loc::Pos;
 use util::sym::Sym;
 
-use model::effect::Effect;
+use ast::{Effect, Ty};
 
-use super::ast;
 use super::lexer::{Lexer, Result};
 use super::token::Token;
 
 pub enum SelfEffectOrTy<'a> {
 	SelfEffect(Effect),
-	Ty(ast::Ty<'a>),
+	Ty(Ty<'a>),
 }
 pub fn parse_self_effect_or_ty<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<SelfEffectOrTy<'a>> {
 	let start = l.pos();
@@ -43,7 +42,7 @@ pub fn parse_self_effect_or_ty<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<SelfEffe
 	}
 }
 
-pub fn parse_ty<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<ast::Ty<'a>> {
+pub fn parse_ty<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Ty<'a>> {
 	let start = l.pos();
 	let token = l.next_token();
 	match token {
@@ -87,12 +86,12 @@ fn finish_parse_ty<'a, 't>(
 	start: Pos,
 	effect: Effect,
 	name: Sym,
-) -> Result<ast::Ty<'a>> {
+) -> Result<Ty<'a>> {
 	let ty_args = try_take_ty_arguments(l)?;
-	Ok(ast::Ty { loc: l.loc_from(start), effect, name, ty_args })
+	Ok(Ty { loc: l.loc_from(start), effect, name, ty_args })
 }
 
-pub fn try_take_ty_argument<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<ast::Ty<'a>>> {
+pub fn try_take_ty_argument<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<Ty<'a>>> {
 	if l.try_take_bracketl() {
 		let ty = parse_ty(l)?;
 		l.take_bracketr()?;
@@ -102,7 +101,7 @@ pub fn try_take_ty_argument<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<Option<ast:
 	}
 }
 
-pub fn try_take_ty_arguments<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, ast::Ty<'a>>> {
+pub fn try_take_ty_arguments<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Ty<'a>>> {
 	if l.try_take_bracketl() {
 		take_ty_arguments_after_passing_bracketl(l)
 	} else {
@@ -112,8 +111,8 @@ pub fn try_take_ty_arguments<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, a
 
 pub fn take_ty_arguments_after_passing_bracketl<'a, 't>(
 	l: &mut Lexer<'a, 't>,
-) -> Result<List<'a, ast::Ty<'a>>> {
-	let mut b = ListBuilder::<ast::Ty>::new(l.arena);
+) -> Result<List<'a, Ty<'a>>> {
+	let mut b = ListBuilder::<Ty>::new(l.arena);
 	loop {
 		&mut b <- parse_ty(l)?;
 		if l.try_take_bracketr() {

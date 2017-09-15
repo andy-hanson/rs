@@ -6,22 +6,24 @@ use util::list::List;
 use util::sym::Sym;
 use util::up::Up;
 
+use ast;
+
 use model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
 use model::diag::Diag;
 use model::method::{AbstractMethod, Impl, MethodOrImpl, MethodSignature, MethodWithBody, Parameter};
 use model::module::Module;
 use model::ty::{TypeParameter, TypeParameterOrigin};
 
-use super::super::builtins::BuiltinsCtx;
-use super::super::parse::ast;
+use super::super::builtins::BuiltinsOwn;
 
+use super::ast_utils::effect_to_effect;
 use super::check_expr::check_method_body;
 use super::ctx::Ctx;
 use super::instantiator::Instantiator;
 
 pub fn check_module<'ast, 'builtins_ctx, 'model>(
 	module: &'model Module<'model>,
-	builtins: &'builtins_ctx BuiltinsCtx<'model>,
+	builtins: &'builtins_ctx BuiltinsOwn<'model>,
 	ast: &'ast ast::Class<'ast>,
 	name: Sym,
 	arena: &'model Arena,
@@ -192,7 +194,7 @@ fn check_method_initial<'ast, 'builtins_ctx, 'model>(
 			name,
 			type_parameters,
 			return_ty,
-			self_effect,
+			self_effect: effect_to_effect(self_effect),
 			parameters,
 		},
 		is_static,

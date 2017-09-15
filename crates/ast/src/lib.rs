@@ -1,3 +1,8 @@
+#[macro_use]
+extern crate serde_derive;
+
+extern crate util;
+
 use util::arena::NoDrop;
 use util::late::Late;
 use util::list::List;
@@ -5,7 +10,9 @@ use util::loc::Loc;
 use util::path::{Path, RelPath};
 use util::sym::Sym;
 
-use model::effect::Effect;
+// Our own copy of model::effect to avoid dependency
+#[derive(Copy, Clone, Eq, PartialEq, Serialize)]
+pub enum Effect { Pure, Get, Set, Io }
 
 #[derive(Serialize)]
 pub struct Module<'a> {

@@ -2,12 +2,12 @@ use util::late::Late;
 use util::list::{List, ListBuilder};
 use util::loc::Pos;
 
-use model::diag::ParseDiag;
+use parse_diag::ParseDiag;
 
 use super::ast::{ArrayLiteralData, CallData, Case, Catch, Expr, ExprData, ForData, GetPropertyData,
                  IfElseData, LetData, NewData, OperatorCallData, Pattern, PatternData, SeqData,
                  SetPropertyData, TryData, TypeArgumentsData, WhenTestData};
-use super::lexer::{CatchOrFinally, Lexer, Next, Result};
+use super::lexer::{CatchOrFinally, Lexer, Next, ParseDiagnostic, Result};
 use super::parse_ty::{parse_ty, take_ty_arguments_after_passing_bracketl, try_take_ty_argument,
                       try_take_ty_arguments};
 use super::token::Token;
@@ -131,7 +131,7 @@ fn parse_expr_2<'a, 't>(
 						let expr_data = ExprData::SetProperty(l.arena <- SetPropertyData(property_name, value));
 						Ok((l.expr_from(start, expr_data), next_2))
 					} else {
-						Err((first.0, ParseDiag::PrecedingEquals))
+						Err(ParseDiagnostic(first.0, ParseDiag::PrecedingEquals))
 					}
 				}
 
@@ -147,10 +147,10 @@ fn parse_expr_2<'a, 't>(
 							Token::Newline =>
 								Ok((l.expr_from(start, ExprData::Let(l.arena <- LetData(pattern, value, Late::new()))), next_2)),
 							_ =>
-								Err((l.loc_from(start), ParseDiag::BlockCantEndInLet)),
+								Err(ParseDiagnostic(l.loc_from(start), ParseDiag::BlockCantEndInLet)),
 						}
 					} else {
-						Err((first.0, ParseDiag::PrecedingEquals))
+						Err(ParseDiagnostic(first.0, ParseDiag::PrecedingEquals))
 					}
 				}
 

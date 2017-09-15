@@ -10,6 +10,8 @@ use util::up::Up;
 
 use util::string_maker::{Shower, WriteShower};
 
+use ast::Module as ModuleAst;
+use parse::{parse, ParseDiagnostic};
 use model::class::ClassDeclaration;
 use model::diag::{Diag, Diagnostic};
 use model::diag::show_diagnostics;
@@ -17,8 +19,7 @@ use model::module::{FailModule, Module, ModuleOrFail, ModuleSourceEnum};
 use model::ty::{InstCls, Ty};
 
 use super::check::check_module;
-use super::parse::ast::Module as ModuleAst;
-use super::parse::parse;
+use super::check::expected::Expected;
 
 lazy_static! {
 	static ref BUILTINS_ARENA: UnsafeSync<Arena> = UnsafeSync(Arena::new());
@@ -48,31 +49,20 @@ fn load_builtin_file(path_slice: &[u8]) -> &[u8] {
 pub struct BuiltinsOwn<'model> {
 	pub all: Late<&'model [ModuleOrFail<'model>]>,
 	pub all_successes: Late<&'model [Up<'model, Module<'model>>]>,
-	pub void: Late<Ty<'model>>,
-	pub bool: Late<Ty<'model>>,
+	pub expected_void: Late<Expected<'model>>,
+	pub expected_bool: Late<Expected<'model>>,
 }
+
 impl<'model> NoDrop for BuiltinsOwn<'model> {}
-impl<'model> BuiltinsOwn<'model> {
-	#[allow(needless_lifetimes)] // Can't seem to write this without the lifetimes?
-	pub fn as_ctx(&'model self) -> BuiltinsCtx<'model> {
-		BuiltinsCtx { all_successes: *self.all_successes, void: Some(&self.void), bool: Some(&self.bool) }
-	}
-}
 
-pub struct BuiltinsCtx<'model> {
-	pub all_successes: &'model [Up<'model, Module<'model>>],
-	pub void: Option<&'model Ty<'model>>,
-	pub bool: Option<&'model Ty<'model>>,
-}
-
-pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
-	let mut all_successes = arena.max_len_builder(BUILTINS_FILES.len());
+pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn {
 	let own = arena <- BuiltinsOwn {
 		all: Late::new(),
 		all_successes: Late::new(),
-		void: Late::new(),
-		bool: Late::new(),
+		expected_void: Late::new(),
+		expected_bool: Late::new(),
 	};
+	let mut all_successes = arena.max_len_builder(BUILTINS_FILES.len());
 	let sym_void = Sym::of("void");
 	let sym_bool = Sym::of("bool");
 
@@ -91,23 +81,17 @@ pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 					diagnostics: Late::new(),
 				};
 				assert!(imports.is_empty());
-				{
-					let cur_builtins = BuiltinsCtx {
-						all_successes: all_successes.slice_so_far(),
-						void: own.void.try_get(),
-						bool: own.bool.try_get(),
-					};
-					check_module(module, &cur_builtins, class, name, arena);
-				}
+				own.all_successes.initialize_or_overwrite(all_successes.slice_so_far());
+				check_module(module, own, class, name, arena);
 				if name == sym_void {
-					&own.void <- primitive_ty(&module.class);
+					&own.expected_void <- Expected::SubTypeOf(primitive_ty(&module.class));
 				} else if name == sym_bool {
-					&own.bool <- primitive_ty(&module.class);
+					&own.expected_bool <- Expected::SubTypeOf(primitive_ty(&module.class));
 				}
 				&mut all_successes <- Up(module);
 				ModuleOrFail::Module(module)
 			}
-			Err((loc, parse_diag)) => {
+			Err(ParseDiagnostic(loc, parse_diag)) => {
 				let diag = Diagnostic { loc, diag: Diag::ParseError(parse_diag) };
 				let mf = ModuleOrFail::Fail(
 					arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, arena) },
@@ -122,8 +106,7 @@ pub fn get_builtins(arena: &Arena) -> &BuiltinsOwn {
 	}
 
 	&own.all <- all.finish();
-	&own.all_successes <- all_successes.finish();
-
+	own.all_successes.initialize_or_overwrite(all_successes.finish());
 	own
 }
 

@@ -74,12 +74,21 @@ impl<'a> Path<'a> {
 		unimplemented!()
 	}
 
-	pub fn last(&self) -> Option<&'a [u8]> {
-		/*self.0.last().map(|a| {
-			let slice: &[u8] = &*a;
-			slice
-		})*/
-		unimplemented!()
+	pub fn file_name(&self) -> Option<&'a [u8]> {
+		if self.0.is_empty() {
+			None
+		} else {
+			// Count backwards to a '/'
+			let mut res = self.0;
+			for (i, ch) in self.0.iter().enumerate().rev() {
+				if *ch == b'/' {
+					// Rust won't let me break with value out of a for loop. :(
+					res = &self.0[i..self.0.len()];
+					break
+				}
+			}
+			Some(res)
+		}
 	}
 
 	pub fn without_extension(&self, extension: &[u8]) -> Self {

@@ -9,6 +9,9 @@ use util::path::{Path, RelPath};
 use util::sym::Sym;
 use util::up::Up;
 
+use ast::{Class as ClassAst, Import as ImportAst, Module as ModuleAst};
+use parse::parse;
+
 use host::document_provider::DocumentProvider;
 
 use model::diag::{Diag, Diagnostic};
@@ -17,8 +20,6 @@ use model::module::{FailModule, Module, ModuleOrFail, ModuleSource, ModuleSource
 
 use super::super::builtins::{get_builtins, BuiltinsOwn};
 use super::super::check::check_module;
-use super::super::parse::ast::{Class as ClassAst, Import as ImportAst, Module as ModuleAst};
-use super::super::parse::parse;
 
 use super::{CompileResult, CompiledProgram};
 use super::module_resolver::{get_document_from_logical_path, GetDocumentResult};
@@ -178,13 +179,13 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 			ResolvedImports::Success(imports) => {
 				let module =
 					self.arena <- Module { source, imports, class: Late::new(), diagnostics: Late::new() };
-				let name = match logical_path.last() {
+				let name = match logical_path.file_name() {
 					Some(name) => Sym::from_slice(name),
 					None => self.document_provider.root_name(),
 				};
 				// Initializes module.class and module.diagnostics.
 				// (There are no parse/import diagnostics or we wouldn't have gotten here.)
-				check_module(module, &self.builtins.as_ctx(), class_ast, name, self.arena);
+				check_module(module, self.builtins, class_ast, name, self.arena);
 				ModuleOrFail::Module(module)
 			}
 			ResolvedImports::Failure(imports, diagnostics) =>

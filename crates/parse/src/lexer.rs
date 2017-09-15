@@ -4,13 +4,15 @@ use util::arena::Arena;
 use util::loc::{Loc, Pos};
 use util::sym::Sym;
 
-use model::diag::ParseDiag;
+use ast::{Expr, ExprData};
 
-use super::ast::{Expr, ExprData};
+use parse_diag::ParseDiag;
+
 use super::reader::Reader;
 use super::token::Token;
 
-pub type Result<T> = ::std::result::Result<T, (Loc, ParseDiag)>;
+pub struct ParseDiagnostic(pub Loc, pub ParseDiag);
+pub type Result<T> = ::std::result::Result<T, ParseDiagnostic>;
 
 pub struct Next {
 	pub pos: Pos,
@@ -23,7 +25,7 @@ pub struct Lexer<'ast, 'text: 'ast> {
 	indent: u32,
 	dedenting: u32,
 	quote_part_value: &'ast [u8],
-	diagnostic: Option<(Loc, ParseDiag)>,
+	diagnostic: Option<ParseDiagnostic>,
 }
 impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 	pub fn new(arena: &'ast Arena, source: &'text [u8]) -> Self {
@@ -38,7 +40,7 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 	}
 
 	// Call this when receiving 'Diagnostic' from the lexer.
-	pub fn diag(&mut self) -> (Loc, ParseDiag) {
+	pub fn diag(&mut self) -> ParseDiagnostic {
 		replace(&mut self.diagnostic, None).unwrap()
 	}
 
@@ -202,7 +204,7 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 
 			b' ' =>
 				if self.peek() == b'\n' {
-					self.diagnostic = Some((self.single_char_loc(), ParseDiag::TrailingSpace));
+					self.diagnostic = Some(ParseDiagnostic(self.single_char_loc(), ParseDiag::TrailingSpace));
 					Token::Diagnostic
 				} else {
 					Token::Space
@@ -262,9 +264,11 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 				Token::Operator
 			}
 
+			b'\n' => self.handle_newline(),
+
 			ch => {
 				self.diagnostic =
-					Some((self.single_char_loc(), ParseDiag::UnrecognizedCharacter(ch as char)));
+					Some(ParseDiagnostic(self.single_char_loc(), ParseDiag::IllegalCharacter(ch)));
 				Token::Diagnostic
 			}
 		}
@@ -291,7 +295,7 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 		if actual == expected {
 			Ok(())
 		} else {
-			Err((self.single_char_loc(), ParseDiag::UnexpectedCharacter { actual, expected }))
+			Err(ParseDiagnostic(self.single_char_loc(), ParseDiag::UnexpectedCharacter { actual, expected }))
 		}
 	}
 
@@ -304,7 +308,7 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 		if pred(actual) {
 			Ok(())
 		} else {
-			Err((self.single_char_loc(), ParseDiag::UnexpectedCharacterType { actual, expected_desc }))
+			Err(ParseDiagnostic(self.single_char_loc(), ParseDiag::UnexpectedCharacterType { actual, expected_desc }))
 		}
 	}
 
@@ -313,29 +317,36 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 		self.skip_while(|ch| ch == b'\t');
 		let count = self.pos() - start;
 		if self.peek() == b' ' {
-			Err((self.loc_from(start), ParseDiag::LeadingSpace))
+			Err(ParseDiagnostic(self.loc_from(start), ParseDiag::LeadingSpace))
 		} else {
 			Ok(count)
 		}
 	}
 
-	fn handle_newline(&mut self) -> Result<Token> {
+	fn handle_newline(&mut self) -> Token {
 		self.skip_empty_lines();
 		let old = self.indent;
-		let new = self.lex_indent()?;
+		let new = match self.lex_indent() {
+			Ok(n) => n,
+			Err(e) => {
+				self.diagnostic = Some(e);
+				return Token::Diagnostic
+			}
+		};
 		self.indent = new;
 		if new == old {
-			Ok(Token::Newline)
+			Token::Newline
 		} else if new > old {
 			if new != old + 1 {
-				Err((self.single_char_loc(), ParseDiag::TooMuchIndent { old, new }))
+				self.diagnostic = Some(ParseDiagnostic(self.single_char_loc(), ParseDiag::TooMuchIndent { old, new }));
+				Token::Diagnostic
 			} else {
-				Ok(Token::Indent)
+				Token::Indent
 			}
 		} else {
 			// `- 1` becuase the Token.Dedent that we're about to return doesn't go in dedenting
 			self.dedenting = old - new - 1;
-			Ok(Token::Dedent)
+			Token::Dedent
 		}
 	}
 
@@ -397,11 +408,10 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 			return Ok(false)
 		}
 
-		let x = self.handle_newline()?;
-		if x == Token::Dedent {
-			Ok(true)
-		} else {
-			Err(self.unexpected_token(start, x, b"dedent"))
+		match self.handle_newline() {
+			Token::Dedent => Ok(true),
+			Token::Diagnostic => Err(self.diag()),
+			x => Err(self.unexpected_token(start, x, b"dedent")),
 		}
 	}
 
@@ -522,7 +532,7 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 		} else if is_operator_char(first) {
 			self.skip_while(is_operator_char);
 		} else {
-			return Err((
+			return Err(ParseDiagnostic(
 				self.single_char_loc(),
 				ParseDiag::UnexpectedCharacterType { actual: first, expected_desc: b"name or operator" },
 			))
@@ -545,7 +555,7 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 		start_pos: Pos,
 		actual: Token,
 		expected_desc: &'static [u8],
-	) -> (Loc, ParseDiag) {
+	) -> ParseDiagnostic {
 		self.unexpected(start_pos, actual.token_name(), expected_desc)
 	}
 
@@ -554,8 +564,8 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 		start_pos: Pos,
 		actual: &'static [u8],
 		expected: &'static [u8],
-	) -> (Loc, ParseDiag) {
-		(self.loc_from(start_pos), ParseDiag::UnexpectedToken { expected, actual })
+	) -> ParseDiagnostic {
+		ParseDiagnostic(self.loc_from(start_pos), ParseDiag::UnexpectedToken { expected, actual })
 	}
 
 	pub fn take_catch_or_finally(&mut self) -> Result<CatchOrFinally> {
@@ -619,8 +629,8 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 		}
 	}
 
-	fn unexpected_char(&self, actual: u8, expected_desc: &'static [u8]) -> (Loc, ParseDiag) {
-		(self.single_char_loc(), ParseDiag::UnexpectedCharacterType { actual, expected_desc })
+	fn unexpected_char(&self, actual: u8, expected_desc: &'static [u8]) -> ParseDiagnostic {
+		ParseDiagnostic(self.single_char_loc(), ParseDiag::UnexpectedCharacterType { actual, expected_desc })
 	}
 }
 

@@ -6,6 +6,7 @@
 #[macro_use]
 extern crate lazy_static;
 
+extern crate ast;
 extern crate host;
 extern crate model;
 extern crate parse;

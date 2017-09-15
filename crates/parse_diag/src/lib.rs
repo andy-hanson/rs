@@ -1,3 +1,5 @@
+extern crate util;
+
 use util::arena::NoDrop;
 use util::string_maker::{Show, Shower};
 
@@ -8,7 +10,7 @@ pub enum ParseDiag {
 	EmptyExpression,
 	BlockCantEndInLet,
 	PrecedingEquals,
-	UnrecognizedCharacter(char),
+	IllegalCharacter(u8),
 	UnexpectedCharacterType { actual: u8, expected_desc: &'static [u8] },
 	UnexpectedCharacter { actual: u8, expected: u8 },
 	UnexpectedToken { expected: &'static [u8], actual: &'static [u8] },
@@ -38,19 +40,14 @@ impl<'a> Show for &'a ParseDiag {
 			ParseDiag::PrecedingEquals => {
 				s.add("Unusual expression preceding `=`.")?; //TODO: better error message
 			}
-			ParseDiag::UnrecognizedCharacter(ch) => {
-				s.add("Illegal character '")?.add(ch)?.add("'.")?;
+			ParseDiag::IllegalCharacter(ch) => {
+				s.add("Illegal character '")?.add(ShowChar(ch))?.add("'.")?;
 			}
 			ParseDiag::UnexpectedCharacterType { actual, expected_desc } => {
-				s.add("Unexpected character '")?;
-				show_char(actual, s)?;
-				s.add("'; expected: ")?.add(expected_desc)?;
+				s.add("Unexpected character '")?.add(ShowChar(actual))?.add("'; expected: ")?.add(expected_desc)?;
 			}
 			ParseDiag::UnexpectedCharacter { actual, expected } => {
-				s.add("Unexpected character '")?;
-				show_char(actual, s)?;
-				s.add("'; expected: ")?;
-				show_char(expected, s)?;
+				s.add("Unexpected character '")?.add(ShowChar(actual))?.add("'; expected: ")?.add(ShowChar(expected))?;
 			}
 			ParseDiag::UnexpectedToken { expected, actual } => {
 				s.add("Expected token type '")?
@@ -64,20 +61,23 @@ impl<'a> Show for &'a ParseDiag {
 	}
 }
 
-fn show_char<S: Shower>(ch: u8, s: &mut S) -> Result<(), S::Error> {
-	match ch {
-		b'\t' => {
-			s.add("tab")?;
+struct ShowChar(u8);
+impl Show for ShowChar {
+	fn show<S : Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		match self.0 {
+			b'\t' => {
+				s.add("tab")?;
+			}
+			b' ' => {
+				s.add("space")?;
+			}
+			b'\n' => {
+				s.add("newline")?;
+			}
+			_ => {
+				s.add(char::from(self.0))?;
+			}
 		}
-		b' ' => {
-			s.add("space")?;
-		}
-		b'\n' => {
-			s.add("newline")?;
-		}
-		_ => {
-			s.add(char::from(ch))?;
-		}
+		Ok(())
 	}
-	Ok(())
 }

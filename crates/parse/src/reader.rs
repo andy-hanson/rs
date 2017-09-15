@@ -5,8 +5,6 @@ use util::arith::u32_to_usize;
 use util::loc::Pos;
 use util::string_maker::{Shower, WriteShower};
 
-use model::document_info::assert_readable;
-
 pub struct Reader<'text> {
 	source: &'text [u8],
 	iter: Iter<'text, u8>,
@@ -26,39 +24,69 @@ impl<'text> Reader<'text> {
 	//TODO: cfg[debug]
 	pub fn debug_show(&self) {
 		let pos = u32_to_usize(self.pos.index);
-		let mut nl_before = pos;
+		/*let mut nl_before: size = pos - 1; // If at the end of a line, show that line, not the next line.
 		while nl_before > 0 && self.source[nl_before] != b'\n' {
 			nl_before -= 1
-		}
-		let mut nl_after = pos;
-		while nl_after < self.source.len() && self.source[nl_after] != b'\n' {
-			nl_after += 1
-		}
-
-		let mut line_no = 0;
-		for i in 0..nl_before {
-			if self.source[i] == b'\n' {
-				line_no += 1
+		}*/
+		let nl_before = {
+			if pos == 0 {
+				None
+			} else {
+				let mut i = pos - 1;
+				loop {
+					if self.source[i] == b'\n' {
+						break Some(i)
+					}
+					if i == 0 {
+						break None
+					}
+					i -= 1
+				}
 			}
-		}
+		};
+		let line_end = {
+			let mut i = pos;
+			loop {
+				if self.source[i] == b'\n' {
+					break i
+				}
+				if i == self.source.len() - 1 {
+					break self.source.len()
+				}
+				i += 1
+			}
+		};
 
-		self.debug_show_worker(line_no, pos, nl_before, nl_after)
+		let line_no = match nl_before {
+			Some(n) => {
+				let mut l = 2;
+				for i in 0..n {
+					if self.source[i] == b'\n' {
+						l += 1
+					}
+				}
+				l
+			}
+			None => 1,
+		};
+
+		self.debug_show_worker(line_no, pos, match nl_before { Some(n) => n + 1, None => 0 }, line_end)
 			.unwrap();
 	}
 	fn debug_show_worker(
 		&self,
 		line_no: usize,
 		pos: usize,
-		nl_before: usize,
-		nl_after: usize,
+		line_start: usize,
+		line_end: usize,
 	) -> Result<(), IoError> {
 		let mut s = WriteShower::stderr();
-		s.add("Line ")?
+		s.add("Pos ")?.add(pos)?.add(": Line ")?
 			.add(line_no)?
-			.add(": ")?
-			.add(&self.source[nl_before..pos])?
+			.add(" (")?.add(line_start)?.add("-")?.add(line_end)?.add("): ")?
+			.add(&self.source[line_start..pos])?
 			.add("|")?
-			.add(&self.source[pos..nl_after])?
+			.add(&self.source[pos..line_end])?
 			.nl()?;
 		Ok(())
 	}
@@ -94,4 +122,8 @@ impl<'text> Reader<'text> {
 		assert_ne!(a, b);
 		&self.source[a..b]
 	}
+}
+
+fn assert_readable(text: &[u8]) {
+	assert_eq!(text.last().cloned(), Some(b'\0'));
 }

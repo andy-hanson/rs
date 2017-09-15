@@ -1,0 +1,6 @@
+[package]
+name = "parse_diag"
+version = "0.1.0"
+
+[dependencies]
+util = { path = "../util" }

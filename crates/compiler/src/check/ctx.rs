@@ -5,29 +5,32 @@ use util::loc::Loc;
 use util::sym::Sym;
 use util::up::Up;
 
+use ast;
+
 use model::class::ClassDeclaration;
 use model::diag::{Diag, Diagnostic};
-use model::effect::Effect;
 use model::method::{InstMethod, MethodOrAbstract};
 use model::module::Module;
 use model::ty::{InstCls, Ty, TypeParameter};
 
-use super::super::builtins::BuiltinsCtx;
-use super::super::parse::ast;
+use super::super::builtins::BuiltinsOwn;
 
+use super::ast_utils::effect_to_effect;
+use super::expected::Expected;
 use super::class_utils::{try_get_member_from_class_declaration, InstMember};
 
 pub struct Ctx<'builtins_ctx, 'model: 'builtins_ctx> {
 	pub arena: &'model Arena,
 	pub current_class: &'model ClassDeclaration<'model>,
-	builtins: &'builtins_ctx BuiltinsCtx<'model>,
+	// Just mutable so `expected_void` can be referenced mutably -- but it won't actually be mutated, only Expected::Infer is mutated.
+	builtins: &'builtins_ctx BuiltinsOwn<'model>,
 	imports: &'model [Up<'model, Module<'model>>],
 	pub diags: ListBuilder<'model, Diagnostic<'model>>,
 }
 impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 	pub fn new(
 		current_class: &'model ClassDeclaration<'model>,
-		builtins: &'builtins_ctx BuiltinsCtx<'model>,
+		builtins: &'builtins_ctx BuiltinsOwn<'model>,
 		imports: &'model [Up<'model, Module<'model>>],
 		arena: &'model Arena,
 	) -> Self {
@@ -38,12 +41,12 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		self.diags.finish()
 	}
 
-	pub fn void(&self) -> Ty<'model> {
-		self.builtins.void.unwrap().clone()
+	pub fn expected_void(&self) -> &'builtins_ctx mut Expected<'model> {
+		self.builtins.expected_void.unsafe_get_mut()
 	}
 
-	pub fn bool(&self) -> Ty<'model> {
-		self.builtins.bool.unwrap().clone()
+	pub fn expected_bool(&self) -> &'builtins_ctx mut Expected<'model> {
+		self.builtins.expected_bool.unsafe_get_mut()
 	}
 
 	pub fn get_ty<'ast>(&mut self, ty_ast: &'ast ast::Ty<'ast>) -> Ty<'model> {
@@ -62,7 +65,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 			.chain(extra_ty_parameters)
 		{
 			if name == tp.name {
-				if effect != Effect::Pure {
+				if effect != ast::Effect::Pure {
 					//Diagnostic: Not allowed to specify an effect on a type parameter.
 					unimplemented!()
 				}
@@ -78,7 +81,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		let cls = unwrap_or_return!(self.access_class_declaration_or_add_diagnostic(loc, name), Ty::Bogus);
 		let args = self.arena
 			.map(ty_args, |ty_ast| self.get_ty_or_ty_parameter(ty_ast, extra_ty_parameters));
-		Ty::Plain(effect, InstCls(cls, args))
+		Ty::Plain(effect_to_effect(effect), InstCls(cls, args))
 	}
 
 	pub fn instantiate_class_from_ast<'ast>(
@@ -142,7 +145,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 			}
 		}
 
-		for b in self.builtins.all_successes {
+		for b in *self.builtins.all_successes {
 			if b.name() == name {
 				return Some(&b.class)
 			}

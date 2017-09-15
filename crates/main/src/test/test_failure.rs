@@ -22,18 +22,18 @@ impl<'t, 'a> Show for &'t TestFailure<'a> {
 		match *self {
 			TestFailure::NoIndex(path) => {
 				s.add("Could not find an index file at ")?.add(path)?;
-				Ok(())
 			}
 			TestFailure::IoError(_) => unimplemented!(),
 			TestFailure::ExtraBaselines(_) => unimplemented!(),
 			TestFailure::DiagnosticsMismatch { module_or_fail, expected } => {
-				unused!(module_or_fail, expected);
+				unused!(expected); //TODO: show a diff
+				s.add("Unexpected diagnostics:\n")?;
 				show_diagnostics(module_or_fail, s)?;
-				unimplemented!()
 			}
 			TestFailure::NoSuchBaseline(_) => unimplemented!(),
 			TestFailure::UnexpectedOutput { .. } => unimplemented!(),
 		}
+		Ok(())
 	}
 }
 

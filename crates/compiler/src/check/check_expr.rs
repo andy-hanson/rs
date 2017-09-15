@@ -5,6 +5,8 @@ use util::sym::Sym;
 use util::up::Up;
 use util::utils::todo;
 
+use ast;
+
 use model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration};
 use model::diag::Diag;
 use model::effect::Effect;
@@ -12,10 +14,9 @@ use model::expr::{Case, Catch, Expr, ExprData, Local, Pattern};
 use model::method::{InstMethod, MethodOrAbstract, MethodOrImpl, Parameter};
 use model::ty::{InstCls, Ty};
 
-use super::super::parse::ast;
-
 use super::class_utils::{try_get_member_of_inst_cls, InstMember};
 use super::ctx::Ctx;
+use super::expected::Expected;
 use super::instantiator::Instantiator;
 use super::type_utils::{common_ty, instantiate_and_narrow_effects, instantiate_ty, is_assignable};
 
@@ -75,18 +76,19 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		self.check_expr(&mut Expected::Return(ty), a)
 	}
 
+	//TODO: this is always called immediately after instantiate_ty, combine?
 	fn check_subtype<'ast>(&mut self, ty: Ty<'model>, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
 		self.check_expr(&mut Expected::SubTypeOf(ty), a)
 	}
 
 	fn check_void<'ast>(&mut self, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
-		let void = self.ctx.void();
-		self.check_subtype(void, a)
+		let void = self.ctx.expected_void();
+		self.check_expr(void, a)
 	}
 
 	fn check_bool<'ast>(&mut self, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
-		let bool = self.ctx.bool();
-		self.check_subtype(bool, a)
+		let bool = self.ctx.expected_bool();
+		self.check_expr(bool, a)
 	}
 
 	fn check_infer<'ast>(&mut self, a: &'ast ast::Expr<'ast>) -> &'model Expr<'model> {
@@ -95,33 +97,33 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 
 	fn check_expr<'ast>(
 		&mut self,
-		mut e: &mut Expected<'model>,
+		e: &mut Expected<'model>,
 		a: &'ast ast::Expr<'ast>,
 	) -> &'model Expr<'model> {
-		self.check_expr_worker(&mut e, a).0
+		self.check_expr_worker(e, a).0
 	}
 
 	fn check_expr_worker<'ast>(
 		&mut self,
-		mut e: &mut Expected<'model>,
+		e: &mut Expected<'model>,
 		&ast::Expr(loc, ref ast_data): &'ast ast::Expr<'ast>,
 	) -> Handled<'model> {
 		match *ast_data {
 			ast::ExprData::Access(name) => {
 				if let Some(local) = self.try_find_local(name) {
-					return self.handle(&mut e, loc, ExprData::AccessLocal(Up(local)))
+					return self.handle(e, loc, ExprData::AccessLocal(Up(local)))
 				}
 
 				if let Some(param) = self.current_parameters.iter().find(|p| p.name == name) {
 					let ty = self.instantiate_ty(&param.ty, self.method_instantiator);
-					return self.handle(&mut e, loc, ExprData::AccessParameter(Up(param), ty))
+					return self.handle(e, loc, ExprData::AccessParameter(Up(param), ty))
 				}
 
 				if let Some(InstMember(decl, instantiator)) =
 					self.ctx.get_own_member_or_add_diagnostic(loc, name)
 				{
 					return match decl {
-						MemberDeclaration::Slot(slot) => self.get_own_slot(&mut e, loc, slot, instantiator),
+						MemberDeclaration::Slot(slot) => self.get_own_slot(e, loc, slot, instantiator),
 						MemberDeclaration::Method(_) | MemberDeclaration::AbstractMethod(_) =>
 							unimplemented!(), //diagnostic
 					}
@@ -135,10 +137,10 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			}
 			ast::ExprData::OperatorCall(&ast::OperatorCallData(ref left, operator, ref right)) => {
 				let ty_args = todo(); //List::empty(); // No way to provide these to an operator call.
-				self.call_method(&mut e, loc, left, operator, ty_args, OptionIter(Some(right)))
+				self.call_method(e, loc, left, operator, ty_args, OptionIter(Some(right)))
 			}
 			ast::ExprData::Call(&ast::CallData(ref target, args)) =>
-				self.check_call_ast_worker(&mut e, loc, target, args),
+				self.check_call_ast_worker(e, loc, target, args),
 			ast::ExprData::Recur(arg_asts) => {
 				if !e.in_tail_call_position() {
 					self.add_diagnostic(loc, Diag::NotATailCall)
@@ -149,7 +151,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let moa = method_or_impl.method_or_abstract();
 				let inst = self.method_instantiator;
 				let args = unwrap_or_return!(self.check_arguments(loc, moa, inst, arg_asts), self.bogus(loc));
-				self.handle(&mut e, loc, ExprData::Recur(method_or_impl, args))
+				self.handle(e, loc, ExprData::Recur(method_or_impl, args))
 			}
 			ast::ExprData::New(&ast::NewData(ty_arg_asts, arg_asts)) => {
 				let slots = match *self.ctx.current_class.head {
@@ -186,7 +188,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					self.check_subtype(ty, arg)
 				});
 				let ty = Ty::Plain(Effect::MAX, inst_cls);
-				self.handle(&mut e, loc, ExprData::New(ty, args))
+				self.handle(e, loc, ExprData::New(ty, args))
 			}
 			ast::ExprData::ArrayLiteral(&ast::ArrayLiteralData(ref element_ty, args)) => {
 				unused!(element_ty, args);
@@ -224,7 +226,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					}
 					Ty::Param(_) => unimplemented!(),
 				};
-				self.handle(&mut e, loc, ExprData::GetSlot(target, Up(slot), slot_ty))
+				self.handle(e, loc, ExprData::GetSlot(target, Up(slot), slot_ty))
 			}
 			ast::ExprData::SetProperty(&ast::SetPropertyData(property_name, ref value_ast)) => {
 				let InstMember(member_decl, instantiator) = unwrap_or_return!(
@@ -249,7 +251,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 
 				let ty = self.instantiate_ty(&slot.ty, &instantiator);
 				let value = self.ctx.arena <- self.check_subtype(ty, value_ast);
-				self.handle(&mut e, loc, ExprData::SetSlot(Up(slot), value))
+				self.handle(e, loc, ExprData::SetSlot(Up(slot), value))
 			}
 			ast::ExprData::Let(&ast::LetData(ref pattern_ast, ref value_ast, ref then_ast)) => {
 				let value = self.check_infer(value_ast);
@@ -267,7 +269,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 						ast::PatternData::Destruct(_) => unimplemented!(),
 					}
 				};
-				let then = self.check_expr(&mut e, then_ast);
+				let then = self.check_expr(e, then_ast);
 				for _ in 0..n_added {
 					self.pop_from_scope()
 				}
@@ -276,7 +278,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			}
 			ast::ExprData::Seq(&ast::SeqData(ref first_ast, ref then_ast)) => {
 				let first = self.check_void(first_ast);
-				let then = self.check_expr(&mut e, then_ast);
+				let then = self.check_expr(e, then_ast);
 				// 'expected' was handled in 'then'
 				Handled(self.expr(loc, ExprData::Seq(first, then)))
 			}
@@ -300,12 +302,12 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 						foo.get-self()
 				*/
 				let expr = ExprData::SelfExpr(Ty::Plain(self.self_effect, self.current_inst_cls()));
-				self.handle(&mut e, loc, expr)
+				self.handle(e, loc, expr)
 			}
 			ast::ExprData::IfElse(&ast::IfElseData(ref test_ast, ref then_ast, ref else_ast)) => {
 				let test = self.check_bool(test_ast);
-				let then = self.check_expr(&mut e, then_ast);
-				let elze = self.check_expr(&mut e, else_ast);
+				let then = self.check_expr(e, then_ast);
+				let elze = self.check_expr(e, else_ast);
 				let ifelse = ExprData::IfElse { test, then, elze, ty: e.inferred_ty().clone() };
 				// 'expected' was handled in both 'then' and 'else'.
 				Handled(self.expr(loc, ifelse))
@@ -315,22 +317,22 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					case_asts,
 					|&ast::Case(case_loc, ref test_ast, ref result_ast)| {
 						let test = self.check_bool(test_ast);
-						let result = self.check_expr(&mut e, result_ast);
+						let result = self.check_expr(e, result_ast);
 						Case(case_loc, test, result)
 					},
 				);
-				let elze = self.check_expr(&mut e, else_ast);
+				let elze = self.check_expr(e, else_ast);
 				// 'expected' handled in each case result and in 'elze'.
 				Handled(self.expr(loc, ExprData::WhenTest(cases, elze, e.inferred_ty().clone())))
 			}
 			ast::ExprData::Assert(asserted_ast) => {
 				let asserted = self.check_bool(asserted_ast);
-				self.handle(&mut e, loc, ExprData::Assert(asserted))
+				self.handle( e, loc, ExprData::Assert(asserted))
 			}
 			ast::ExprData::Try(
 				&ast::TryData { try: ref do_ast, catch: ref op_catch_ast, finally: ref op_finally_ast },
 			) => {
-				let body = self.check_expr(&mut e, do_ast);
+				let body = self.check_expr(e, do_ast);
 				let catch = op_catch_ast.as_ref().map(|catch| {
 					let &ast::Catch {
 						loc: catch_loc,
@@ -346,7 +348,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
                         name: exception_name
                     };
 					self.add_to_scope(caught);
-					let then = self.check_expr(&mut e, then_ast);
+					let then = self.check_expr(e, then_ast);
 					self.pop_from_scope();
 					Catch(catch_loc, caught, then)
 				});
@@ -393,7 +395,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 
 	fn check_call_ast_worker<'ast>(
 		&mut self,
-		mut expected: &mut Expected<'model>,
+		expected: &mut Expected<'model>,
 		loc: Loc,
 		target: &'ast ast::Expr<'ast>,
 		args: List<'ast, ast::Expr<'ast>>,
@@ -411,11 +413,11 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 						.access_class_declaration_or_add_diagnostic(real_target_loc, class_name),
 					self.bogus(target_loc)
 				);
-				self.call_static_method(&mut expected, loc, cls, static_method_name, ty_arg_asts, args)
+				self.call_static_method(expected, loc, cls, static_method_name, ty_arg_asts, args)
 			}
 			ast::ExprData::GetProperty(&ast::GetPropertyData(ref property_target, property_name)) =>
-				self.call_method(&mut expected, loc, property_target, property_name, ty_arg_asts, args),
-			ast::ExprData::Access(name) => self.call_own_method(&mut expected, loc, name, ty_arg_asts, args),
+				self.call_method(expected, loc, property_target, property_name, ty_arg_asts, args),
+			ast::ExprData::Access(name) => self.call_own_method(expected, loc, name, ty_arg_asts, args),
 			_ => {
 				self.add_diagnostic(loc, Diag::CallsNonMethod);
 				self.bogus(target_loc)
@@ -425,7 +427,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 
 	fn call_static_method<'ast>(
 		&mut self,
-		mut expected: &mut Expected<'model>,
+		expected: &mut Expected<'model>,
 		loc: Loc,
 		cls: &'model ClassDeclaration<'model>,
 		method_name: Sym,
@@ -451,7 +453,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 		);
 
 		let ty = self.instantiate_return_ty(inst_method);
-		self.handle(&mut expected, loc, ExprData::StaticMethodCall(inst_method, args, ty))
+		self.handle(expected, loc, ExprData::StaticMethodCall(inst_method, args, ty))
 	}
 
 	//mv
@@ -461,7 +463,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 
 	fn call_own_method<'ast>(
 		&mut self,
-		mut expected: &mut Expected<'model>,
+		expected: &mut Expected<'model>,
 		loc: Loc,
 		method_name: Sym,
 		ty_arg_asts: List<'ast, ast::Ty<'ast>>,
@@ -512,12 +514,12 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			ExprData::MyInstanceMethodCall(inst_method, args, ty)
 		};
 
-		self.handle(&mut expected, loc, expr)
+		self.handle(expected, loc, expr)
 	}
 
 	fn call_method<'ast, I: KnownLen<Item = &'ast ast::Expr<'ast>>>(
 		&mut self,
-		mut expected: &mut Expected<'model>,
+		expected: &mut Expected<'model>,
 		loc: Loc,
 		target_ast: &'ast ast::Expr<'ast>,
 		method_name: Sym,
@@ -569,7 +571,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				unimplemented!()
 		};
 		let e = ExprData::InstanceMethodCall(target, inst_method, args, ty);
-		self.handle(&mut expected, loc, e)
+		self.handle(expected, loc, e)
 	}
 
 	fn check_call_arguments<'ast, I: KnownLen<Item = &'ast ast::Expr<'ast>>>(
@@ -631,7 +633,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	//TODO:inline
 	fn get_own_slot(
 		&mut self,
-		mut expected: &mut Expected<'model>,
+		expected: &mut Expected<'model>,
 		loc: Loc,
 		slot: &'model SlotDeclaration<'model>,
 		instantiator: Instantiator<'model>,
@@ -653,7 +655,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			&mut self.ctx.diags,
 			self.ctx.arena,
 		);
-		self.handle(&mut expected, loc, ExprData::GetMySlot(Up(slot), slot_ty))
+		self.handle(expected, loc, ExprData::GetMySlot(Up(slot), slot_ty))
 	}
 
 	fn handle(&mut self, expected: &mut Expected<'model>, loc: Loc, e: ExprData<'model>) -> Handled<'model> {
@@ -663,7 +665,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let expr = self.expr(loc, e);
 				let expr_ty = expr.ty();
 				let new_inferred_ty = match *inferred_ty {
-					Some(ref mut last_inferred_ty) => self.get_compatible_ty(loc, last_inferred_ty, expr_ty),
+					Some(ref last_inferred_ty) => self.get_compatible_ty(loc, last_inferred_ty, expr_ty),
 					None => expr_ty.clone(),
 				};
 				*inferred_ty = Some(new_inferred_ty);
@@ -717,33 +719,5 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	}
 }
 
-
 //TODO:NEATER
 struct Handled<'model>(&'model Expr<'model>);
-
-enum Expected<'model> {
-	/* Return is identical to SubTypeOf, but marks that we're in a tail call position. */
-	Return(Ty<'model>),
-	SubTypeOf(Ty<'model>),
-	/* Expected should always be passed by `&mut`, so that inferred types can be inserted here. */
-	Infer(Option<Ty<'model>>),
-}
-impl<'model> Expected<'model> {
-	fn inferred_ty(&self) -> &Ty<'model> {
-		self.current_expected_ty().unwrap()
-	}
-
-	fn current_expected_ty(&self) -> Option<&Ty<'model>> {
-		match *self {
-			Expected::Return(ref ty) | Expected::SubTypeOf(ref ty) => Some(ty),
-			Expected::Infer(ref ty_op) => ty_op.as_ref(),
-		}
-	}
-
-	fn in_tail_call_position(&self) -> bool {
-		match *self {
-			Expected::Return(_) => true,
-			_ => false,
-		}
-	}
-}

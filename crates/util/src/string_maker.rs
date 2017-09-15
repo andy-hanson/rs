@@ -139,6 +139,7 @@ impl<W: IoWrite> Shower for WriteShower<W> {
 	}
 
 	fn _add_bytes(&mut self, bytes: &[u8]) -> Result<(), Self::Error> {
+		//write!(self.0, "{}", &String::from_utf8_lossy(bytes))
 		self.0.write_all(bytes)
 	}
 

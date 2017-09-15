@@ -13,8 +13,7 @@ use super::method::{AbstractMethod, MethodOrAbstract, MethodWithBody, Parameter}
 use super::module::ModuleOrFail;
 use super::ty::Ty;
 
-mod parse_diag;
-pub use self::parse_diag::ParseDiag;
+pub use parse_diag::ParseDiag;
 
 pub struct Diagnostic<'a> {
 	pub loc: Loc,
@@ -225,7 +224,7 @@ pub fn show_diagnostics<'a, S: Shower>(module: ModuleOrFail<'a>, s: &mut S) -> R
 	let lc = LineAndColumnGetter::new(text);
 	for &Diagnostic { loc, ref diag } in diags {
 		let lc_loc = lc.line_and_column_at_loc(loc);
-		s.add(source)?.add(&lc_loc)?.add(": ")?.add(diag)?;
+		s.add(source)?.add(" ")?.add(&lc_loc)?.add(": ")?.add(diag)?;
 	}
 	Ok(())
 }

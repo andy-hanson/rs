@@ -9,7 +9,7 @@ use util::up::Up;
 use super::class::{ClassDeclaration, MemberDeclaration, SlotDeclaration};
 use super::effect::Effect;
 use super::expr::Local;
-use super::method::{AbstractMethod, MethodOrAbstract, MethodWithBody, Parameter};
+use super::method::{AbstractMethod, MethodOrImplOrAbstract, MethodWithBody, Parameter};
 use super::module::ModuleOrFail;
 use super::ty::Ty;
 
@@ -38,11 +38,11 @@ pub enum Diag<'a> {
 	MethodUsedAsValue,
 	CallsNonMethod,
 	CantAccessStaticMethodThroughInstance(Up<'a, MethodWithBody<'a>>),
-	IllegalSelfEffect { target_effect: Effect, method: MethodOrAbstract<'a> },
-	ArgumentCountMismatch(MethodOrAbstract<'a>, usize),
+	IllegalSelfEffect { target_effect: Effect, method: MethodOrImplOrAbstract<'a> },
+	ArgumentCountMismatch(MethodOrImplOrAbstract<'a>, usize),
 	ClassNotFound(Sym),
 	StaticMethodNotFound(Up<'a, ClassDeclaration<'a>>, Sym),
-	CantCallInstanceMethodFromStaticMethod(MethodOrAbstract<'a>),
+	CantCallInstanceMethodFromStaticMethod(MethodOrImplOrAbstract<'a>),
 	NotATailCall,
 	NewInvalid(Up<'a, ClassDeclaration<'a>>),
 	NewArgumentCountMismatch { class: Up<'a, ClassDeclaration<'a>>, n_slots: usize, n_arguments: usize },

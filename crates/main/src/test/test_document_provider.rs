@@ -195,14 +195,14 @@ fn count_diagnostics(text: &[u8]) -> (usize, usize) {
 	let mut good_lines_len = 0;
 	let mut diagnostics_count = 0;
 	let mut iter = text.iter();
-	'outer: while let Some(ch) = iter.next() {
-		if *ch == b'~' {
+	'outer: while let Some(&ch) = iter.next() {
+		if ch == b'~' {
 			diagnostics_count += 1;
 			// Eat any more '~'
 			loop {
 				match iter.next() {
-					Some(ch) =>
-						if *ch != b'~' {
+					Some(&ch) =>
+						if ch != b'~' {
 							good_lines_len += 1;
 							break
 						},

@@ -1,3 +1,4 @@
+#![feature(conservative_impl_trait)]
 #![feature(placement_in_syntax)]
 
 extern crate serde;
@@ -17,3 +18,4 @@ pub mod expr;
 pub mod ty;
 pub mod method;
 pub mod module;
+pub mod program;

@@ -84,16 +84,10 @@ impl<'a> Path<'a> {
 		if self.0.is_empty() {
 			None
 		} else {
-			// Count backwards to a '/'
-			let mut res = self.0;
-			for (i, ch) in self.0.iter().enumerate().rev() {
-				if *ch == b'/' {
-					// Rust won't let me break with value out of a for loop. :(
-					res = &self.0[i..self.0.len()];
-					break
-				}
-			}
-			Some(res)
+			Some(match self.get_last_slash_index() {
+				Some(i) => &self.0[i+1..self.0.len()],
+				None => self.0,
+			})
 		}
 	}
 
@@ -112,8 +106,21 @@ impl<'a> Path<'a> {
 		unimplemented!() //self.0.last().unwrap()
 	}
 
-	pub fn directory(self) -> Self {
-		unimplemented!() //Path(self.0.copy_rtail())
+	pub fn directory(self) -> Option<Self> {
+		self.get_last_slash_index().map(|i| Path(&self.0[0..i]))
+	}
+
+	fn get_last_slash_index(&self) -> Option<usize> {
+		// Count backwards to a '/'
+		let mut res = None;
+		for (i, &ch) in self.0.iter().enumerate().rev() {
+			if ch == b'/' {
+				// Rust won't let me break with value out of a for loop. :(
+				res = Some(i);
+				break
+			}
+		}
+		res
 	}
 
 	fn is_empty(self) -> bool {
@@ -152,7 +159,7 @@ impl<'a> Borrow<[u8]> for Path<'a> {
 }
 
 fn is_path_part(s: &[u8]) -> bool {
-	s.iter().all(|ch| match *ch {
+	s.iter().all(|&ch| match ch {
 		b'/' | b'\\' => false,
 		_ => true,
 	})

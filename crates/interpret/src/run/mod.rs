@@ -5,32 +5,32 @@ use util::up::Up;
 
 use model::method::{MethodOrImpl, MethodWithBody};
 
-use super::emitted_model::{BuiltinCode, Code, CodeData, EmittedProgram, Instruction, Instructions};
+use super::emitted_model::{BuiltinCode, Code, EmittedProgram, Instruction, Instructions, CalledInstructions, CalledBuiltin};
 use super::value::Value;
 
 mod data_stack;
 use self::data_stack::DataStack;
 
-pub fn run<'model, 'emit>(
-	method: &MethodWithBody<'model>,
+pub fn run_method<'model, 'emit>(
+	method: Up<'model, MethodWithBody<'model>>,
 	emitted: &EmittedProgram<'model, 'emit>,
 	arguments: Vec<Value<'model>>,
 ) -> Value<'model> {
 	assert!(method.is_static);
 	assert_eq!(to_u8(arguments.len()), method.arity());
-	let emitted_method = emitted.methods.get(&Up(method)).unwrap();
-	exec(emitted_method, arguments)
+	let emitted_method = emitted.methods.get_method(method);
+	exec(emitted_method, MethodOrImpl::Method(method), arguments)
 }
 
 fn exec<'model, 'emit>(
 	first_code: &Code<'model, 'emit>,
+	mut cur_method: MethodOrImpl<'model>,
 	first_arguments: Vec<Value<'model>>,
 ) -> Value<'model> {
 	let mut stack = DataStack::new(first_arguments);
 	let mut return_stack = Vec::<(MethodOrImpl, &'emit Instructions, usize)>::new();
-	let mut cur_method = first_code.source.copy();
-	let mut cur_instructions = match first_code.code {
-		CodeData::Instructions(ref i) => i,
+	let mut cur_instructions: &Instructions<'model, 'emit> = match *first_code {
+		Code::Instructions(ref i) => i,
 		_ => unreachable!(),
 	};
 	let mut instruction_index = 0;
@@ -61,13 +61,13 @@ fn exec<'model, 'emit>(
 					_ => unreachable!(),
 				}
 			}
-			Instruction::Call(ref called_method, ref called_method_instructions) => {
+			Instruction::CallInstructions(CalledInstructions(ref called_method, ref called_method_instructions)) => {
 				return_stack.place_back() <- (cur_method, cur_instructions, instruction_index);
 				cur_method = called_method.copy();
 				cur_instructions = called_method_instructions;
 				instruction_index = 0
 			}
-			Instruction::CallBuiltin(ref called_method, ref builtin) => {
+			Instruction::CallBuiltin(CalledBuiltin(ref called_method, ref builtin)) => {
 				unused!(called_method); //TODO: use this for error reporting
 				match *builtin {
 					BuiltinCode::Fn0(f) => {

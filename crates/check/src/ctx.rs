@@ -10,7 +10,7 @@ use ast;
 use model::builtins::BuiltinsOwn;
 use model::class::ClassDeclaration;
 use model::diag::{Diag, Diagnostic};
-use model::method::{InstMethod, MethodOrAbstract};
+use model::method::{InstMethod, MethodOrImplOrAbstract};
 use model::module::Module;
 use model::ty::{InstCls, Ty, TypeParameter};
 
@@ -107,7 +107,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 
 	pub fn instantiate_method<'ast>(
 		&mut self,
-		method_decl: MethodOrAbstract<'model>,
+		method_decl: MethodOrImplOrAbstract<'model>,
 		ty_arg_asts: List<'ast, ast::Ty<'ast>>,
 	) -> Option<&'model InstMethod<'model>> {
 		if ty_arg_asts.len() != method_decl.type_parameters().len() {

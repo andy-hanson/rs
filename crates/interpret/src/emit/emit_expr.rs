@@ -4,18 +4,20 @@ use util::loc::Loc;
 use util::up::Up;
 
 use model::expr::{Expr, ExprData, LiteralValue, Local, Pattern};
-use model::method::Parameter;
+use model::method::{InstMethod, MethodOrImpl, MethodOrImplOrAbstract, Parameter};
 
-use super::super::emitted_model::{Instruction, Instructions};
+use super::super::emitted_model::{Code, Instruction, Instructions, CalledInstructions, CalledBuiltin, MethodMaps};
 
 pub fn emit_method<'model, 'emit>(
 	parameters: &[Parameter<'model>],
 	body: &'model Expr<'model>,
 	arena: &'emit Arena,
+	methods: &MethodMaps<'model, 'emit>,
 ) -> Instructions<'model, 'emit> {
 	let n_parameters = to_u8(parameters.len());
 	let mut emitter = ExprEmitter {
 		arena,
+		methods,
 		w: InstructionWriter::new(arena),
 		n_parameters,
 		locals: Vec::new(),
@@ -43,8 +45,9 @@ impl<'model, 'emit> InstructionWriter<'model, 'emit> {
 	}
 }
 
-struct ExprEmitter<'model: 'emit, 'emit> {
+struct ExprEmitter<'model: 'emit, 'emit : 'maps, 'maps> {
 	arena: &'emit Arena,
+	methods: &'maps MethodMaps<'model, 'emit>,
 	w: InstructionWriter<'model, 'emit>,
 	// Number of parameters the current function has.
 	n_parameters: u8,
@@ -55,7 +58,7 @@ struct ExprEmitter<'model: 'emit, 'emit> {
 	// there are currently temporary values on the stack.
 	stack_depth: u8,
 }
-impl<'model, 'emit> ExprEmitter<'model, 'emit> {
+impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 	fn write(&mut self, loc: Loc, instruction: Instruction<'model, 'emit>) {
 		self.w.write(loc, instruction)
 	}
@@ -129,7 +132,15 @@ impl<'model, 'emit> ExprEmitter<'model, 'emit> {
 			ExprData::WhenTest(_, _, _) => unimplemented!(),
 			ExprData::Try { .. } => unimplemented!(),
 			ExprData::For { .. } => unimplemented!(),
-			ExprData::StaticMethodCall(_, _, _) => unimplemented!(),
+			ExprData::StaticMethodCall(method, args, _) => {
+				for arg in args {
+					self.emit_expr(arg);
+				}
+				let insn = self.call_instruction(method);
+				self.write(loc, insn);
+				self.pops(method.0.arity());
+				self.pushes(1);
+			},
 			ExprData::InstanceMethodCall(_, _, _, _) => unimplemented!(),
 			ExprData::MyInstanceMethodCall(_, _, _) => unimplemented!(),
 			ExprData::New(_, _) => unimplemented!(),
@@ -140,6 +151,30 @@ impl<'model, 'emit> ExprEmitter<'model, 'emit> {
 			ExprData::SelfExpr(_) => unimplemented!(),
 			ExprData::Assert(_) => unimplemented!(),
 			ExprData::Recur(_, _) => unimplemented!(),
+		}
+	}
+
+	fn call_instruction(&self, inst_method: &'model InstMethod<'model>) -> Instruction<'model, 'emit> {
+		if !inst_method.1.is_empty() {
+			// Type arguments present
+			unimplemented!()
+		}
+
+		match inst_method.0 {
+			MethodOrImplOrAbstract::Method(m) =>
+				self.call_code(MethodOrImpl::Method(m), self.methods.get_method(m)),
+			MethodOrImplOrAbstract::Impl(i) =>
+				self.call_code(MethodOrImpl::Impl(i), self.methods.get_impl(i)),
+			MethodOrImplOrAbstract::Abstract(_) => {
+				unimplemented!()
+			}
+		}
+	}
+
+	fn call_code(&self, m: MethodOrImpl<'model>, code: &'emit Code<'model, 'emit>) -> Instruction<'model, 'emit> {
+		match *code {
+			Code::Instructions(ref i) => Instruction::CallInstructions(CalledInstructions(m, Up(i))),
+			Code::Builtin(b) => Instruction::CallBuiltin(CalledBuiltin(m, b)),
 		}
 	}
 }

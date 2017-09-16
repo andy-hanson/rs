@@ -1,15 +1,14 @@
-use std::fs::{read_dir as fs_read_dir, File, ReadDir};
-use std::io::{Error, ErrorKind, Result, Write};
+use std::fs::{read_dir as fs_read_dir, File, ReadDir, DirBuilder};
+use std::io::{ErrorKind, Write};
+
+pub use std::io::{Error as IoError, Result as IoResult};
 
 use super::arena::Arena;
 use super::dict::MutDict;
 use super::path::Path;
 use super::string_maker::Show;
 
-pub type IoError = Error;
-pub type IoResult<T> = Result<T>;
-
-pub fn read_dir(dir: Path) -> Result<Option<ReadDir>> {
+pub fn read_dir(dir: Path) -> IoResult<Option<ReadDir>> {
 	match fs_read_dir(dir.to_string()) {
 		Ok(d) => Ok(Some(d)),
 		Err(e) =>
@@ -23,7 +22,7 @@ pub fn read_dir(dir: Path) -> Result<Option<ReadDir>> {
 pub fn read_files_in_directory_recursive_if_exists<'a>(
 	dir: Path,
 	arena: &'a Arena,
-) -> Result<MutDict<Path<'a>, &'a [u8]>> {
+) -> IoResult<MutDict<Path<'a>, &'a [u8]>> {
 	let mut res = MutDict::<Path, &'a [u8]>::new();
 	readdir_worker(dir, arena, &mut res).map(|()| res)
 }
@@ -31,7 +30,7 @@ pub fn readdir_worker<'a>(
 	dir: Path,
 	arena: &'a Arena,
 	mut res: &mut MutDict<Path<'a>, &'a [u8]>,
-) -> Result<()> {
+) -> IoResult<()> {
 	if let Some(rd) = read_dir(dir)? {
 		for child_result in rd {
 			let child = child_result?;
@@ -49,7 +48,7 @@ pub fn readdir_worker<'a>(
 	Ok(())
 }
 
-pub fn read_file<'out>(path: Path, arena: &'out Arena) -> Result<Option<&'out [u8]>> {
+pub fn read_file<'out>(path: Path, arena: &'out Arena) -> IoResult<Option<&'out [u8]>> {
 	match File::open(path.to_string()) {
 		Ok(/*mut*/ f) => arena.read_from_file(f).map(Some),
 		Err(e) =>
@@ -61,18 +60,27 @@ pub fn read_file<'out>(path: Path, arena: &'out Arena) -> Result<Option<&'out [u
 }
 
 // Creates the file if it doesn't already exists.
-pub fn write_file(path: Path, content: &[u8]) -> Result<()> {
+pub fn write_file(path: Path, content: &[u8]) -> IoResult<()> {
 	let mut file = File::create(path.to_string())?;
 	file.write_all(content)
 }
 
-pub fn write_file_and_ensure_directory(path: Path, content: &[u8]) -> Result<()> {
+pub fn write_file_and_ensure_directory(path: Path, content: &[u8]) -> IoResult<()> {
 	match File::create(path.to_string()) {
 		Ok(mut file) => file.write_all(content),
 		Err(e) => {
-			let _ = e;
-			//TODO: https://doc.rust-lang.org/std/fs/struct.DirBuilder.html may come in useful
-			unimplemented!()
+			match e.kind() {
+				ErrorKind::NotFound => {
+					// Path must have a directory, else we should have been able to place the file into the root directory.
+					create_directory(path.directory().unwrap())?;
+					write_file(path, content)
+				}
+				_ => Err(e)
+			}
 		}
 	}
+}
+
+fn create_directory(path: Path) -> IoResult<()> {
+	DirBuilder::new().recursive(true).create(path.to_string())
 }

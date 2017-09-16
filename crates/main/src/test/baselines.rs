@@ -3,6 +3,10 @@ use std::borrow::Borrow;
 use serde::Serialize;
 use serde_json::to_string as to_json_string;
 
+use compile::EXTENSION;
+
+use model::module::ModuleOrFail;
+
 use util::arena::Arena;
 use util::dict::MutDict;
 use util::file_utils::{write_file, write_file_and_ensure_directory};
@@ -25,12 +29,12 @@ pub struct Baselines<'a: 'expected, 'expected> {
 impl<'a, 'expected> Baselines<'a, 'expected> {
 	pub fn assert_baseline<T: Serialize>(
 		&mut self,
-		module_path_without_extension: Path,
+		module_or_fail: ModuleOrFail,
 		extension: &[u8],
 		actual: &T,
 	) -> TestResult<'a, ()> {
 		let actual_str = to_json(actual, self.arena);
-		self.assert_baseline_worker(module_path_without_extension, extension, actual_str)
+		self.assert_baseline_worker(get_module_path_without_extension(module_or_fail), extension, actual_str)
 	}
 
 	fn assert_baseline_worker(
@@ -65,10 +69,12 @@ impl<'a, 'expected> Baselines<'a, 'expected> {
 	}
 }
 
+fn get_module_path_without_extension(module_or_fail: ModuleOrFail) -> Path {
+	let source = module_or_fail.source().assert_normal();
+	source.full_path.without_extension(EXTENSION)
+}
+
 fn to_json<'out, T: Serialize>(value: &T, arena: &'out Arena) -> &'out [u8] {
-	println!("BASELINING... {}", unsafe { ::std::intrinsics::type_name::<T>() });
-	//TODO:PERF (also sanity)
-	let res = arena.copy_slice(to_json_string(value).unwrap().as_bytes());
-	println!("!!!");
-	res
+	//TODO:PERF directly serialize to arena
+	arena.copy_slice(to_json_string(value).unwrap().as_bytes())
 }

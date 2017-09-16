@@ -25,11 +25,43 @@ impl<'model> Clone for Value<'model> {
 	}
 }
 impl<'model> Value<'model> {
+	pub fn is_void(&self) -> bool {
+		if let Value::Void = *self {
+			true
+		} else {
+			false
+		}
+	}
+
 	pub fn as_bool(&self) -> bool {
 		if let Value::Bool(b) = *self {
 			b
 		} else {
-			unimplemented!()
+			unreachable!()
+		}
+	}
+
+	pub fn as_nat(&self) -> u32 {
+		if let Value::Nat(n) = *self {
+			n
+		} else {
+			unreachable!()
+		}
+	}
+
+	pub fn as_int(&self) -> i32 {
+		if let Value::Int(i) = *self {
+			i
+		} else {
+			unreachable!()
+		}
+	}
+
+	pub fn as_float(&self) -> f64 {
+		if let Value::Float(f) = *self {
+			f
+		} else {
+			unreachable!()
 		}
 	}
 }

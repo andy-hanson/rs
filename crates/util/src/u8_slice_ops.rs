@@ -23,8 +23,8 @@ pub trait U8SliceOps {
 			return slice
 		}
 
-		for (i, ch) in end.iter().enumerate() {
-			if slice[offset + i] != *ch {
+		for (i, &ch) in end.iter().enumerate() {
+			if slice[offset + i] != ch {
 				return slice
 			}
 		}

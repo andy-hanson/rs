@@ -157,7 +157,7 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 					unimplemented!() // Should we continue or what?
 				}
 
-				Impl { loc, implemented: Up(implemented), body: Late::new() }
+				Impl { loc, containing_class: ctx.current_class, implemented: Up(implemented), body: Late::new() }
 			},
 		)
 	};
@@ -187,6 +187,7 @@ fn check_method_initial<'ast, 'builtins_ctx, 'model>(
 	let return_ty = ctx.get_ty_or_ty_parameter(return_ty_ast, type_parameters);
 	let parameters = check_parameters(ctx, parameter_asts, type_parameters);
 	let method = ctx.arena <- MethodWithBody {
+		containing_class: ctx.current_class,
 		signature: MethodSignature {
 			class: ctx.current_class,
 			loc,

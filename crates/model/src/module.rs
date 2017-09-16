@@ -59,6 +59,13 @@ pub enum ModuleOrFail<'a> {
 }
 impl<'a> NoDrop for ModuleOrFail<'a> {}
 impl<'a> ModuleOrFail<'a> {
+	pub fn assert_success(&self) -> &'a Module<'a> {
+		match *self {
+			ModuleOrFail::Module(m) => m,
+			_ => unreachable!(),
+		}
+	}
+
 	pub fn copy_to_new_arena<'out>(&self, arena: &'out Arena) -> ModuleOrFail<'out> {
 		unused!(arena);
 		unimplemented!()

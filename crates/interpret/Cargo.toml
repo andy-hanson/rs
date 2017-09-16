@@ -1,8 +1,11 @@
 [package]
-name = "interpreter"
+name = "interpret"
 version = "0.1.0"
 
 [dependencies]
+lazy_static = "0.2"
+serde = "1.0"
+serde_derive = "1.0"
+
 model = { path = "../model" }
 util = { path = "../util" }
-lazy_static = "0.2"

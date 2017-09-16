@@ -1,3 +1,6 @@
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeMap;
+
 use util::arena::Arena;
 use util::dict::MutDict;
 use util::file_utils::read_files_in_directory_recursive_if_exists;
@@ -6,10 +9,17 @@ use util::list::List;
 use util::loc::LineAndColumnGetter;
 use util::path::Path;
 use util::string_maker::WriteShower;
+use util::sym::Sym;
+use util::up::Up;
 
-use compiler::{compile, CompileResult, CompiledProgram, EXTENSION};
+use compile::{compile, CompileResult};
+use model::class::ClassDeclaration;
 use model::diag::Diagnostic;
 use model::module::{Module, ModuleOrFail};
+use model::program::CompiledProgram;
+use interpret::emitted_model::{Code, Instructions, EmittedProgram};
+use interpret::run::run_method;
+use interpret::emit::emit_program;
 use parse::parse;
 
 mod baselines;
@@ -23,10 +33,8 @@ use self::test_failure::{io_result_to_result, TestFailure, TestResult};
 
 pub use self::baselines::BaselinesUpdate;
 
-lazy_static! {
-	static ref CASES_ROOT_DIR: Path<'static> = Path::of_slice(b"tests/cases");
-	static ref BASELINES_ROOT_DIR: Path<'static> = Path::of_slice(b"tests/cases");
-}
+const CASES_ROOT_DIR: &'static [u8] = b"tests/cases";
+const BASELINES_ROOT_DIR: &'static [u8] = b"tests/baselines";
 
 pub fn do_test_single(test_path: Path, update_baselines: BaselinesUpdate) -> i32 {
 	let arena = Arena::new();
@@ -40,15 +48,15 @@ pub fn do_test_single(test_path: Path, update_baselines: BaselinesUpdate) -> i32
 }
 
 fn test_single<'a>(test_path: Path, update_baselines: BaselinesUpdate, arena: &'a Arena) -> TestResult<'a, ()> {
-	let test_directory = Path::resolve_with_root(*CASES_ROOT_DIR, test_path, arena);
-	let baselines_directory = Path::resolve_with_root(*BASELINES_ROOT_DIR, test_path, arena);
+	let test_directory = Path::resolve_with_root(Path::of_slice(CASES_ROOT_DIR), test_path, arena);
+	let baselines_directory = Path::resolve_with_root(Path::of_slice(BASELINES_ROOT_DIR), test_path, arena);
 
 	let mut document_provider = TestDocumentProvider::new(test_directory);
-	let (program, root) = {
+	let program = {
 		let compile_result = io_result_to_result(compile(Path::EMPTY, &mut document_provider, None, arena))?;
 		match compile_result {
 			CompileResult::RootMissing => return Err(TestFailure::NoIndex(document_provider.into_root_dir())),
-			CompileResult::RootFound { program, root } => (program, root),
+			CompileResult::RootFound(program) => program,
 		}
 	};
 	let mut expected_diagnostics = document_provider.get_expected_diagnostics();
@@ -65,43 +73,35 @@ fn test_single<'a>(test_path: Path, update_baselines: BaselinesUpdate, arena: &'
 		let mut baselines =
 			Baselines { arena, baselines_directory, update_baselines, expected: &mut expected_baselines };
 
-		test_with_diagnostics(&mut baselines, &program, root, &mut expected_diagnostics)?;
+		test_with_diagnostics(&mut baselines, &program, &mut expected_diagnostics)?;
 	}
 
-	let res = if expected_baselines.is_empty() {
+	if expected_baselines.is_empty() {
 		Ok(())
 	} else {
 		Err(TestFailure::ExtraBaselines(arena.map(&expected_baselines, |(path, _)| *path)))
-	};
-
-	//TODO:KILL (and rely on implicit drop order)
-	drop(expected_diagnostics);
-	drop(program);
-
-	res
+	}
 }
 
 const EXT_AST: &[u8] = b".ast";
 const EXT_MODEL: &[u8] = b".model";
+const EXT_EMIT: &[u8] = b".emit";
 
-fn test_with_diagnostics<'a, 'expected>(
-	baselines: &mut Baselines<'a, 'expected>,
-	program: &CompiledProgram<'a>,
-	root: ModuleOrFail,
-	expected_diagnostics_by_path: &mut MutDict<Path, &'a [ExpectedDiagnostic]>,
-) -> TestResult<'a, ()> {
+fn test_with_diagnostics<'model, 'expected>(
+	baselines: &mut Baselines<'model, 'expected>,
+	program: &CompiledProgram<'model>,
+	expected_diagnostics_by_path: &mut MutDict<Path, &'model [ExpectedDiagnostic]>,
+) -> TestResult<'model, ()> {
 	let mut any_diagnostics = false;
 	for &module_or_fail in program.modules.values() {
 		let source = module_or_fail.source().assert_normal();
-		let module_path_without_extension = source.full_path.without_extension(EXTENSION);
-
 		let text = &source.document.text;
 
 		// Normally the AST is dropped after type-checking, so parse it again.
 		let parse_arena = Arena::new();
 		// If parsing fails, just don't make a baseline -- rely on diagnostics.
 		if let Ok(ast) = parse(&parse_arena, text) {
-			baselines.assert_baseline(module_path_without_extension, EXT_AST, &ast)?;
+			baselines.assert_baseline(module_or_fail, EXT_AST, &ast)?;
 		}
 
 		let actual_diagnostics = module_or_fail.diagnostics();
@@ -115,23 +115,70 @@ fn test_with_diagnostics<'a, 'expected>(
 		}
 
 		if let ModuleOrFail::Module(module) = module_or_fail {
-			baselines.assert_baseline(module_path_without_extension, EXT_MODEL, &module.class)?;
+			baselines.assert_baseline(module_or_fail, EXT_MODEL, &module.class)?;
 			//TODO: bytecode baseline
 		}
 	}
 
 	if !any_diagnostics {
-		let m = match root {
-			ModuleOrFail::Module(m) => m,
-			_ => unreachable!(),
-		};
-		unused!(m);
-		//TODO: execute the module and run its assertions
-		unimplemented!()
+		test_interpret(baselines, program)?
 	}
 
 	Ok(())
 }
+
+fn test_interpret<'model, 'expected>(
+	baselines: &mut Baselines<'model, 'expected>,
+	program: &CompiledProgram<'model>,
+) -> TestResult<'model, ()> {
+	let emit_arena = Arena::new();
+	let emitted_program = match emit_program(program, &emit_arena) {
+		Ok(p) => p,
+		Err(e) => return Err(TestFailure::EmitError(e)),
+	};
+
+	for &module_or_fail in program.modules.values() {
+		let module = match module_or_fail { ModuleOrFail::Module(m) => m, _ => unreachable!(), };
+		baselines.assert_baseline(ModuleOrFail::Module(module), EXT_EMIT, &ModuleEmitted { emitted_program: &emitted_program, class: &*module.class })?
+	}
+
+	let main = program.root.assert_success().class.find_static_method(Sym::of("main")).unwrap(); //TODO: diagnostic if "main" not found
+	println!("RUNNING...");
+	let res = run_method(Up(main), &emitted_program, Vec::new());
+	println!("RAN...");
+	assert!(res.is_void());
+	Ok(())
+}
+
+struct ModuleEmitted<'model : 'emit, 'emit> {
+	emitted_program: &'emit EmittedProgram<'model, 'emit>,
+	class: &'model ClassDeclaration<'model>,
+}
+impl<'model, 'emit> Serialize for ModuleEmitted<'model, 'emit> {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		let mut map = serializer.serialize_map(None)?;
+		for an_impl in self.class.all_impls() {
+			match *self.emitted_program.methods.get_impl(Up(an_impl)) {
+				Code::Builtin(_) => unreachable!(),
+				Code::Instructions(ref i) => {
+					map.serialize_entry(&an_impl.name(), i)?
+				}
+			}
+		}
+		for method in *self.class.methods {
+			//TODO:duplicate code of above
+			match *self.emitted_program.methods.get_method(Up(method)) {
+				Code::Builtin(_) => unreachable!(),
+				Code::Instructions(ref i) => {
+					map.serialize_entry(&method.name(), i)?
+				}
+			}
+		}
+		map.end()
+	}
+}
+
+
 
 fn diagnostics_match(text: &[u8], actual: List<Diagnostic>, expected: &[ExpectedDiagnostic]) -> bool {
 	let lc = LineAndColumnGetter::new(text);

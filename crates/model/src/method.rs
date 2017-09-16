@@ -4,6 +4,7 @@ use util::arena::NoDrop;
 use util::arith::to_u8;
 use util::late::Late;
 use util::loc::Loc;
+use util::string_maker::{Show, Shower};
 use util::sym::Sym;
 use util::up::{SerializeUp, Up};
 
@@ -23,11 +24,6 @@ pub struct MethodSignature<'a> {
 	pub parameters: &'a [Parameter<'a>],
 }
 impl<'a> NoDrop for MethodSignature<'a> {}
-impl<'a> MethodSignature<'a> {
-	pub fn arity(&self) -> u8 {
-		to_u8(self.parameters.len())
-	}
-}
 
 #[derive(Serialize)]
 pub struct AbstractMethod<'a>(MethodSignature<'a>);
@@ -57,7 +53,8 @@ impl<'a> AbstractMethod<'a> {
 	}
 
 	pub fn arity(&self) -> u8 {
-		self.0.arity()
+		// + 1 for the 'self' parameter
+		to_u8(self.parameters().len()) + 1
 	}
 }
 impl<'a> NoDrop for AbstractMethod<'a> {}
@@ -72,6 +69,7 @@ impl<'a> SerializeUp for AbstractMethod<'a> {
 
 #[derive(Serialize)]
 pub struct MethodWithBody<'a> {
+	pub containing_class: Up<'a, ClassDeclaration<'a>>,
 	pub is_static: bool,
 	pub signature: MethodSignature<'a>,
 	// Optional because this might be a builtin method
@@ -109,7 +107,7 @@ impl<'a> MethodWithBody<'a> {
 	}
 
 	pub fn arity(&self) -> u8 {
-		self.signature.arity()
+		to_u8(self.parameters().len()) + if self.is_static { 0 } else { 1 }
 	}
 }
 impl<'a> SerializeUp for MethodWithBody<'a> {
@@ -139,17 +137,27 @@ impl<'a> SerializeUp for Parameter<'a> {
 }
 
 #[derive(Serialize)]
-pub struct InstMethod<'a>(pub MethodOrAbstract<'a>, pub &'a [Ty<'a>]);
+pub struct InstMethod<'a>(pub MethodOrImplOrAbstract<'a>, pub &'a [Ty<'a>]);
 impl<'a> NoDrop for InstMethod<'a> {}
 
 #[derive(Serialize)]
 pub struct Impl<'a> {
 	pub loc: Loc,
+	pub containing_class: Up<'a, ClassDeclaration<'a>>,
 	pub implemented: Up<'a, AbstractMethod<'a>>,
 	//TODO:PERF should own the body, not reference it
 	pub body: Late<Option<&'a Expr<'a>>>,
 }
 impl<'a> NoDrop for Impl<'a> {}
+impl<'a> Impl<'a> {
+	pub fn name(&self) -> Sym {
+		self.implemented.name()
+	}
+
+	pub fn arity(&self) -> u8 {
+		self.implemented.arity()
+	}
+}
 
 #[derive(Copy, Clone)]
 pub enum MethodOrImpl<'a> {
@@ -158,6 +166,13 @@ pub enum MethodOrImpl<'a> {
 }
 impl<'a> NoDrop for MethodOrImpl<'a> {}
 impl<'a> MethodOrImpl<'a> {
+	pub fn containing_class(&self) -> Up<'a, ClassDeclaration<'a>> {
+		match *self {
+			MethodOrImpl::Method(ref m) => m.containing_class,
+			MethodOrImpl::Impl(ref i) => i.containing_class,
+		}
+	}
+
 	//TODO:just derive Copy
 	pub fn copy(&self) -> Self {
 		match *self {
@@ -166,10 +181,17 @@ impl<'a> MethodOrImpl<'a> {
 		}
 	}
 
-	pub fn method_or_abstract(&self) -> MethodOrAbstract<'a> {
+	pub fn name(&self) -> Sym {
 		match *self {
-			MethodOrImpl::Method(ref m) => MethodOrAbstract::Method(m.clone_as_up()),
-			MethodOrImpl::Impl(ref i) => MethodOrAbstract::Abstract(i.implemented.clone_as_up()),
+			MethodOrImpl::Method(ref m) => m.name(),
+			MethodOrImpl::Impl(ref i) => i.implemented.name(),
+		}
+	}
+
+	pub fn method_or_abstract(&self) -> MethodOrImplOrAbstract<'a> {
+		match *self {
+			MethodOrImpl::Method(ref m) => MethodOrImplOrAbstract::Method(m.clone_as_up()),
+			MethodOrImpl::Impl(ref i) => MethodOrImplOrAbstract::Abstract(i.implemented.clone_as_up()),
 		}
 	}
 
@@ -189,13 +211,14 @@ impl<'a> MethodOrImpl<'a> {
 	}
 
 	pub fn arity(&self) -> u8 {
-		self.signature().arity()
+		match *self {
+			MethodOrImpl::Method(m) => m.arity(),
+			MethodOrImpl::Impl(i) => i.arity(),
+		}
 	}
 }
 impl<'a> Serialize for MethodOrImpl<'a> {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
+	fn serialize<S : Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	{
 		match *self {
 			MethodOrImpl::Method(ref m) => m.serialize(serializer),
@@ -203,71 +226,85 @@ impl<'a> Serialize for MethodOrImpl<'a> {
 		}
 	}
 }
+impl<'a> Show for MethodOrImpl<'a> {
+	fn show<S : Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		s.add(self.containing_class().name)?.add('.')?.add(self.name())?;
+		Ok(())
+	}
+}
 
 #[derive(Copy, Clone)]
-pub enum MethodOrAbstract<'a> {
+pub enum MethodOrImplOrAbstract<'a> {
 	Method(Up<'a, MethodWithBody<'a>>),
+	Impl(Up<'a, Impl<'a>>),
 	Abstract(Up<'a, AbstractMethod<'a>>),
 }
-impl<'a> NoDrop for MethodOrAbstract<'a> {}
-impl<'a> MethodOrAbstract<'a> {
+impl<'a> NoDrop for MethodOrImplOrAbstract<'a> {}
+impl<'a> MethodOrImplOrAbstract<'a> {
 	pub fn name(&self) -> Sym {
 		match *self {
-			MethodOrAbstract::Method(m) => m.name(),
-			MethodOrAbstract::Abstract(a) => a.name(),
+			MethodOrImplOrAbstract::Method(m) => m.name(),
+			MethodOrImplOrAbstract::Impl(i) => i.implemented.name(),
+			MethodOrImplOrAbstract::Abstract(a) => a.name(),
 		}
 	}
 
 	pub fn is_static(&self) -> bool {
 		match *self {
-			MethodOrAbstract::Method(m) => m.is_static,
-			MethodOrAbstract::Abstract(_) => false,
+			MethodOrImplOrAbstract::Method(m) => m.is_static,
+			MethodOrImplOrAbstract::Impl(_) | MethodOrImplOrAbstract::Abstract(_) => false,
 		}
 	}
 
 	pub fn type_parameters(&self) -> &'a [TypeParameter<'a>] {
 		match *self {
-			MethodOrAbstract::Method(m) => m.0.type_parameters(),
-			MethodOrAbstract::Abstract(a) => a.0.type_parameters(),
+			MethodOrImplOrAbstract::Method(m) => m.0.type_parameters(),
+			MethodOrImplOrAbstract::Impl(i) => i.implemented.type_parameters(),
+			MethodOrImplOrAbstract::Abstract(a) => a.type_parameters(),
 		}
 	}
 
 	pub fn return_ty(&self) -> &Ty<'a> {
 		match *self {
-			MethodOrAbstract::Method(m) => m.0.return_ty(),
-			MethodOrAbstract::Abstract(a) => a.0.return_ty(),
+			MethodOrImplOrAbstract::Method(m) => m.0.return_ty(),
+			MethodOrImplOrAbstract::Impl(i) => i.0.implemented.return_ty(),
+			MethodOrImplOrAbstract::Abstract(a) => a.0.return_ty(),
 		}
 	}
 
 	pub fn self_effect(&self) -> Effect {
 		match *self {
-			MethodOrAbstract::Method(m) => m.0.self_effect(),
-			MethodOrAbstract::Abstract(a) => a.0.self_effect(),
+			MethodOrImplOrAbstract::Method(m) => m.self_effect(),
+			MethodOrImplOrAbstract::Impl(i) => i.implemented.self_effect(),
+			MethodOrImplOrAbstract::Abstract(a) => a.self_effect(),
 		}
 	}
 
 	pub fn parameters(&self) -> &'a [Parameter<'a>] {
 		match *self {
-			MethodOrAbstract::Method(m) => m.0.parameters(),
-			MethodOrAbstract::Abstract(a) => a.0.parameters(),
+			MethodOrImplOrAbstract::Method(m) => m.0.parameters(),
+			MethodOrImplOrAbstract::Impl(i) => i.implemented.parameters(),
+			MethodOrImplOrAbstract::Abstract(a) => a.parameters(),
 		}
 	}
 
 	pub fn arity(&self) -> u8 {
 		match *self {
-			MethodOrAbstract::Method(m) => m.arity(),
-			MethodOrAbstract::Abstract(a) => a.arity(),
+			MethodOrImplOrAbstract::Method(m) => m.arity(),
+			MethodOrImplOrAbstract::Impl(i) => i.implemented.arity(),
+			MethodOrImplOrAbstract::Abstract(a) => a.arity(),
 		}
 	}
 }
-impl<'a> Serialize for MethodOrAbstract<'a> {
+impl<'a> Serialize for MethodOrImplOrAbstract<'a> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: Serializer,
 	{
 		match *self {
-			MethodOrAbstract::Method(ref m) => m.serialize(serializer),
-			MethodOrAbstract::Abstract(ref a) => a.serialize(serializer),
+			MethodOrImplOrAbstract::Method(m) => m.serialize(serializer),
+			MethodOrImplOrAbstract::Impl(i) => i.serialize(serializer),
+			MethodOrImplOrAbstract::Abstract(a) => a.serialize(serializer),
 		}
 	}
 }

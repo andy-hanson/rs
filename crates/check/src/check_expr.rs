@@ -13,7 +13,7 @@ use model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclarati
 use model::diag::Diag;
 use model::effect::Effect;
 use model::expr::{Case, Catch, Expr, ExprData, Local, Pattern};
-use model::method::{InstMethod, MethodOrAbstract, MethodOrImpl, Parameter};
+use model::method::{InstMethod, MethodOrImplOrAbstract, MethodOrImpl, Parameter};
 use model::ty::{InstCls, Ty};
 
 use super::class_utils::{try_get_member_of_inst_cls, InstMember};
@@ -443,7 +443,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 
 		let inst_method = unwrap_or_return!(
 			self.ctx
-				.instantiate_method(MethodOrAbstract::Method(Up(method_decl)), ty_arg_asts),
+				.instantiate_method(MethodOrImplOrAbstract::Method(Up(method_decl)), ty_arg_asts),
 			self.bogus(loc)
 		);
 
@@ -481,8 +481,8 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 
 		//TODO: helper fn for converting member -> method
 		let method_decl = match member_decl {
-			MemberDeclaration::Method(m) => MethodOrAbstract::Method(Up(m)),
-			MemberDeclaration::AbstractMethod(a) => MethodOrAbstract::Abstract(Up(a)),
+			MemberDeclaration::Method(m) => MethodOrImplOrAbstract::Method(Up(m)),
+			MemberDeclaration::AbstractMethod(a) => MethodOrImplOrAbstract::Abstract(Up(a)),
 			_ => {
 				self.add_diagnostic(loc, Diag::CallsNonMethod);
 				return self.bogus(loc)
@@ -539,15 +539,15 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					self.bogus(loc));
 
 				let method = match member_decl {
-					MemberDeclaration::Method(m) => MethodOrAbstract::Method(Up(m)),
-					MemberDeclaration::AbstractMethod(a) => MethodOrAbstract::Abstract(Up(a)),
+					MemberDeclaration::Method(m) => MethodOrImplOrAbstract::Method(Up(m)),
+					MemberDeclaration::AbstractMethod(a) => MethodOrImplOrAbstract::Abstract(Up(a)),
 					_ => {
 						self.add_diagnostic(loc, Diag::CallsNonMethod);
 						return self.bogus(loc)
 					}
 				};
 
-				if let MethodOrAbstract::Method(m) = method {
+				if let MethodOrImplOrAbstract::Method(m) = method {
 					if m.is_static {
 						self.add_diagnostic(loc, Diag::CantAccessStaticMethodThroughInstance(m.clone_as_up()));
 						return self.bogus(loc)
@@ -590,7 +590,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 	fn check_arguments<'ast, I: KnownLen<Item = &'ast ast::Expr<'ast>>>(
 		&mut self,
 		loc: Loc,
-		method_decl: MethodOrAbstract<'model>,
+		method_decl: MethodOrImplOrAbstract<'model>,
 		instantiator: &Instantiator<'model>,
 		arg_asts: I,
 	) -> Option<&'model [&'model Expr<'model>]> {

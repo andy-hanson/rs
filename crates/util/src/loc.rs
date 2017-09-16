@@ -100,8 +100,8 @@ impl LineAndColumnGetter {
 	pub fn new(text: &[u8]) -> Self {
 		let mut line_to_pos = Vec::<u32>::new();
 		line_to_pos.place_back() <- 0; // line 0 as position 0
-		for (pos, ch) in text.iter().enumerate() {
-			if *ch == b'\n' {
+		for (pos, &ch) in text.iter().enumerate() {
+			if ch == b'\n' {
 				line_to_pos.place_back() <- (pos as u32) + 1;
 			}
 		}

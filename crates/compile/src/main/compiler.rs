@@ -18,11 +18,12 @@ use model::builtins::BuiltinsOwn;
 use model::diag::{Diag, Diagnostic};
 use model::document_info::DocumentInfo;
 use model::module::{FailModule, Module, ModuleOrFail, ModuleSource, ModuleSourceEnum};
+use model::program::CompiledProgram;
 
 use super::super::builtins::get_builtins;
 use super::super::check::check_module;
 
-use super::{CompileResult, CompiledProgram};
+use super::CompileResult;
 use super::module_resolver::{get_document_from_logical_path, GetDocumentResult};
 
 pub fn compile<'a, 'old, D: DocumentProvider<'a>>(
@@ -32,8 +33,8 @@ pub fn compile<'a, 'old, D: DocumentProvider<'a>>(
 	arena: &'a Arena,
 ) -> Result<CompileResult<'a>, D::Error> {
 	let (builtins, old_modules) = match old_program {
-		Some(CompiledProgram { builtins, modules }) => {
-			unused!(builtins, modules);
+		Some(CompiledProgram { builtins, modules, root }) => {
+			unused!(builtins, modules, root);
 			unimplemented!()
 		}
 		None =>
@@ -50,14 +51,10 @@ pub fn compile<'a, 'old, D: DocumentProvider<'a>>(
 	Ok(match result {
 		CompileSingleResult::Found(root) => {
 			let modules = modules_states.map_values(|o| match o {
-					ModuleState::CompiledFresh(m) | ModuleState::CompiledReused(m) => m,
-					ModuleState::Compiling => unreachable!(),
-				});
-			let new_program = CompiledProgram { builtins, modules };
-			CompileResult::RootFound {
-				program: new_program,
-				root,
-			}
+				ModuleState::CompiledFresh(m) | ModuleState::CompiledReused(m) => m,
+				ModuleState::Compiling => unreachable!(),
+			});
+			CompileResult::RootFound(CompiledProgram { builtins, modules, root })
 		}
 		CompileSingleResult::Missing =>
 			CompileResult::RootMissing,

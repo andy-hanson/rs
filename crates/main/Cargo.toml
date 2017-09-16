@@ -4,14 +4,13 @@ version = "0.1.0"
 authors = ["Andy Hanson <andy.pj.hanson@gmail.com>"]
 
 [dependencies]
-compiler = { path = "../compiler" }
+compile = { path = "../compile" }
 host = { path = "../host" }
-interpreter = { path = "../interpreter" }
+interpret = { path = "../interpret" }
 model = { path = "../model" }
 parse = { path = "../parse" }
 util = { path = "../util" }
 
 backtrace = "0.3"
-lazy_static = "0.2"
 serde = "1.0"
 serde_json = "1.0"

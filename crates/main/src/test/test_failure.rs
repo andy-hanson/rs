@@ -5,6 +5,8 @@ use util::string_maker::{Show, Shower};
 use model::diag::show_diagnostics;
 use model::module::ModuleOrFail;
 
+use interpret::emit::emit_error::EmitError;
+
 use super::test_document_provider::ExpectedDiagnostic;
 
 pub type TestResult<'a, T> = ::std::result::Result<T, TestFailure<'a>>;
@@ -16,6 +18,7 @@ pub enum TestFailure<'a> {
 	DiagnosticsMismatch { module_or_fail: ModuleOrFail<'a>, expected: &'a [ExpectedDiagnostic<'a>] },
 	NoSuchBaseline(Path<'a>),
 	UnexpectedOutput { actual: &'a [u8], expected: &'a [u8] },
+	EmitError(EmitError<'a>),
 }
 impl<'t, 'a> Show for &'t TestFailure<'a> {
 	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
@@ -34,6 +37,9 @@ impl<'t, 'a> Show for &'t TestFailure<'a> {
 				s.add("Baseline ")?.add(path)?.add(" does not yet exist.")?;
 			},
 			TestFailure::UnexpectedOutput { .. } => unimplemented!(),
+			TestFailure::EmitError(ref e) => {
+				s.add(e)?;
+			},
 		}
 		Ok(())
 	}

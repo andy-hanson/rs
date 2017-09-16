@@ -11,14 +11,12 @@
 #![allow(needless_lifetimes)] //TODO
 #![allow(unused_imports)] //TODO
 
-#[macro_use]
-extern crate lazy_static;
 extern crate serde;
 extern crate serde_json;
 
-extern crate compiler;
+extern crate compile;
 extern crate host;
-extern crate interpreter;
+extern crate interpret;
 extern crate model;
 extern crate parse;
 #[macro_use]
@@ -35,10 +33,7 @@ use util::arena::Arena;
 use util::loc::LineAndColumnGetter;
 use serde_json::to_string as to_json_string;
 
-use interpreter::dummy;
-
 fn main() {
-	dummy(1);
 	//test_parse().unwrap();
 	run_test()
 }
@@ -71,38 +66,3 @@ fn test_parse() -> ::std::io::Result<()> {
 	}
 	Ok(())
 }
-
-
-/*
-	//use util::loc::{LineAndColumnGetter, Pos, LineAndColumn};
-	//use util::arith::{u32_to_usize, usize_to_u32};
-
-	let sample_text = include_str!("../../../builtins/Bool.nz").as_bytes();
-	let lcg = LineAndColumnGetter::new(sample_text); //[0,8,9,33]
-
-	for (i, _) in sample_text.iter().enumerate() {
-		let index = usize_to_u32(i);
-		let p1 = lcg.line_and_column_at_pos(Pos { index });
-		let p2 = get_line_column_slow(sample_text, index);
-		if p1 != p2 {
-			panic!("{}", i)
-		}
-	}
-
-	fn get_line_column_slow(text: &[u8], pos: u32) -> LineAndColumn {
-		let mut line = 0;
-		let mut column = 0;
-		for ch in text.iter().take(u32_to_usize(pos)) {
-			match *ch {
-				b'\n' => {
-					line += 1;
-					column = 0;
-				}
-				_ => {
-					column += 1;
-				}
-			}
-		}
-		LineAndColumn { line, column }
-	}
-*/

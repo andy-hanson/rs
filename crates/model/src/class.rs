@@ -29,7 +29,12 @@ impl<'a> ClassDeclaration<'a> {
 			.find(|m| m.is_static && m.name() == name)
 			.map(|m| *m)
 	}
+
+	pub fn all_impls(&self) -> impl Iterator<Item=&'a Impl<'a>> {
+		self.supers.iter().flat_map(|s: &'a Super<'a>| s.impls)
+	}
 }
+
 impl<'a> SerializeUp for ClassDeclaration<'a> {
 	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where

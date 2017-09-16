@@ -6,6 +6,7 @@
 #![feature(placement_new_protocol)]
 #![feature(conservative_impl_trait)]
 #![feature(offset_to)]
+#![feature(core_intrinsics)] // TODO: remove
 #![feature(collection_placement)]
 #![allow(needless_lifetimes)] //TODO
 #![allow(unused_imports)] //TODO
@@ -26,7 +27,7 @@ extern crate util;
 mod test;
 
 use std::process::exit;
-use test::do_test_single;
+use test::{BaselinesUpdate, do_test_single};
 use util::path::Path;
 use parse::{parse, ParseDiagnostic};
 use util::string_maker::{Shower, WriteShower};
@@ -43,7 +44,7 @@ fn main() {
 }
 
 fn run_test() {
-	let exit_code = do_test_single(Path::of_slice(b"Main-Pass"), /*update_baselines*/ false);
+	let exit_code = do_test_single(Path::of_slice(b"Main-Pass"), BaselinesUpdate::Create);
 	exit(exit_code)
 }
 

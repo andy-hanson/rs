@@ -8,6 +8,10 @@ use super::arena::NoDrop;
 pub struct Up<'a, T: 'a>(pub &'a T);
 impl<'a, T: NoDrop> NoDrop for Up<'a, T> {}
 impl<'a, T> Up<'a, T> {
+	pub fn ptr_eq(self, other: Up<'a, T>) -> bool {
+		ptr_eq(self.0, other.0)
+	}
+
 	//TODO: shouldn't be needed, this is Copy!
 	pub fn clone_as_up(&self) -> Up<'a, T> {
 		Up(self.0)
@@ -54,6 +58,6 @@ pub trait SerializeUp {
 		S: Serializer;
 }
 
-pub fn ptr_eq<T>(a: &T, b: &T) -> bool {
+fn ptr_eq<T>(a: &T, b: &T) -> bool {
 	a as *const T == b as *const T
 }

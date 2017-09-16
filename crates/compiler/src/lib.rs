@@ -7,6 +7,7 @@
 extern crate lazy_static;
 
 extern crate ast;
+extern crate check;
 extern crate host;
 extern crate model;
 extern crate parse;
@@ -14,7 +15,6 @@ extern crate parse;
 extern crate util;
 
 mod builtins;
-mod check;
 mod main;
 
 pub use self::main::{compile, compile_dir, compile_file, full_path, CompileResult, CompiledProgram,

@@ -2,7 +2,6 @@ use util::arena::Arena;
 use util::iter::KnownLen;
 use util::list::ListBuilder;
 use util::loc::Loc;
-use util::up::ptr_eq;
 
 use model::diag::Diagnostic;
 use model::effect::Effect;
@@ -33,7 +32,7 @@ pub fn is_assignable<'a>(expected: &Ty<'a>, actual: &Ty<'a>, arena: &'a Arena) -
 		Ty::Bogus => true,
 		Ty::Param(tpe) =>
 			match *actual {
-				Ty::Param(tpa) => tpe.fast_equals(tpa),
+				Ty::Param(tpa) => tpe.ptr_eq(tpa),
 				_ => false,
 			},
 		Ty::Plain(effect_expected, ref inst_cls_expected) =>
@@ -52,7 +51,7 @@ fn is_subclass<'a>(expected: &InstCls<'a>, actual: &InstCls<'a>, arena: &'a Aren
 	// Until then, only a subtype if every generic parameter is *exactly* equal.
 	let &InstCls(expected_cls, expected_ty_arguments) = expected;
 	let &InstCls(actual_cls, actual_ty_arguments) = actual;
-	if ptr_eq(expected_cls, actual_cls) &&
+	if expected_cls.ptr_eq(actual_cls) &&
 		expected_ty_arguments.each_equals(actual_ty_arguments, Ty::fast_equals)
 	{
 		return true

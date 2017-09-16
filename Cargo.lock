@@ -45,10 +45,20 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "check"
+version = "0.1.0"
+dependencies = [
+ "ast 0.1.0",
+ "model 0.1.0",
+ "util 0.1.0",
+]
+
+[[package]]
 name = "compiler"
 version = "0.1.0"
 dependencies = [
  "ast 0.1.0",
+ "check 0.1.0",
  "host 0.1.0",
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "model 0.1.0",

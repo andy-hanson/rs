@@ -1,2 +1,2 @@
 fun Void main()
-	pass
+	Void.value()

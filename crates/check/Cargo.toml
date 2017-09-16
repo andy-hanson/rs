@@ -1,12 +1,8 @@
 [package]
-name = "compiler"
+name = "check"
 version = "0.1.0"
 
 [dependencies]
 ast = { path = "../ast" }
-check = { path = "../check" }
-host = { path = "../host" }
 model = { path = "../model" }
-parse = { path = "../parse" }
 util = { path = "../util" }
-lazy_static = "0.2"

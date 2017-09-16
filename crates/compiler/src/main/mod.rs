@@ -6,9 +6,8 @@ use util::u8_slice_ops::U8SliceOps;
 
 use host::document_provider::file_system_document_provider;
 
+use model::builtins::BuiltinsOwn;
 use model::module::ModuleOrFail;
-
-use super::builtins::BuiltinsOwn;
 
 mod compiler;
 mod module_resolver;

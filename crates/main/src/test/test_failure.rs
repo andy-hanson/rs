@@ -30,7 +30,9 @@ impl<'t, 'a> Show for &'t TestFailure<'a> {
 				s.add("Unexpected diagnostics:\n")?;
 				show_diagnostics(module_or_fail, s)?;
 			}
-			TestFailure::NoSuchBaseline(_) => unimplemented!(),
+			TestFailure::NoSuchBaseline(path) => {
+				s.add("Baseline ")?.add(path)?.add(" does not yet exist.")?;
+			},
 			TestFailure::UnexpectedOutput { .. } => unimplemented!(),
 		}
 		Ok(())

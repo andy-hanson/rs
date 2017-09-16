@@ -1,3 +1,5 @@
+use util::up::Up;
+
 use model::method::InstMethod;
 use model::ty::{InstCls, Ty, TypeParameter};
 
@@ -22,15 +24,14 @@ impl<'model> Instantiator<'model> {
 	//	Instantiator(type_parameters.zip(type_arguments.into_iter(), |tp, ta| Inner(tp.ptr(), ta.clone())))
 	//}
 
-	pub fn replace_or_same(&self, ty: &'model TypeParameter<'model>) -> Ty<'model> {
+	pub fn replace_or_same(&self, ty: Up<'model, TypeParameter<'model>>) -> Ty<'model> {
 		self.replace(ty).unwrap_or_else(|| Ty::Param(ty))
 	}
 
-	pub fn replace(&self, tp: &'model TypeParameter<'model>) -> Option<Ty<'model>> {
+	pub fn replace(&self, tp: Up<'model, TypeParameter<'model>>) -> Option<Ty<'model>> {
 		for i in 0..self.0.len() {
-			//let &Inner(ref ty_parameter, ref replace_ty) = &self.0[i];
-			let ty_parameter = &self.0[i];
-			if tp.fast_equals(ty_parameter) {
+			let ty_parameter = Up(&self.0[i]);
+			if tp.ptr_eq(ty_parameter) {
 				return Some(self.1[i].clone())
 			}
 		}
@@ -38,7 +39,21 @@ impl<'model> Instantiator<'model> {
 	}
 
 	pub fn combine(&self, other: &Self) -> Self {
-		unused!(other);
-		unimplemented!() //Instantiator(self.0.concat(&other.0))
+		if self.is_empty() {
+			other.cloned()
+		} else if other.is_empty() {
+			self.cloned()
+		} else {
+			//concat
+			unimplemented!()
+		}
+	}
+
+	fn cloned(&self) -> Self {
+		Instantiator(self.0, self.1)
+	}
+
+	fn is_empty(&self) -> bool {
+		self.0.is_empty()
 	}
 }

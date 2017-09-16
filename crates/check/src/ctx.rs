@@ -7,13 +7,12 @@ use util::up::Up;
 
 use ast;
 
+use model::builtins::BuiltinsOwn;
 use model::class::ClassDeclaration;
 use model::diag::{Diag, Diagnostic};
 use model::method::{InstMethod, MethodOrAbstract};
 use model::module::Module;
 use model::ty::{InstCls, Ty, TypeParameter};
-
-use super::super::builtins::BuiltinsOwn;
 
 use super::ast_utils::effect_to_effect;
 use super::expected::Expected;
@@ -21,7 +20,7 @@ use super::class_utils::{try_get_member_from_class_declaration, InstMember};
 
 pub struct Ctx<'builtins_ctx, 'model: 'builtins_ctx> {
 	pub arena: &'model Arena,
-	pub current_class: &'model ClassDeclaration<'model>,
+	pub current_class: Up<'model, ClassDeclaration<'model>>,
 	// Just mutable so `expected_void` can be referenced mutably -- but it won't actually be mutated, only Expected::Infer is mutated.
 	builtins: &'builtins_ctx BuiltinsOwn<'model>,
 	imports: &'model [Up<'model, Module<'model>>],
@@ -29,7 +28,7 @@ pub struct Ctx<'builtins_ctx, 'model: 'builtins_ctx> {
 }
 impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 	pub fn new(
-		current_class: &'model ClassDeclaration<'model>,
+		current_class: Up<'model, ClassDeclaration<'model>>,
 		builtins: &'builtins_ctx BuiltinsOwn<'model>,
 		imports: &'model [Up<'model, Module<'model>>],
 		arena: &'model Arena,
@@ -41,12 +40,12 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		self.diags.finish()
 	}
 
-	pub fn expected_void(&self) -> &'builtins_ctx mut Expected<'model> {
-		self.builtins.expected_void.unsafe_get_mut()
+	pub fn expected_void(&self) -> Expected<'builtins_ctx, 'model> {
+		Expected::SubTypeOf(&*self.builtins.void)
 	}
 
-	pub fn expected_bool(&self) -> &'builtins_ctx mut Expected<'model> {
-		self.builtins.expected_bool.unsafe_get_mut()
+	pub fn expected_bool(&self) -> Expected<'builtins_ctx, 'model> {
+		Expected::SubTypeOf(&*self.builtins.bool)
 	}
 
 	pub fn get_ty<'ast>(&mut self, ty_ast: &'ast ast::Ty<'ast>) -> Ty<'model> {
@@ -70,7 +69,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 					unimplemented!()
 				}
 				if ty_args.is_empty() {
-					return Ty::Param(tp)
+					return Ty::Param(Up(tp))
 				} else {
 					// Diagnostic: Can't provide type arguments to a type parameter
 					unimplemented!()
@@ -96,7 +95,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 
 	pub fn instantiate_class<'ast>(
 		&mut self,
-		class: &'model ClassDeclaration<'model>,
+		class: Up<'model, ClassDeclaration<'model>>,
 		ty_arg_asts: List<'ast, ast::Ty<'ast>>,
 	) -> Option<InstCls<'model>> {
 		if ty_arg_asts.len() != class.type_parameters.len() {
@@ -126,7 +125,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		&mut self,
 		loc: Loc,
 		name: Sym,
-	) -> Option<&'model ClassDeclaration<'model>> {
+	) -> Option<Up<'model, ClassDeclaration<'model>>> {
 		let res = self.access_class_declaration(loc, name);
 		if res.is_none() {
 			self.add_diagnostic(loc, Diag::ClassNotFound(name))
@@ -134,20 +133,20 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		res
 	}
 
-	fn access_class_declaration(&mut self, loc: Loc, name: Sym) -> Option<&'model ClassDeclaration<'model>> {
+	fn access_class_declaration(&mut self, loc: Loc, name: Sym) -> Option<Up<'model, ClassDeclaration<'model>>> {
 		if name == self.current_class.name {
 			return Some(self.current_class)
 		}
 
 		for i in self.imports {
 			if i.name() == name {
-				return Some(&i.class)
+				return Some(Up(&i.class))
 			}
 		}
 
 		for b in *self.builtins.all_successes {
 			if b.name() == name {
-				return Some(&b.class)
+				return Some(Up(&b.class))
 			}
 		}
 
@@ -162,9 +161,10 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 	//mv?
 	pub fn get_own_member_or_add_diagnostic(&mut self, loc: Loc, name: Sym) -> Option<InstMember<'model>> {
 		//TODO:neater
-		let res = try_get_member_from_class_declaration(self.current_class, name);
+		let res = try_get_member_from_class_declaration(&*self.current_class, name);
 		if res.is_none() {
-			self.add_diagnostic(loc, Diag::MemberNotFound(Up(self.current_class), name))
+			let diag = Diag::MemberNotFound(self.current_class, name);
+			self.add_diagnostic(loc, diag)
 		}
 		res
 	}

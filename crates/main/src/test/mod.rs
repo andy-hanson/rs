@@ -21,12 +21,14 @@ use self::show_equals::show_equals;
 use self::test_document_provider::{ExpectedDiagnostic, TestDocumentProvider};
 use self::test_failure::{io_result_to_result, TestFailure, TestResult};
 
+pub use self::baselines::BaselinesUpdate;
+
 lazy_static! {
 	static ref CASES_ROOT_DIR: Path<'static> = Path::of_slice(b"tests/cases");
 	static ref BASELINES_ROOT_DIR: Path<'static> = Path::of_slice(b"tests/cases");
 }
 
-pub fn do_test_single(test_path: Path, update_baselines: bool) -> i32 {
+pub fn do_test_single(test_path: Path, update_baselines: BaselinesUpdate) -> i32 {
 	let arena = Arena::new();
 	match test_single(test_path, update_baselines, &arena) {
 		Ok(()) => 0,
@@ -37,7 +39,7 @@ pub fn do_test_single(test_path: Path, update_baselines: bool) -> i32 {
 	}
 }
 
-fn test_single<'a>(test_path: Path, update_baselines: bool, arena: &'a Arena) -> TestResult<'a, ()> {
+fn test_single<'a>(test_path: Path, update_baselines: BaselinesUpdate, arena: &'a Arena) -> TestResult<'a, ()> {
 	let test_directory = Path::resolve_with_root(*CASES_ROOT_DIR, test_path, arena);
 	let baselines_directory = Path::resolve_with_root(*BASELINES_ROOT_DIR, test_path, arena);
 

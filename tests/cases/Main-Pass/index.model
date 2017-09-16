@@ -1,0 +1,1 @@
+{"name":"/Main-Pass","type_parameters":[],"head":"Static","supers":[],"methods":[{"is_static":true,"signature":{"class":"/Main-Pass","loc":{"start":3,"end":30},"name":"main","type_parameters":[],"return_ty":{"Plain":["Pure",["Void",[]]]},"self_effect":"Pure","parameters":[]},"body":[{"start":17,"end":29},{"StaticMethodCall":[["value",[]],[],{"Plain":["Pure",["Void",[]]]}]}]}]}

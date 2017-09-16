@@ -8,13 +8,12 @@ use util::up::Up;
 
 use ast;
 
+use model::builtins::BuiltinsOwn;
 use model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
 use model::diag::Diag;
 use model::method::{AbstractMethod, Impl, MethodOrImpl, MethodSignature, MethodWithBody, Parameter};
 use model::module::Module;
 use model::ty::{TypeParameter, TypeParameterOrigin};
-
-use super::super::builtins::BuiltinsOwn;
 
 use super::ast_utils::effect_to_effect;
 use super::check_expr::check_method_body;
@@ -40,7 +39,7 @@ pub fn check_module<'ast, 'builtins_ctx, 'model>(
 		methods: Late::new(),
 	};
 	TypeParameter::set_origins(class.type_parameters, TypeParameterOrigin::Class(Up(class)));
-	let mut ctx: Ctx<'builtins_ctx, 'model> = Ctx::new(class, builtins, module.imports, arena);
+	let mut ctx: Ctx<'builtins_ctx, 'model> = Ctx::new(Up(class), builtins, module.imports, arena);
 	do_check(&mut ctx, ast);
 	&module.diagnostics <- ctx.finish();
 }
@@ -135,7 +134,7 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 		let abstract_methods = match *super_class_declaration.head {
 			ClassHead::Abstract(_, abstract_methods) => abstract_methods,
 			_ => {
-				ctx.add_diagnostic(loc, Diag::NotAnAbstractClass(Up(super_class_declaration)));
+				ctx.add_diagnostic(loc, Diag::NotAnAbstractClass(super_class_declaration));
 				return None
 			}
 		};
@@ -189,7 +188,7 @@ fn check_method_initial<'ast, 'builtins_ctx, 'model>(
 	let parameters = check_parameters(ctx, parameter_asts, type_parameters);
 	let method = ctx.arena <- MethodWithBody {
 		signature: MethodSignature {
-			class: Up(ctx.current_class),
+			class: ctx.current_class,
 			loc,
 			name,
 			type_parameters,

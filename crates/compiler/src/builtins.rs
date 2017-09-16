@@ -1,4 +1,4 @@
-use util::arena::{Arena, NoDrop};
+use util::arena::Arena;
 use util::file_utils::read_file;
 use util::iter::KnownLen;
 use util::late::Late;
@@ -12,6 +12,7 @@ use util::string_maker::{Shower, WriteShower};
 
 use ast::Module as ModuleAst;
 use parse::{parse, ParseDiagnostic};
+use model::builtins::BuiltinsOwn;
 use model::class::ClassDeclaration;
 use model::diag::{Diag, Diagnostic};
 use model::diag::show_diagnostics;
@@ -19,7 +20,6 @@ use model::module::{FailModule, Module, ModuleOrFail, ModuleSourceEnum};
 use model::ty::{InstCls, Ty};
 
 use super::check::check_module;
-use super::check::expected::Expected;
 
 lazy_static! {
 	static ref BUILTINS_ARENA: UnsafeSync<Arena> = UnsafeSync(Arena::new());
@@ -46,21 +46,12 @@ fn load_builtin_file(path_slice: &[u8]) -> &[u8] {
 	}
 }
 
-pub struct BuiltinsOwn<'model> {
-	pub all: Late<&'model [ModuleOrFail<'model>]>,
-	pub all_successes: Late<&'model [Up<'model, Module<'model>>]>,
-	pub expected_void: Late<Expected<'model>>,
-	pub expected_bool: Late<Expected<'model>>,
-}
-
-impl<'model> NoDrop for BuiltinsOwn<'model> {}
-
 pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn {
 	let own = arena <- BuiltinsOwn {
 		all: Late::new(),
 		all_successes: Late::new(),
-		expected_void: Late::new(),
-		expected_bool: Late::new(),
+		void: Late::new(),
+		bool: Late::new(),
 	};
 	let mut all_successes = arena.max_len_builder(BUILTINS_FILES.len());
 	let sym_void = Sym::of("void");
@@ -84,9 +75,9 @@ pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn {
 				own.all_successes.initialize_or_overwrite(all_successes.slice_so_far());
 				check_module(module, own, class, name, arena);
 				if name == sym_void {
-					&own.expected_void <- Expected::SubTypeOf(primitive_ty(&module.class));
+					&own.void <- primitive_ty(&module.class);
 				} else if name == sym_bool {
-					&own.expected_bool <- Expected::SubTypeOf(primitive_ty(&module.class));
+					&own.bool <- primitive_ty(&module.class);
 				}
 				&mut all_successes <- Up(module);
 				ModuleOrFail::Module(module)
@@ -111,5 +102,5 @@ pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn {
 }
 
 fn primitive_ty<'model>(cls: &'model ClassDeclaration<'model>) -> Ty<'model> {
-	Ty::pure_ty(InstCls(cls, &[]))
+	Ty::pure_ty(InstCls(Up(cls), &[]))
 }

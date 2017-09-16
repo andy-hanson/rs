@@ -34,9 +34,6 @@ impl<'model, 'emit> NoDrop for Instructions<'model, 'emit> {}
 
 #[derive(Copy, Clone)]
 pub enum Instruction<'model: 'emit, 'emit> {
-	/** Push a literal value onto the stack. */
-	LiteralVoid,
-	LiteralBool(bool),
 	LiteralNat(u32),
 	LiteralInt(i32),
 	LiteralFloat(f64),

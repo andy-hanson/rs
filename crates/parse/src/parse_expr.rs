@@ -340,9 +340,6 @@ fn parse_simple_expr_without_suffixes<'a, 't>(
 		Token::IntLiteral => ExprData::LiteralInt(l.token_int()),
 		Token::FloatLiteral => ExprData::LiteralFloat(l.token_float()),
 		Token::StringLiteral => ExprData::LiteralString(l.quote_part_value()),
-		Token::Pass => ExprData::LiteralPass,
-		Token::True => ExprData::LiteralBool(true),
-		Token::False => ExprData::LiteralBool(false),
 		Token::SelfKw => ExprData::SelfExpr,
 		_ => unimplemented!(), // TODO:diagnostic
 	};

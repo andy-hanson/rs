@@ -13,15 +13,17 @@ impl<'a> NoDrop for Path<'a> {}
 impl<'a> Path<'a> {
 	pub const EMPTY: Path<'static> = Path(&[]);
 
-	pub fn clone_path_to_arena<'out>(&self, arena: &'out Arena) -> Path<'out> {
-		Path(arena.copy_slice(self.0))
-	}
-
 	pub fn of_slice(slice: &'a [u8]) -> Self {
+		assert_ne!(slice.first().cloned(), Some(b'/'));
+		assert_ne!(slice.last().cloned(), Some(b'/'));
 		Path(slice)
 	}
 
-	pub fn slice(&self) -> &'a [u8] {
+	pub fn clone_path_to_arena(self, arena: &Arena) -> Path {
+		Path::of_slice(arena.copy_slice(self.0))
+	}
+
+	pub fn slice(self) -> &'a [u8] {
 		self.0
 	}
 
@@ -30,29 +32,33 @@ impl<'a> Path<'a> {
 		res.add_slice(root.0);
 		&mut res <- b'/';
 		res.add_slice(path.0);
-		Path(res.finish())
+		Path::of_slice(res.finish())
 	}
 
 	pub fn into_rel(self) -> RelPath<'a> {
 		RelPath { n_parents: 0, rel_to_parent: self }
 	}
 
-	pub fn child<'out>(&self, child_name: &[u8], arena: &'out Arena) -> Path<'out> {
+	pub fn child<'out>(self, child_name: &[u8], arena: &'out Arena) -> Path<'out> {
 		assert!(is_path_part(child_name));
-		let mut res: DirectBuilder<'out, u8> = arena.direct_builder();
-		res.add_slice(self.0);
-		&mut res <- b'/';
-		res.add_slice(child_name);
-		Path(res.finish())
+		if self.is_empty() {
+			Path(arena.copy_slice(child_name))
+		} else {
+			let mut res: DirectBuilder<'out, u8> = arena.direct_builder();
+			res.add_slice(self.0);
+			&mut res <- b'/';
+			res.add_slice(child_name);
+			Path::of_slice(res.finish())
+		}
 	}
 
-	pub fn resolve(&self, rel: &RelPath) -> Self {
+	pub fn resolve(self, rel: RelPath) -> Self {
 		unused!(rel);
 		//TODO: walk backwards until you've passed n_parents '/' characters, then concat with rel.rel_to_parent
 		unimplemented!()
 	}
 
-	pub fn rel_to(&self, other: &Self) -> RelPath {
+	pub fn rel_to(self, other: Self) -> RelPath<'a> {
 		unused!(other);
 		/*let min_length = min(self.0.len(), other.0.len());
 		let mut first_different_part = 0;
@@ -74,7 +80,7 @@ impl<'a> Path<'a> {
 		unimplemented!()
 	}
 
-	pub fn file_name(&self) -> Option<&'a [u8]> {
+	pub fn file_name(self) -> Option<&'a [u8]> {
 		if self.0.is_empty() {
 			None
 		} else {
@@ -91,23 +97,27 @@ impl<'a> Path<'a> {
 		}
 	}
 
-	pub fn without_extension(&self, extension: &[u8]) -> Self {
-		Path(self.0.without_end_if_ends_with(extension))
+	pub fn without_extension(self, extension: &[u8]) -> Self {
+		Path::of_slice(self.0.without_end_if_ends_with(extension))
 	}
 
-	pub fn add_extension<'out>(&self, extension: &[u8], arena: &'out Arena) -> Path<'out> {
+	pub fn add_extension<'out>(self, extension: &[u8], arena: &'out Arena) -> Path<'out> {
 		let mut b = arena.direct_builder();
 		b.add_slice(self.0);
 		b.add_slice(extension);
-		Path(b.finish())
+		Path::of_slice(b.finish())
 	}
 
-	pub fn name_of_containing_directory(&self) -> &[u8] {
+	pub fn name_of_containing_directory(self) -> &'a [u8] {
 		unimplemented!() //self.0.last().unwrap()
 	}
 
-	pub fn directory(&self) -> Self {
+	pub fn directory(self) -> Self {
 		unimplemented!() //Path(self.0.copy_rtail())
+	}
+
+	fn is_empty(self) -> bool {
+		self.0.is_empty()
 	}
 }
 impl<'a> Show for Path<'a> {
@@ -155,7 +165,7 @@ pub struct RelPath<'a> {
 }
 impl<'a> RelPath<'a> {
 	pub fn clone_path_to_arena<'out>(
-		&RelPath { n_parents, ref rel_to_parent }: &RelPath,
+		RelPath { n_parents, rel_to_parent }: RelPath,
 		arena: &'out Arena,
 	) -> RelPath<'out> {
 		RelPath { n_parents, rel_to_parent: Path::clone_path_to_arena(rel_to_parent, arena) }

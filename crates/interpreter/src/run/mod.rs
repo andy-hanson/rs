@@ -39,12 +39,6 @@ fn exec<'model, 'emit>(
 		let instruction = &cur_instructions.0[instruction_index];
 		instruction_index += 1;
 		match *instruction {
-			Instruction::LiteralVoid => {
-				&mut stack <- Value::Void;
-			}
-			Instruction::LiteralBool(b) => {
-				&mut stack <- Value::Bool(b);
-			}
 			Instruction::LiteralNat(n) => {
 				&mut stack <- Value::Nat(n);
 			}

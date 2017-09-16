@@ -11,8 +11,6 @@ use super::method::{InstMethod, MethodOrImpl, Parameter};
 use super::ty::Ty;
 
 pub enum LiteralValue<'a> {
-	Pass,
-	Bool(bool),
 	Nat(u32),
 	Int(i32),
 	Float(f64),
@@ -22,8 +20,6 @@ impl<'a> NoDrop for LiteralValue<'a> {}
 impl<'a> LiteralValue<'a> {
 	fn ty(&self) -> &Ty<'a> {
 		match *self {
-			LiteralValue::Pass => unimplemented!(),
-			LiteralValue::Bool(_) => unimplemented!(),
 			LiteralValue::Nat(_) => unimplemented!(),
 			LiteralValue::Int(_) => unimplemented!(),
 			LiteralValue::Float(_) => unimplemented!(),
@@ -37,8 +33,6 @@ impl<'a> Serialize for LiteralValue<'a> {
 		S: Serializer,
 	{
 		match *self {
-			LiteralValue::Pass => serializer.serialize_str("pass"),
-			LiteralValue::Bool(b) => serializer.serialize_bool(b),
 			LiteralValue::Nat(n) => serializer.serialize_u32(n),
 			LiteralValue::Int(i) => serializer.serialize_i32(i),
 			LiteralValue::Float(f) => serializer.serialize_f64(f),

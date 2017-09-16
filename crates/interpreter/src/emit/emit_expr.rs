@@ -1,7 +1,7 @@
 use util::arena::{Arena, DirectBuilder};
 use util::arith::{to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
 use util::loc::Loc;
-use util::up::ptr_eq;
+use util::up::Up;
 
 use model::expr::{Expr, ExprData, LiteralValue, Local, Pattern};
 use model::method::Parameter;
@@ -49,7 +49,7 @@ struct ExprEmitter<'model: 'emit, 'emit> {
 	// Number of parameters the current function has.
 	n_parameters: u8,
 	// Stack of all current locals.
-	locals: Vec<&'model Local<'model>>,
+	locals: Vec<Up<'model, Local<'model>>>,
 	// Current stack depth relative to the start of this function (first parameter is 0).
 	// This has a minimum of # parameters + # locals, but may be greater if
 	// there are currently temporary values on the stack.
@@ -80,11 +80,11 @@ impl<'model, 'emit> ExprEmitter<'model, 'emit> {
 			ExprData::Bogus | ExprData::BogusCast(_, _) =>
 				// Should not reach here.
 				unimplemented!(),
-			ExprData::AccessParameter(ref param, _) =>
+			ExprData::AccessParameter(param, _) =>
 				self.fetch(loc, param.index),
-			ExprData::AccessLocal(ref local) => {
+			ExprData::AccessLocal(local) => {
 				// Get the index of the local
-				let index = self.locals.iter().position(|l| ptr_eq(l, &local.0)).unwrap();
+				let index = self.locals.iter().position(|l| l.ptr_eq(local)).unwrap();
 				let local_depth = u8_add(self.n_parameters, to_u8(index));
 				self.fetch(loc, local_depth)
 			}
@@ -93,7 +93,7 @@ impl<'model, 'emit> ExprEmitter<'model, 'emit> {
 				let n_pushed = match *pattern {
 					Pattern::Ignore => unimplemented!(),
 					Pattern::Single(local) => {
-						self.locals.push(local);
+						self.locals.push(Up(local));
 						1
 					},
 					Pattern::Destruct(_, _) => unimplemented!(),
@@ -116,8 +116,6 @@ impl<'model, 'emit> ExprEmitter<'model, 'emit> {
 			ExprData::Literal(ref value) => {
 				self.pushes(1);
 				self.write(loc, match *value {
-					LiteralValue::Pass => Instruction::LiteralVoid,
-					LiteralValue::Bool(b) => Instruction::LiteralBool(b),
 					LiteralValue::Nat(n) => Instruction::LiteralNat(n),
 					LiteralValue::Int(i) => Instruction::LiteralInt(i),
 					LiteralValue::Float(f) => Instruction::LiteralFloat(f),

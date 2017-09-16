@@ -6,7 +6,7 @@ use util::late::Late;
 use util::string_maker::{Show, Shower};
 use util::sym::Sym;
 use util::sync::UnsafeSync;
-use util::up::{ptr_eq, SerializeUp, Up};
+use util::up::{SerializeUp, Up};
 
 use super::class::ClassDeclaration;
 use super::effect::Effect;
@@ -19,7 +19,7 @@ static BOGUS: UnsafeSync<Ty> = UnsafeSync(Ty::Bogus);
 pub enum Ty<'a> {
 	Bogus,
 	Plain(Effect, InstCls<'a>),
-	Param(&'a TypeParameter<'a>),
+	Param(Up<'a, TypeParameter<'a>>),
 }
 impl<'a> NoDrop for Ty<'a> {}
 impl<'a> Ty<'a> {
@@ -49,9 +49,9 @@ impl<'a> Ty<'a> {
 					false
 				}
 			}
-			Ty::Param(p) =>
+			Ty::Param(p_a) =>
 				if let Ty::Param(p_b) = *other {
-					ptr_eq(p, p_b)
+					p_a.ptr_eq(p_b)
 				} else {
 					false
 				}
@@ -101,19 +101,19 @@ impl<'t, 'a> Show for &'t Ty<'a> {
 }*/
 
 #[derive(Serialize)]
-pub struct InstCls<'a>(pub &'a ClassDeclaration<'a>, pub &'a [Ty<'a>]);
+pub struct InstCls<'a>(pub Up<'a, ClassDeclaration<'a>>, pub &'a [Ty<'a>]);
 impl<'a> InstCls<'a> {
-	pub fn generic_self_reference(cls: &'a ClassDeclaration<'a>, arena: &'a Arena) -> Self {
-		let type_arguments = arena.map(cls.type_parameters, |tp| Ty::Param(tp));
+	pub fn generic_self_reference(cls: Up<'a, ClassDeclaration<'a>>, arena: &'a Arena) -> Self {
+		let type_arguments = arena.map(cls.type_parameters, |tp| Ty::Param(Up(tp)));
 		InstCls(cls, type_arguments)
 	}
 
 	pub fn class(&self) -> &'a ClassDeclaration<'a> {
-		self.0
+		(self.0).0
 	}
 
 	pub fn fast_equals(&self, other: &Self) -> bool {
-		ptr_eq(self.0, other.0) && self.1.each_equals(other.1, Ty::fast_equals)
+		self.0.ptr_eq(other.0) && self.1.each_equals(other.1, Ty::fast_equals)
 	}
 }
 impl<'a> NoDrop for InstCls<'a> {}
@@ -163,13 +163,6 @@ impl<'a> TypeParameter<'a> {
 		for tp in type_parameters {
 			&tp.origin <- origin.copy();
 		}
-	}
-
-	pub fn fast_equals(&self, other: &TypeParameter) -> bool {
-		// TODO: self and other should be `Ref`, then use reference identity.
-		// See https://www.reddit.com/r/rust/comments/2dmzf6/why_do_equality_tests_of_references_seem_to/
-		unused!(other);
-		unimplemented!()
 	}
 }
 impl<'a> Serialize for TypeParameter<'a> {

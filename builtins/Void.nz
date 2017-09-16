@@ -1,1 +1,3 @@
 builtin
+
+fun Void value()

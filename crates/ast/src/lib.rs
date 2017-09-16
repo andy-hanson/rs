@@ -150,8 +150,6 @@ pub enum ExprData<'a> {
 	SetProperty(&'a SetPropertyData<'a>),
 	Let(&'a LetData<'a>),
 	Seq(&'a SeqData<'a>),
-	LiteralPass,
-	LiteralBool(bool),
 	LiteralNat(u32),
 	LiteralInt(i32),
 	LiteralFloat(f64),

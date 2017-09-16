@@ -8,6 +8,7 @@ extern crate serde_derive;
 extern crate util;
 extern crate parse_diag;
 
+pub mod builtins;
 pub mod class;
 pub mod diag;
 pub mod document_info;

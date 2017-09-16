@@ -14,11 +14,12 @@ use parse::parse;
 
 use host::document_provider::DocumentProvider;
 
+use model::builtins::BuiltinsOwn;
 use model::diag::{Diag, Diagnostic};
 use model::document_info::DocumentInfo;
 use model::module::{FailModule, Module, ModuleOrFail, ModuleSource, ModuleSourceEnum};
 
-use super::super::builtins::{get_builtins, BuiltinsOwn};
+use super::super::builtins::get_builtins;
 use super::super::check::check_module;
 
 use super::{CompileResult, CompiledProgram};
@@ -240,13 +241,13 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		all_dependencies_reused: &mut bool,
 	) -> Result<Option<ModuleOrFail<'model>>, D::Error> {
 		match *import_ast {
-			ImportAst::Global(_loc, ref _path) => {
+			ImportAst::Global(_loc, _path) => {
 				unimplemented!() // Get the builtin with this name
 			}
-			ImportAst::Local(loc, ref rel_path) => {
+			ImportAst::Local(loc, rel_path) => {
 				let relative_path = RelPath::clone_path_to_arena(rel_path, self.arena);
 				let (imported_module, is_import_reused) =
-					self.compile_single(full_path.resolve(&relative_path))?;
+					self.compile_single(full_path.resolve(relative_path))?;
 				*all_dependencies_reused &= is_import_reused;
 				Ok(match imported_module {
 					CompileSingleResult::Circular => {

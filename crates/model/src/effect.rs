@@ -14,7 +14,7 @@ impl Effect {
 	pub const MAX: Self = Effect::Io;
 
 	pub fn contains(self, other: Self) -> bool {
-		self as usize > other as usize
+		self as usize >= other as usize
 	}
 
 	pub fn min_common_effect(self, other: Self) -> Self {

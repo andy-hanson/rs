@@ -255,6 +255,6 @@ pub struct Catch<'a> {
 	pub exception_ty: Ty<'a>,
 	pub exception_name_loc: Loc,
 	pub exception_name: Sym,
-	pub then: Expr<'a>,
+	pub result: Expr<'a>,
 }
 impl<'a> NoDrop for Catch<'a> {}

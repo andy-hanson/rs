@@ -3,7 +3,7 @@ use util::arith::{usize_to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
 use util::loc::Loc;
 use util::up::Up;
 
-use model::expr::{Expr, ExprData, LiteralValue, Local, Pattern};
+use model::expr::{Expr, ExprData, LiteralValue, Local, Pattern, LetData, StaticMethodCallData, SeqData};
 use model::method::{InstMethod, MethodOrImpl, MethodOrImplOrAbstract, Parameter};
 
 use super::super::emitted_model::{Code, Instruction, Instructions, CalledInstructions, CalledBuiltin, MethodMaps};
@@ -98,18 +98,18 @@ impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 				let local_depth = u8_add(self.n_parameters, usize_to_u8(index));
 				self.fetch(loc, local_depth)
 			}
-			ExprData::Let(ref pattern, value, then) => {
+			ExprData::Let(&LetData { ref pattern, ref value, ref then }) => {
 				self.emit_expr(value);
-				let n_pushed = match *pattern {
+				let n_pushed = match **pattern {
 					Pattern::Ignore => unimplemented!(),
-					Pattern::Single(local) => {
+					Pattern::Single(ref local) => {
 						self.locals.push(Up(local));
 						1
 					},
 					Pattern::Destruct(_, _) => unimplemented!(),
 				};
 
-				self.emit_expr(then);
+				self.emit_expr(&**then);
 
 				self.write(loc, Instruction::UnLet(n_pushed));
 				for _ in 0..n_pushed {
@@ -117,7 +117,7 @@ impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 				}
 				self.stack_depth -= n_pushed
 			}
-			ExprData::Seq(first, then) => {
+			ExprData::Seq(&SeqData(ref first, ref then)) => {
 				self.emit_expr(first);
 				self.write(loc, Instruction::PopVoid);
 				self.pops(1);
@@ -136,10 +136,10 @@ impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 				})
 			},
 			ExprData::IfElse { .. } => unimplemented!(),
-			ExprData::WhenTest(_, _) => unimplemented!(),
-			ExprData::Try { .. } => unimplemented!(),
-			ExprData::For { .. } => unimplemented!(),
-			ExprData::StaticMethodCall { method, args } => {
+			ExprData::WhenTest(_) => unimplemented!(),
+			ExprData::Try(_) => unimplemented!(),
+			ExprData::For(_) => unimplemented!(),
+			ExprData::StaticMethodCall(&StaticMethodCallData { ref method, args }) => {
 				for arg in args {
 					self.emit_expr(arg);
 				}
@@ -153,11 +153,11 @@ impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 			ExprData::New(_) => unimplemented!(),
 			ExprData::ArrayLiteral(_) => unimplemented!(),
 			ExprData::GetMySlot(_) => unimplemented!(),
-			ExprData::GetSlot(_, _) => unimplemented!(),
-			ExprData::SetSlot(_, _) => unimplemented!(),
+			ExprData::GetSlot(_) => unimplemented!(),
+			ExprData::SetSlot(_) => unimplemented!(),
 			ExprData::SelfExpr => unimplemented!(),
 			ExprData::Assert(_) => unimplemented!(),
-			ExprData::Recur(_, _) => unimplemented!(),
+			ExprData::Recur(_) => unimplemented!(),
 		}
 	}
 

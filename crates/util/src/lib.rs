@@ -11,6 +11,7 @@ extern crate lazy_static;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate termcolor;
 
 #[macro_use]
 pub mod macros;
@@ -24,6 +25,7 @@ pub mod path;
 pub mod loc;
 pub mod late;
 pub mod list;
+pub mod output_shower;
 pub mod show;
 pub mod string_maker;
 pub mod sync;

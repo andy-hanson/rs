@@ -112,12 +112,12 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		&mut self,
 		method_decl: MethodOrImplOrAbstract<'model>,
 		ty_arg_asts: List<'ast, ast::Ty<'ast>>,
-	) -> Option<&'model InstMethod<'model>> {
+	) -> Option<InstMethod<'model>> {
 		if ty_arg_asts.len() != method_decl.type_parameters().len() {
 			unimplemented!()
 		} else {
 			let ty_args = self.get_ty_args(ty_arg_asts);
-			Some(self.arena <- InstMethod { method_decl, ty_args })
+			Some(InstMethod { method_decl, ty_args })
 		}
 	}
 

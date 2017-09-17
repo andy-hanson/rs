@@ -27,11 +27,11 @@ impl<'model, 'emit> MethodMaps<'model, 'emit> {
 	}
 
 	pub fn get_method(&self, method: Up<'model, MethodWithBody<'model>>) -> &'emit Code<'model, 'emit> {
-		self.methods.get(&method).unwrap()
+		self.methods.get(method).unwrap()
 	}
 
 	pub fn get_impl(&self, an_impl: Up<'model, Impl<'model>>) -> &'emit Code<'model, 'emit> {
-		self.impls.get(&an_impl).unwrap()
+		self.impls.get(an_impl).unwrap()
 	}
 }
 

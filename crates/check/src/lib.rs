@@ -1,4 +1,6 @@
 #![allow(dead_code)] // TODO
+#![allow(unknown_lints)]
+#![allow(unneeded_field_pattern)]
 #![feature(collection_placement)]
 #![feature(placement_in_syntax)]
 

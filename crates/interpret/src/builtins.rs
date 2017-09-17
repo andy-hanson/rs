@@ -17,8 +17,8 @@ pub fn get_builtin<'model>(module: &Module, method: MethodOrImpl<'model>) -> Emi
 			unimplemented!(),
 		ModuleSourceEnum::Builtin { name, .. } => name,
 	};
-	if let Some(name_to_code) = PATH_TO_IMPLS.get(&name) {
-		if let Some(code) = name_to_code.get(&method.name()) {
+	if let Some(name_to_code) = PATH_TO_IMPLS.get(name) {
+		if let Some(code) = name_to_code.get(method.name()) {
 			return if code.arity() == method.arity() {
 				Ok(*code)
 			} else {

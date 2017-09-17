@@ -27,12 +27,11 @@ impl<K: Hash + Eq, V> Dict<K, V> {
 		MutDict::from_iterator(i).freeze()
 	}
 
-	pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+	pub fn get<Q : Hash + Eq>(&self, k: Q) -> Option<&V>
 	where
 		K: Borrow<Q>,
-		Q: Hash + Eq,
 	{
-		self.0.get(k)
+		self.0.get(&k)
 	}
 }
 
@@ -66,28 +65,25 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 		entry
 	}
 
-	pub fn try_extract<Q: ?Sized>(&mut self, key: &Q) -> Option<V>
+	pub fn try_extract<Q: Hash + Eq>(&mut self, key: Q) -> Option<V>
 	where
 		K: Borrow<Q>,
-		Q: Hash + Eq,
 	{
-		self.0.remove(key)
+		self.0.remove(&key)
 	}
 
-	pub fn has_key<Q: ?Sized>(&self, k: &Q) -> bool
+	pub fn has_key<Q : Hash + Eq>(&self, k: Q) -> bool
 	where
 		K: Borrow<Q>,
-		Q: Hash + Eq,
 	{
-		self.0.contains_key(k)
+		self.0.contains_key(&k)
 	}
 
-	pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+	pub fn get<Q : Hash + Eq>(&self, k: Q) -> Option<&V>
 	where
 		K: Borrow<Q>,
-		Q: Hash + Eq,
 	{
-		self.0.get(k)
+		self.0.get(&k)
 	}
 
 	pub fn freeze(self) -> Dict<K, V> {
@@ -134,10 +130,9 @@ impl<K: Hash + Eq> MutSet<K> {
 		self.0.add(value) <- ()
 	}
 
-	pub fn has<Q: ?Sized>(&self, value: &Q) -> bool
+	pub fn has<Q:  Hash + Eq>(&self, value: Q) -> bool
 	where
 		K: Borrow<Q>,
-		Q: Hash + Eq,
 	{
 		self.0.has_key(value)
 	}

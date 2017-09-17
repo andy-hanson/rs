@@ -412,13 +412,13 @@ fn parse_try<'a, 't>(l: &mut Lexer<'a, 't>, start_pos: Pos) -> Result<Expr<'a>> 
 			let exception_name = l.take_name()?;
 			let exception_name_loc = l.loc_from(name_start);
 			l.take_indent()?;
-			let then = parse_block(l)?;
+			let result = parse_block(l)?;
 			let catch = Catch {
 				loc: l.loc_from(catch_start),
 				exception_ty,
 				exception_name_loc,
 				exception_name,
-				then,
+				result,
 			};
 
 			let finally = if !l.try_take_dedent()? {

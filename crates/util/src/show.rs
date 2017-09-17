@@ -1,6 +1,6 @@
 use serde::Serializer;
 
-use std::io::{stderr, Error as IoError, Stderr, Write as IoWrite};
+pub use termcolor::Color;
 
 use super::string_maker::StringMaker;
 
@@ -62,6 +62,9 @@ pub trait Shower
 {
 	type Error;
 
+	// Does nothing (except call the callback) if this is not a colored output.
+	fn color<F : FnMut() -> Result<(), Self::Error>>(&mut self, c: Color, f: F) -> Result<(), Self::Error>;
+
 	fn nl(&mut self) -> Result<&mut Self, Self::Error> {
 		self._add_char('\n')?;
 		Ok(self)
@@ -110,55 +113,6 @@ pub trait Shower
 			}
 		}
 		Ok(self)
-	}
-}
-
-pub struct WriteShower<W: IoWrite>(W);
-impl WriteShower<Stderr> {
-	pub fn stderr() -> WriteShower<Stderr> {
-		WriteShower::new(stderr())
-	}
-
-	pub fn write_stderr<S: Show>(shown: S) -> Result<(), IoError> {
-		Self::stderr().add(shown)?.nl()?;
-		Ok(())
-	}
-}
-impl<W: IoWrite> WriteShower<W> {
-	fn new(w: W) -> Self {
-		WriteShower(w)
-	}
-}
-impl<W: IoWrite> Shower for WriteShower<W> {
-	type Error = IoError;
-
-	fn _add_char(&mut self, char: char) -> Result<(), Self::Error> {
-		write!(&mut self.0, "{}", char)
-	}
-
-	fn _add_bytes(&mut self, bytes: &[u8]) -> Result<(), Self::Error> {
-		//write!(self.0, "{}", &String::from_utf8_lossy(bytes))
-		self.0.write_all(bytes)
-	}
-
-	fn _add_u8(&mut self, u: u8) -> Result<(), Self::Error> {
-		write!(&mut self.0, "{}", u)
-	}
-
-	fn _add_u32(&mut self, u: u32) -> Result<(), Self::Error> {
-		write!(&mut self.0, "{}", u)
-	}
-
-	fn _add_usize(&mut self, u: usize) -> Result<(), Self::Error> {
-		write!(&mut self.0, "{}", u)
-	}
-
-	fn _add_int(&mut self, i: i32) -> Result<(), Self::Error> {
-		write!(&mut self.0, "{}", i)
-	}
-
-	fn _add_float(&mut self, f: f64) -> Result<(), Self::Error> {
-		write!(&mut self.0, "{}", f)
 	}
 }
 

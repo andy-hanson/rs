@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use serde::Serialize;
 use serde_yaml::to_string as to_yaml_string;
 
@@ -46,7 +44,7 @@ impl<'a, 'expected> Baselines<'a, 'expected> {
 		let baseline_path = module_path_without_extension.add_extension(extension, self.arena);
 		let full_baseline_path = Path::resolve_with_root(self.baselines_directory, baseline_path, self.arena);
 
-		match self.expected.try_extract::<[u8]>(baseline_path.borrow()) {
+		match self.expected.try_extract(baseline_path) {
 			Some(expected) =>
 				if actual == expected {
 					Ok(())

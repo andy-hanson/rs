@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use util::arena::{Arena, NoDrop};
 use util::dict::MutDict;
 use util::iter::KnownLen;
@@ -77,7 +75,8 @@ struct Compiler<'document_provider, 'old, 'model, D: DocumentProvider<'model> + 
 	builtins: &'model BuiltinsOwn<'model>,
 	document_provider: &'document_provider mut D,
 	// We consume the old program, so we module values out of its map when we reuse them.
-	old_modules: MutDict<Path<'old>, ModuleOrFail<'old>>,
+	// Intentionally using `Path<'model>` instead of `Path<'old>` as keys so we can look this up using Path<'model> keys.
+	old_modules: MutDict<Path<'model>, ModuleOrFail<'old>>,
 	// Keys are logical paths.
 	modules: MutDict<Path<'model>, ModuleState<'model>>,
 }
@@ -87,7 +86,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		&mut self,
 		logical_path: Path<'model>,
 	) -> Result<(CompileSingleResult<'model>, bool), D::Error> {
-		if let Some(already_compiled) = self.modules.get(&logical_path) {
+		if let Some(already_compiled) = self.modules.get(logical_path) {
 			return Ok(match *already_compiled {
 				ModuleState::Compiling =>
 					// TODO: attach an error to the calling module
@@ -158,7 +157,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		// We will only bother looking at the old module if all of our dependencies were safely reused.
 		// If oldModule doesn't exactly match, we'll ignore it completely.
 		if all_dependencies_reused {
-			if let Some(old_module_or_fail) = self.old_modules.try_extract::<[u8]>(logical_path.borrow()) {
+			if let Some(old_module_or_fail) = self.old_modules.try_extract(logical_path) {
 				// old_modules only stores modules from source code, not builtins,
 				// so unwrap() should succeed.
 				if old_module_or_fail

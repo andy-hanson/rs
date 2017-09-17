@@ -20,8 +20,7 @@ pub struct ClassDeclaration<'a> {
 	#[serde(skip_serializing_if = "slice_is_empty")]
 	pub supers: Late<&'a [Super<'a>]>,
 	// Abstract methods are stored in the `head`
-	//TODO:PERF would like an array of methods, not references to methods
-	pub methods: Late<&'a [&'a MethodWithBody<'a>]>,
+	pub methods: Late<&'a [MethodWithBody<'a>]>,
 }
 impl<'a> NoDrop for ClassDeclaration<'a> {}
 impl<'a> ClassDeclaration<'a> {
@@ -30,7 +29,6 @@ impl<'a> ClassDeclaration<'a> {
 		self.methods
 			.iter()
 			.find(|m| m.is_static && m.name() == name)
-			.map(|m| *m)
 	}
 
 	pub fn all_impls(&self) -> impl Iterator<Item=&'a Impl<'a>> {

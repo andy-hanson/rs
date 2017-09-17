@@ -70,8 +70,7 @@ pub struct MethodWithBody<'a> {
 	pub is_static: bool,
 	pub signature: MethodSignature<'a>,
 	// Optional because this might be a builtin method
-	//TODO:PERF should own the expr, not point to it
-	pub body: Late<Option<&'a Expr<'a>>>,
+	pub body: Late<Option<Expr<'a>>>,
 }
 impl<'a> NoDrop for MethodWithBody<'a> {}
 impl<'a> MethodWithBody<'a> {
@@ -97,10 +96,6 @@ impl<'a> MethodWithBody<'a> {
 
 	pub fn parameters(&self) -> &[Parameter<'a>] {
 		self.signature.parameters
-	}
-
-	pub fn body(&self) -> Option<&'a Expr<'a>> {
-		*self.body
 	}
 
 	pub fn arity(&self) -> u8 {
@@ -155,8 +150,7 @@ pub struct Impl<'a> {
 	pub loc: Loc,
 	pub containing_class: Up<'a, ClassDeclaration<'a>>,
 	pub implemented: Up<'a, AbstractMethod<'a>>,
-	//TODO:PERF should own the body, not reference it
-	pub body: Late<Option<&'a Expr<'a>>>,
+	pub body: Late<Option<Expr<'a>>>,
 }
 impl<'a> NoDrop for Impl<'a> {}
 impl<'a> Impl<'a> {

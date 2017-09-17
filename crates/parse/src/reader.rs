@@ -3,7 +3,8 @@ use std::slice::Iter;
 
 use util::arith::u32_to_usize;
 use util::loc::Pos;
-use util::show::{Shower, WriteShower};
+use util::output_shower::OutputShower;
+use util::show::Shower;
 
 pub struct Reader<'text> {
 	source: &'text [u8],
@@ -80,8 +81,7 @@ impl<'text> Reader<'text> {
 		line_start: usize,
 		line_end: usize,
 	) -> Result<(), IoError> {
-		let mut s = WriteShower::stderr();
-		s.add("Pos ")?.add(pos)?.add(": Line ")?
+		OutputShower::stderr().add("Pos ")?.add(pos)?.add(": Line ")?
 			.add(line_no)?
 			.add(" (")?.add(line_start)?.add("-")?.add(line_end)?.add("): ")?
 			.add(&self.source[line_start..pos])?

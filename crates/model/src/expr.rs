@@ -1,6 +1,7 @@
 use serde::{Serialize, Serializer};
 
 use util::arena::NoDrop;
+use util::late::Late;
 use util::loc::Loc;
 use util::sym::Sym;
 use util::u8_slice_ops::U8SliceOps;
@@ -32,8 +33,7 @@ impl<'a> Serialize for LiteralValue<'a> {
 #[derive(Serialize)]
 pub enum Pattern<'a> {
 	Ignore,
-	//TODO:PERF should own the local, not reference it
-	Single(&'a Local<'a>),
+	Single(Local<'a>),
 	Destruct(Loc, &'a [Pattern<'a>]),
 }
 impl<'a> NoDrop for Pattern<'a> {}
@@ -52,12 +52,19 @@ impl<'a> SerializeUp for Local<'a> {
 }
 
 #[derive(Serialize)]
-pub struct Case<'a>(pub Loc, /*test*/ pub &'a Expr<'a>, /*result*/ pub &'a Expr<'a>);
+pub struct Case<'a> {
+	pub loc: Loc,
+	pub test: Expr<'a>,
+	pub result: Expr<'a>,
+}
 impl<'a> NoDrop for Case<'a> {}
 
 #[derive(Serialize)]
-//TODO:PERF should own its local and expr, not reference them
-pub struct Catch<'a>(pub Loc, /*caught*/ pub &'a Local<'a>, /*result*/ pub &'a Expr<'a>);
+pub struct Catch<'a> {
+	pub loc: Loc,
+	pub caught: Local<'a>,
+	pub result: Late<Expr<'a>>,
+}
 impl<'a> NoDrop for Catch<'a> {}
 
 #[derive(Serialize)]
@@ -74,38 +81,30 @@ impl<'a> Expr<'a> {
 impl<'a> NoDrop for Expr<'a> {}
 
 #[derive(Serialize)]
+// All variants should be 1 word in size (excluding the tag).
 pub enum ExprData<'a> {
 	BogusCast(&'a Expr<'a>),
 	Bogus,
 	AccessParameter(Up<'a, Parameter<'a>>),
 	AccessLocal(Up<'a, Local<'a>>),
-	Let(Pattern<'a>, &'a Expr<'a>, &'a Expr<'a>),
-	Seq(&'a Expr<'a>, &'a Expr<'a>),
+	Let(&'a LetData<'a>),
+	Seq(&'a SeqData<'a>),
 	Literal(LiteralValue<'a>),
-	IfElse { test: &'a Expr<'a>, then: &'a Expr<'a>, elze: &'a Expr<'a> },
-	WhenTest(&'a [Case<'a>], &'a Expr<'a>),
-	Try { body: &'a Expr<'a>, catch: Option<Catch<'a>>, finally: Option<&'a Expr<'a>> },
-	For {
-		local: Local<'a>,
-		looper: &'a Expr<'a>,
-		body: &'a Expr<'a>,
-		provided_ty: Ty<'a>,
-		received_ty: Ty<'a>,
-	},
-	//TODO:PERF should own InstMethod and args, not reference them
-	StaticMethodCall { method: &'a InstMethod<'a>, args: &'a [&'a Expr<'a>] },
-	InstanceMethodCall { target: &'a Expr<'a>, method: &'a InstMethod<'a>, args: &'a [&'a Expr<'a>] },
-	MyInstanceMethodCall { method: &'a InstMethod<'a>, args: &'a [&'a Expr<'a>] },
-	// We store the Ty here instead of an InstClass so we can easily get a reference to it;
-	// It should always by Ty::Plain(EFFECT_MAX, some_InstClass).
-	New(&'a [&'a Expr<'a>]),
+	IfElse(&'a IfElseData<'a>),
+	WhenTest(&'a WhenTestData<'a>),
+	Try(&'a TryData<'a>),
+	For(&'a ForData<'a>),
+	StaticMethodCall(&'a StaticMethodCallData<'a>),
+	InstanceMethodCall(&'a InstanceMethodCallData<'a>),
+	MyInstanceMethodCall(&'a MyInstanceMethodCallData<'a>),
+	New(&'a [Expr<'a>]),
 	ArrayLiteral(&'a [&'a Expr<'a>]),
 	GetMySlot(Up<'a, SlotDeclaration<'a>>),
-	GetSlot(&'a Expr<'a>, Up<'a, SlotDeclaration<'a>>),
-	SetSlot(Up<'a, SlotDeclaration<'a>>, &'a Expr<'a>),
+	GetSlot(&'a GetSlotData<'a>),
+	SetSlot(&'a SetSlotData<'a>),
 	SelfExpr,
 	Assert(&'a Expr<'a>),
-	Recur(MethodOrImpl<'a>, &'a [&'a Expr<'a>]),
+	Recur(&'a RecurData<'a>),
 }
 impl<'a> NoDrop for ExprData<'a> {}
 impl<'a> ExprData<'a> {
@@ -168,3 +167,82 @@ impl<'a> ExprData<'a> {
 		}
 	}*/
 }
+
+#[derive(Serialize)]
+pub struct SeqData<'a>(pub Expr<'a>, pub Expr<'a>);
+impl<'a> NoDrop for SeqData<'a> {}
+
+#[derive(Serialize)]
+pub struct IfElseData<'a> {
+	pub test: Expr<'a>,
+	pub then: Expr<'a>,
+	pub elze: Expr<'a>,
+}
+impl<'a> NoDrop for IfElseData<'a> {}
+
+#[derive(Serialize)]
+pub struct WhenTestData<'a> {
+	pub cases: &'a [Case<'a>],
+	pub elze: Expr<'a>,
+}
+impl<'a> NoDrop for WhenTestData<'a> {}
+
+#[derive(Serialize)]
+pub struct StaticMethodCallData<'a> {
+	pub method: InstMethod<'a>,
+	pub args: &'a [Expr<'a>],
+}
+impl<'a> NoDrop for StaticMethodCallData<'a> {}
+
+#[derive(Serialize)]
+pub struct LetData<'a> {
+	pub pattern: Late<Pattern<'a>>,
+	pub value: Expr<'a>,
+	pub then: Late<Expr<'a>>,
+}
+impl<'a> NoDrop for LetData<'a> {}
+
+#[derive(Serialize)]
+pub struct InstanceMethodCallData<'a> {
+	pub target: Expr<'a>,
+	pub method: InstMethod<'a>,
+	pub args: &'a [Expr<'a>],
+}
+impl<'a> NoDrop for InstanceMethodCallData<'a> {}
+
+#[derive(Serialize)]
+pub struct MyInstanceMethodCallData<'a> {
+	pub method: InstMethod<'a>,
+	pub args: &'a [Expr<'a>],
+}
+impl<'a> NoDrop for MyInstanceMethodCallData<'a> {}
+
+#[derive(Serialize)]
+pub struct GetSlotData<'a>(pub Expr<'a>, pub Up<'a, SlotDeclaration<'a>>);
+impl<'a> NoDrop for GetSlotData<'a> {}
+
+#[derive(Serialize)]
+pub struct SetSlotData<'a>(pub Up<'a, SlotDeclaration<'a>>, pub Expr<'a>);
+impl<'a> NoDrop for SetSlotData<'a> {}
+
+#[derive(Serialize)]
+pub struct RecurData<'a>(pub MethodOrImpl<'a>, pub &'a [Expr<'a>]);
+impl<'a> NoDrop for RecurData<'a> {}
+
+#[derive(Serialize)]
+pub struct TryData<'a> {
+	pub body: Expr<'a>,
+	pub catch: Option<Catch<'a>>,
+	pub finally: Option<Expr<'a>>
+}
+impl<'a> NoDrop for TryData<'a> {}
+
+#[derive(Serialize)]
+pub struct ForData<'a> {
+	pub local: Local<'a>,
+	pub looper: Expr<'a>,
+	pub body: Expr<'a>,
+	pub provided_ty: Ty<'a>,
+	pub received_ty: Ty<'a>,
+}
+impl<'a> NoDrop for ForData<'a> {}

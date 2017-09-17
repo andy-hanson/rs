@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use super::show::{Show, Shower};
+use super::show::{Color, Show, Shower};
 use super::u8_slice_ops::U8SliceOps;
 
 #[derive(Debug)]
@@ -20,6 +20,10 @@ impl StringMaker {
 }
 impl Shower for StringMaker {
 	type Error = Void;
+
+	fn color<F : FnMut() -> Result<(), Self::Error>>(&mut self, _: Color, mut f: F) -> Result<(), Self::Error> {
+		f()
+	}
 
 	fn _add_char(&mut self, ch: char) -> Result<(), Self::Error> {
 		self.0.push(ch);

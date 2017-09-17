@@ -1,4 +1,4 @@
-use util::arena::Arena;
+use util::arena::{Arena, PointerPlace};
 use util::arith::usize_to_u8;
 use util::iter::KnownLen;
 use util::late::Late;
@@ -48,7 +48,7 @@ fn do_check<'ast, 'builtins_ctx, 'model>(ctx: &mut Ctx<'builtins_ctx, 'model>, a
 	// type parameters already handled before calling this.
 	let &ast::Class { head: ref head_ast, supers: super_asts, methods: method_asts, .. } = ast;
 
-	let methods = ctx.arena.map(method_asts, |m| check_method_initial(ctx, m));
+	let methods = ctx.arena.map_with_place(method_asts, |m, place| check_method_initial(ctx, m, place));
 	&ctx.current_class.methods <- methods;
 
 	// Adds slots too
@@ -164,10 +164,10 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 	Some(Super { loc, super_class: super_inst_class, impls })
 }
 
-//TODO:PERF would like to return by value...
 fn check_method_initial<'ast, 'builtins_ctx, 'model>(
 	ctx: &mut Ctx<'builtins_ctx, 'model>,
 	ast: &'ast ast::Method<'ast>,
+	place: PointerPlace<'model, MethodWithBody<'model>>,
 ) -> &'model MethodWithBody<'model> {
 	// Don't check method bodies yet, just fill their heads.
 	let &ast::Method {
@@ -184,7 +184,7 @@ fn check_method_initial<'ast, 'builtins_ctx, 'model>(
 		.map(type_parameter_asts, |name| TypeParameter::create(*name));
 	let return_ty = ctx.get_ty_or_ty_parameter(return_ty_ast, type_parameters);
 	let parameters = check_parameters(ctx, parameter_asts, type_parameters);
-	let method = ctx.arena <- MethodWithBody {
+	let method = place <- MethodWithBody {
 		containing_class: ctx.current_class,
 		signature: MethodSignature {
 			class: ctx.current_class,

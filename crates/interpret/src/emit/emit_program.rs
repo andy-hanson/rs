@@ -35,7 +35,7 @@ struct Emitter<'model: 'emit, 'emit> {
 }
 impl<'model, 'emit> Emitter<'model, 'emit> {
 	fn is_module_already_emitted(&self, module: &Module<'model>) -> bool {
-		self.emitted_modules.has(&Up(module))
+		self.emitted_modules.has(Up(module))
 	}
 
 	fn emit_module(&mut self, module: &Module<'model>) -> EmitResult<'model, ()> {
@@ -53,24 +53,24 @@ impl<'model, 'emit> Emitter<'model, 'emit> {
 
 		// First make sure all methods in this module exist, then fill them in.
 		for an_impl in class.all_impls() {
-			let code = self.arena <- self.get_code_start(module, MethodOrImpl::Impl(Up(an_impl)), *an_impl.body)?;
+			let code = self.arena <- self.get_code_start(module, MethodOrImpl::Impl(Up(an_impl)), &*an_impl.body)?;
 			self.methods.impls.add(Up(an_impl)) <- code;
 		}
 
 		for method in *class.methods {
-			let code = self.arena <- self.get_code_start(module, MethodOrImpl::Method(Up(method)), *method.body)?;
+			let code = self.arena <- self.get_code_start(module, MethodOrImpl::Method(Up(method)), &*method.body)?;
 			self.methods.methods.add(Up(method)) <- code;
 		}
 
 		// Now fill them in.
 		for an_impl in class.all_impls() {
 			let implemented = &an_impl.implemented;
-			if let Some(body) = *an_impl.body {
+			if let Some(ref body) = *an_impl.body {
 				self.fill_code(self.methods.get_impl(Up(an_impl)), implemented.parameters(), body, self.arena)
 			}
 		}
 		for method in *class.methods {
-			if let Some(body) = *method.body {
+			if let Some(ref body) = *method.body {
 				self.fill_code(self.methods.get_method(Up(method)), method.parameters(), body, self.arena)
 			}
 		}
@@ -82,9 +82,9 @@ impl<'model, 'emit> Emitter<'model, 'emit> {
 		&self,
 		module: &Module<'model>,
 		method: MethodOrImpl<'model>,
-		body: Option<&'model Expr<'model>>,
+		body: &Option<Expr<'model>>,
 	) -> EmitResult<'model, Code<'model, 'emit>> {
-		Ok(match body {
+		Ok(match *body {
 			Some(_) => Code::Instructions(Late::new()),
 			None => Code::Builtin(get_builtin(module, method)?),
 		})

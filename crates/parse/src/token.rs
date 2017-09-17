@@ -69,7 +69,7 @@ pub enum Token {
 }
 impl Token {
 	pub fn token_name(self) -> &'static [u8] {
-		match TOKEN_TO_NAME.get(&self) {
+		match TOKEN_TO_NAME.get(self) {
 			Some(name) => name,
 			None =>
 				match self {

@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use util::show::{Show, Shower};
+use util::show::{Color, Show, Shower};
 
 pub fn show_equals<T: Show>(value: T, text: &[u8]) -> bool {
 	let mut s = AssertionShower { expected: text, index: 0 };
@@ -45,6 +45,10 @@ impl<'a> AssertionShower<'a> {
 }
 impl<'a> Shower for AssertionShower<'a> {
 	type Error = (); // Thrown when not equal
+
+	fn color<F : FnMut() -> Result<(), Self::Error>>(&mut self, _: Color, mut f: F) -> Result<(), Self::Error> {
+		f()
+	}
 
 	fn _add_char(&mut self, ch: char) -> Result<(), Self::Error> {
 		let mut buff = [b'\0'; 1];

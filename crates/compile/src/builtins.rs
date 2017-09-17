@@ -3,12 +3,12 @@ use util::file_utils::{ReadFileOptions, read_file};
 use util::iter::KnownLen;
 use util::late::Late;
 use util::list::List;
+use util::output_shower::OutputShower;
 use util::path::Path;
+use util::show::Shower;
 use util::sym::Sym;
 use util::sync::UnsafeSync;
 use util::up::Up;
-
-use util::show::{Shower, WriteShower};
 
 use ast::Module as ModuleAst;
 use parse::{parse, ParseDiagnostic};
@@ -87,7 +87,7 @@ pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn {
 				let mf = ModuleOrFail::Fail(
 					arena <- FailModule { source, imports: &[], diagnostics: List::single(diag, arena) },
 				);
-				let mut shower = WriteShower::stderr();
+				let mut shower = OutputShower::stderr();
 				show_diagnostics(mf, &mut shower).unwrap();
 				shower.nl().unwrap();
 				panic!("Bai");

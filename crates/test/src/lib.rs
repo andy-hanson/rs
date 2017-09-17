@@ -22,7 +22,7 @@ use util::iter::KnownLen;
 use util::list::List;
 use util::loc::LineAndColumnGetter;
 use util::path::Path;
-use util::show::WriteShower;
+use util::output_shower::OutputShower;
 use util::sym::Sym;
 use util::up::Up;
 
@@ -55,7 +55,7 @@ pub fn do_test_single(test_path: Path, update_baselines: BaselinesUpdate) -> i32
 	match test_single(test_path, update_baselines, &arena) {
 		Ok(()) => 0,
 		Err(e) => {
-			WriteShower::write_stderr(&e).unwrap();
+			OutputShower::write_stderr(&e).unwrap();
 			1
 		}
 	}
@@ -121,7 +121,7 @@ fn test_with_diagnostics<'model, 'expected>(
 		let actual_diagnostics = module_or_fail.diagnostics();
 		any_diagnostics = any_diagnostics || !actual_diagnostics.is_empty();
 		let expected_diagnostics = expected_diagnostics_by_path
-			.get(&source.full_path)
+			.get(source.full_path)
 			.cloned()
 			.unwrap_or(&[]);
 		if !diagnostics_match(text, actual_diagnostics, expected_diagnostics) {

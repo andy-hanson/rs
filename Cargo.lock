@@ -1,11 +1,10 @@
 [root]
-name = "util"
+name = "value"
 version = "0.1.0"
 dependencies = [
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "termcolor 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "model 0.1.0",
+ "util 0.1.0",
 ]
 
 [[package]]
@@ -61,7 +60,6 @@ dependencies = [
  "ast 0.1.0",
  "check 0.1.0",
  "host 0.1.0",
- "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "model 0.1.0",
  "parse 0.1.0",
  "util 0.1.0",
@@ -103,6 +101,7 @@ dependencies = [
  "serde 1.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "util 0.1.0",
+ "value 0.1.0",
 ]
 
 [[package]]
@@ -267,6 +266,16 @@ dependencies = [
 name = "unicode-xid"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "util"
+version = "0.1.0"
+dependencies = [
+ "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termcolor 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "winapi"

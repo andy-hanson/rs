@@ -157,8 +157,7 @@ fn test_interpret<'model, 'expected>(
 	}
 
 	let main = program.root.assert_success().class.find_static_method(Sym::of("main")).unwrap(); //TODO: diagnostic if "main" not found
-	let res = run_method(Up(main), &emitted_program, Vec::new());
-	assert!(res.is_void());
+	run_method(program, Up(main), &emitted_program);
 	Ok(())
 }
 

@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use serde::{Serialize, Serializer};
 
 use util::arena::NoDrop;
@@ -9,7 +7,7 @@ use util::up::Up;
 
 use model::method::{Impl, MethodOrImpl, MethodWithBody};
 
-use super::value::Value;
+use value::{Value, ValueCtx};
 
 pub struct EmittedProgram<'model: 'emit, 'emit> {
 	pub methods: MethodMaps<'model, 'emit>,
@@ -42,9 +40,9 @@ pub enum Code<'model: 'emit, 'emit> {
 impl<'model, 'emit> NoDrop for Code<'model, 'emit> {}
 #[derive(Copy, Clone)]
 pub enum BuiltinCode {
-	Fn0(for<'a> fn(dummy: PhantomData<&'a ()>) -> Value<'a>),
-	Fn1(for<'a> fn(Value<'a>) -> Value<'a>),
-	Fn2(for<'a> fn(Value<'a>, Value<'a>) -> Value<'a>),
+	Fn0(for<'a, 'b> fn(ctx: &ValueCtx<'a, 'b>) -> Value<'a, 'b>),
+	Fn1(for<'a, 'b> fn(ctx: &ValueCtx<'a, 'b>, Value<'a, 'b>) -> Value<'a, 'b>),
+	Fn2(for<'a, 'b> fn(ctx: &ValueCtx<'a, 'b>, Value<'a, 'b>, Value<'a, 'b>) -> Value<'a, 'b>),
 }
 impl BuiltinCode {
 	pub fn arity(self) -> u8 {

@@ -14,9 +14,9 @@ extern crate serde_derive;
 extern crate model;
 #[macro_use]
 extern crate util;
+extern crate value;
 
 mod builtins;
 pub mod emit;
 pub mod emitted_model;
-pub mod value;
 pub mod run;

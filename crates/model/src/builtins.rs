@@ -11,6 +11,9 @@ pub struct BuiltinsOwn<'model> {
 	pub all_successes: Late<&'model [Up<'model, Module<'model>>]>,
 	pub void: Late<Ty<'model>>,
 	pub bool: Late<Ty<'model>>,
+	pub nat: Late<Ty<'model>>,
+	pub int: Late<Ty<'model>>,
+	pub float: Late<Ty<'model>>,
 }
 
 impl<'model> NoDrop for BuiltinsOwn<'model> {}

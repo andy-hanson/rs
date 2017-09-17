@@ -3,9 +3,6 @@
 #![feature(collection_placement)]
 #![feature(placement_in_syntax)]
 
-#[macro_use]
-extern crate lazy_static;
-
 extern crate ast;
 extern crate check;
 extern crate host;

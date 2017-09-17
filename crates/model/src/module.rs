@@ -12,7 +12,7 @@ use super::document_info::DocumentInfo;
 
 pub enum ModuleSourceEnum<'a> {
 	Normal(ModuleSource<'a>),
-	Builtin { name: Sym, text: &'static [u8] },
+	Builtin { name: Sym, text: &'a [u8] },
 }
 impl<'a> NoDrop for ModuleSourceEnum<'a> {}
 impl<'a> ModuleSourceEnum<'a> {

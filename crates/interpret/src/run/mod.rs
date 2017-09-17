@@ -1,33 +1,31 @@
-use std::marker::PhantomData;
-
-use util::arith::usize_to_u8;
 use util::up::Up;
 
 use model::method::{MethodOrImpl, MethodWithBody};
+use model::program::CompiledProgram;
+
+use value::{Value, ValueCtx};
 
 use super::emitted_model::{BuiltinCode, Code, EmittedProgram, Instruction, Instructions, CalledInstructions, CalledBuiltin};
-use super::value::Value;
-
-mod data_stack;
-use self::data_stack::DataStack;
 
 pub fn run_method<'model, 'emit>(
+	program: &CompiledProgram<'model>,
 	method: Up<'model, MethodWithBody<'model>>,
 	emitted: &EmittedProgram<'model, 'emit>,
-	arguments: Vec<Value<'model>>,
-) -> Value<'model> {
+) -> () {
 	assert!(method.is_static);
-	assert_eq!(usize_to_u8(arguments.len()), method.arity());
+	assert_eq!(0, method.arity());
+	let mut ctx = ValueCtx::new(program.builtins);
 	let emitted_method = emitted.methods.get_method(method);
-	exec(emitted_method, MethodOrImpl::Method(method), arguments)
+	let res = exec(&mut ctx, emitted_method, MethodOrImpl::Method(method));
+	res.assert_void(&ctx)
 }
 
-fn exec<'model, 'emit>(
+fn exec<'model : 'value, 'emit, 'value>(
+	ctx: &mut ValueCtx<'model, 'value>,
 	first_code: &Code<'model, 'emit>,
 	mut cur_method: MethodOrImpl<'model>,
-	first_arguments: Vec<Value<'model>>,
-) -> Value<'model> {
-	let mut stack = DataStack::new(first_arguments);
+) -> Value<'model, 'value> {
+	let mut stack = ctx.new_stack();
 	let mut return_stack = Vec::<(MethodOrImpl, &'emit Instructions, usize)>::new();
 	let mut cur_instructions: &Instructions<'model, 'emit> = match *first_code {
 		Code::Instructions(ref i) => i,
@@ -40,13 +38,13 @@ fn exec<'model, 'emit>(
 		instruction_index += 1;
 		match *instruction {
 			Instruction::LiteralNat(n) => {
-				&mut stack <- Value::Nat(n);
+				stack.push(ctx.nat(n));
 			}
 			Instruction::LiteralInt(i) => {
-				&mut stack <- Value::Int(i);
+				stack.push(ctx.int(i));
 			}
 			Instruction::LiteralFloat(f) => {
-				&mut stack <- Value::Float(f);
+				stack.push(ctx.float(f));
 			}
 			Instruction::LiteralString(s) => {
 				unused!(s);
@@ -54,13 +52,7 @@ fn exec<'model, 'emit>(
 			}
 			Instruction::Fetch(n) => stack.fetch(n),
 			Instruction::UnLet(n) => stack.un_let(n),
-			Instruction::PopVoid => {
-				let value = stack.pop();
-				match value {
-					Value::Void => {}
-					_ => unreachable!(),
-				}
-			}
+			Instruction::PopVoid => stack.pop().assert_void(ctx),
 			Instruction::CallInstructions(CalledInstructions(ref called_method, ref called_method_instructions)) => {
 				return_stack.place_back() <- (cur_method, cur_instructions, instruction_index);
 				cur_method = called_method.copy();
@@ -71,16 +63,16 @@ fn exec<'model, 'emit>(
 				unused!(called_method); //TODO: use this for error reporting
 				match *builtin {
 					BuiltinCode::Fn0(f) => {
-						&mut stack <- f(PhantomData);
+						stack.push(f(ctx));
 					}
 					BuiltinCode::Fn1(f) => {
 						let a = stack.pop();
-						&mut stack <- f(a);
+						stack.push(f(ctx, a));
 					}
 					BuiltinCode::Fn2(f) => {
 						let a = stack.pop();
 						let b = stack.pop();
-						&mut stack <- f(a, b);
+						stack.push(f(ctx, a, b));
 					}
 				}
 			}

@@ -1,8 +1,8 @@
 first_time:
 	# Install from https://rustup.rs
 	rustup install nightly
-	rustup default nightly # Needed to get IntelliJ to use nightly.
-	# Then update_dev_dependencies
+	rustup default nightly # Needed to get IntelliJ IDEA to use nightly.
+	# Then `make update`
 
 clean:
 	cargo +nightly clean
@@ -19,7 +19,7 @@ build:
 run:
 	RUST_BACKTRACE=short cargo +nightly run -p main
 
-update_dev_dependencies:
+update:
 	rustup update
 	cargo +nightly install clippy rustfmt-nightly -f
 

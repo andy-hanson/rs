@@ -9,4 +9,3 @@ host = { path = "../host" }
 model = { path = "../model" }
 parse = { path = "../parse" }
 util = { path = "../util" }
-lazy_static = "0.2"

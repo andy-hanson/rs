@@ -174,7 +174,7 @@ impl<'a, 'arena, T: 'a + Sized + NoDrop> Placer<T> for &'a Arena {
 	}
 }
 
-type ExactLenBuilder<'a, T> = MaxLenBuilder<'a, T>;
+pub type ExactLenBuilder<'a, T> = MaxLenBuilder<'a, T>;
 pub struct MaxLenBuilder<'a, T: 'a + Sized + NoDrop> {
 	start: *mut T,
 	end: *mut T,

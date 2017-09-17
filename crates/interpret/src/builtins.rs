@@ -1,14 +1,13 @@
-use std::marker::PhantomData;
-
 use util::dict::Dict;
 use util::sym::Sym;
 
 use model::method::MethodOrImpl;
 use model::module::{Module, ModuleSourceEnum};
 
+use value::{ValueCtx, Value};
+
 use super::emit::emit_error::{EmitResult, EmitError};
 use super::emitted_model::BuiltinCode;
-use super::value::Value;
 
 pub fn get_builtin<'model>(module: &Module, method: MethodOrImpl<'model>) -> EmitResult<'model, BuiltinCode> {
 	let name = match module.source {
@@ -50,8 +49,8 @@ fn get_void_impls() -> Dict<Sym, BuiltinCode> {
 }
 
 #[allow(needless_lifetimes)]
-fn void_value<'a>(_: PhantomData<&'a ()>) -> Value<'a> {
-	Value::Void
+fn void_value<'a, 'b>(ctx: &ValueCtx<'a, 'b>) -> Value<'a, 'b> {
+	ctx.void()
 }
 
 fn get_nat_impls() -> Dict<Sym, BuiltinCode> {
@@ -61,8 +60,8 @@ fn get_nat_impls() -> Dict<Sym, BuiltinCode> {
 }
 
 #[allow(needless_pass_by_value)]
-fn nat_eq<'a>(a: Value<'a>, b: Value<'a>) -> Value<'a> {
-	Value::Bool(a.as_nat() == b.as_nat())
+fn nat_eq<'a, 'b>(ctx: &ValueCtx<'a, 'b>, a: Value<'a, 'b>, b: Value<'a, 'b>) -> Value<'a, 'b> {
+	ctx.bool(a.as_nat(ctx) == b.as_nat(ctx))
 }
 
 fn get_bool_impls() -> Dict<Sym, BuiltinCode> {
@@ -72,8 +71,8 @@ fn get_bool_impls() -> Dict<Sym, BuiltinCode> {
 }
 
 #[allow(needless_pass_by_value)]
-fn bool_eq<'a>(a: Value<'a>, b: Value<'a>) -> Value<'a> {
-	Value::Bool(a.as_bool() == b.as_bool())
+fn bool_eq<'a, 'b>(ctx: &ValueCtx<'a, 'b>, a: Value<'a, 'b>, b: Value<'a, 'b>) -> Value<'a, 'b> {
+	ctx.bool(a.as_bool(ctx) == b.as_bool(ctx))
 }
 
 fn get_int_impls() -> Dict<Sym, BuiltinCode> {
@@ -83,8 +82,8 @@ fn get_int_impls() -> Dict<Sym, BuiltinCode> {
 }
 
 #[allow(needless_pass_by_value)]
-fn int_eq<'a>(a: Value<'a>, b: Value<'a>) -> Value<'a> {
-	Value::Bool(a.as_int() == b.as_int())
+fn int_eq<'a, 'b>(ctx: &ValueCtx<'a, 'b>, a: Value<'a, 'b>, b: Value<'a, 'b>) -> Value<'a, 'b> {
+	ctx.bool(a.as_int(ctx) == b.as_int(ctx))
 }
 
 fn get_float_impls() -> Dict<Sym, BuiltinCode> {
@@ -94,8 +93,8 @@ fn get_float_impls() -> Dict<Sym, BuiltinCode> {
 }
 
 #[allow(needless_pass_by_value)]
-fn float_lt<'a>(a: Value<'a>, b: Value<'a>) -> Value<'a> {
-	Value::Bool(a.as_float() < b.as_float())
+fn float_lt<'a, 'b>(ctx: &ValueCtx<'a, 'b>, a: Value<'a, 'b>, b: Value<'a, 'b>) -> Value<'a, 'b> {
+	ctx.bool(a.as_float(ctx) < b.as_float(ctx))
 }
 
 fn get_string_impls() -> Dict<Sym, BuiltinCode> {
@@ -105,6 +104,6 @@ fn get_string_impls() -> Dict<Sym, BuiltinCode> {
 }
 
 #[allow(needless_pass_by_value)]
-fn string_eq<'a>(_: Value<'a>, _: Value<'a>) -> Value<'a> {
+fn string_eq<'a, 'b>(_: &ValueCtx<'a, 'b>, _: Value<'a, 'b>, _: Value<'a, 'b>) -> Value<'a, 'b> {
 	unimplemented!()//Value::Bool(a.as_string()  b.as_float())
 }

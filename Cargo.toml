@@ -10,5 +10,6 @@ members = [
 	"crates/parse",
 	"crates/parse_diag",
 	"crates/test",
-	"crates/util"
+	"crates/util",
+	"crates/value"
 ]

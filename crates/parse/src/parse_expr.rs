@@ -40,11 +40,11 @@ fn parse_block_with_start<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, first: Toke
 	let (expr, next) = parse_expr_2(l, Ctx::Statement, start, first)?;
 	match next.token {
 		Token::Newline => {
-			let data = match expr.1 {
+			let data = match expr.data {
 				ExprData::Let(&LetData(_, _, ref then)) => {
 					//TODO: update the loc too?
 					then <- parse_block(l)?;
-					expr.1
+					expr.data
 				}
 				_ => {
 					let then = parse_block(l)?;
@@ -104,7 +104,7 @@ fn parse_expr_2<'a, 't>(
 
 			l.take_space()?;
 			let (args, next_2) = parse_args(l, Ctx::YesOperators)?;
-			let call = l.expr_from(start, ExprData::Call(l.arena <- CallData(first, args)));
+			let call = l.expr_from(start, ExprData::Call(l.arena <- CallData { target: first, args }));
 			Ok((call, next_2))
 		}
 
@@ -125,13 +125,13 @@ fn parse_expr_2<'a, 't>(
 						panic!()
 					}
 					l.take_equals()?;
-					if let ExprData::Access(property_name) = first.1 {
+					if let ExprData::Access(property_name) = first.data {
 						l.take_space()?;
 						let (value, next_2) = parse_expr(l, Ctx::YesOperators)?;
 						let expr_data = ExprData::SetProperty(l.arena <- SetPropertyData(property_name, value));
 						Ok((l.expr_from(start, expr_data), next_2))
 					} else {
-						Err(ParseDiagnostic(first.0, ParseDiag::PrecedingEquals))
+						Err(ParseDiagnostic(first.loc, ParseDiag::PrecedingEquals))
 					}
 				}
 
@@ -139,8 +139,8 @@ fn parse_expr_2<'a, 't>(
 					if ctx != Ctx::Statement {
 						panic!()
 					}
-					if let ExprData::Access(local_name) = first.1 {
-						let pattern = Pattern(first.0, PatternData::Single(local_name));
+					if let ExprData::Access(local_name) = first.data {
+						let pattern = Pattern(first.loc, PatternData::Single(local_name));
 						l.take_space()?;
 						let (value, next_2) = parse_expr(l, Ctx::YesOperators)?;
 						match next_2.token {
@@ -150,7 +150,7 @@ fn parse_expr_2<'a, 't>(
 								Err(ParseDiagnostic(l.loc_from(start), ParseDiag::BlockCantEndInLet)),
 						}
 					} else {
-						Err(ParseDiagnostic(first.0, ParseDiag::PrecedingEquals))
+						Err(ParseDiagnostic(first.loc, ParseDiag::PrecedingEquals))
 					}
 				}
 
@@ -170,7 +170,7 @@ fn parse_expr_2<'a, 't>(
 
 				_ => {
 					let (args, next_2) = parse_args_2(l, Ctx::NoOperators, next)?;
-					let call = l.expr_from(start, ExprData::Call(l.arena <- CallData(first, args)));
+					let call = l.expr_from(start, ExprData::Call(l.arena <- CallData { target: first, args }));
 					if ctx != Ctx::NoOperators && next_2.token == Token::Operator {
 						slurp_operators(l, start, call)
 					} else {
@@ -266,7 +266,7 @@ fn slurp_operators<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, first: Expr<'a>) -
 	loop {
 		l.take_space()?; // operator must be followed by space.
 		let (right, next) = parse_expr(l, Ctx::NoOperators)?;
-		left = l.expr_from(start, ExprData::OperatorCall(l.arena <- OperatorCallData(left, operator, right)));
+		left = l.expr_from(start, ExprData::OperatorCall(l.arena <- OperatorCallData { left, operator, right }));
 		match next.token {
 			Token::Operator => operator = l.token_sym(next.pos),
 			_ => break Ok((left, next)),
@@ -307,11 +307,11 @@ fn parse_simple_expr<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, token: Token) ->
 			}
 			Token::BracketL => {
 				let type_arguments = take_ty_arguments_after_passing_bracketl(l)?;
-				ExprData::TypeArguments(l.arena <- TypeArgumentsData(expr, type_arguments))
+				ExprData::TypeArguments(l.arena <- TypeArgumentsData { target: expr, type_arguments })
 			}
 			Token::ParenL => {
 				l.take_parenr()?;
-				ExprData::Call(l.arena <- CallData(expr, List::EMPTY))
+				ExprData::Call(l.arena <- CallData { target: expr, args: List::EMPTY })
 			}
 			_ => break Ok((expr, next)),
 		};
@@ -333,7 +333,7 @@ fn parse_simple_expr_without_suffixes<'a, 't>(
 			let class_name = l.token_sym(start);
 			l.take_dot()?;
 			let static_method_name = l.take_name()?;
-			ExprData::StaticAccess(class_name, static_method_name)
+			ExprData::StaticAccess { class_name, static_method_name }
 		}
 		Token::Name => ExprData::Access(l.token_sym(start)),
 		Token::NatLiteral => ExprData::LiteralNat(l.token_nat()),

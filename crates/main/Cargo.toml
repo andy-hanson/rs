@@ -4,13 +4,9 @@ version = "0.1.0"
 authors = ["Andy Hanson <andy.pj.hanson@gmail.com>"]
 
 [dependencies]
-compile = { path = "../compile" }
-host = { path = "../host" }
-interpret = { path = "../interpret" }
-model = { path = "../model" }
-parse = { path = "../parse" }
-util = { path = "../util" }
-
 backtrace = "0.3"
-serde = "1.0"
-serde_json = "1.0"
+serde_yaml = "0.7.1"
+
+parse = { path = "../parse" }
+test = { path = "../test" }
+util = { path = "../util" }

@@ -1,5 +1,5 @@
 use util::arena::{Arena, DirectBuilder};
-use util::arith::{to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
+use util::arith::{usize_to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
 use util::loc::Loc;
 use util::up::Up;
 
@@ -14,7 +14,7 @@ pub fn emit_method<'model, 'emit>(
 	arena: &'emit Arena,
 	methods: &MethodMaps<'model, 'emit>,
 ) -> Instructions<'model, 'emit> {
-	let n_parameters = to_u8(parameters.len());
+	let n_parameters = usize_to_u8(parameters.len());
 	let mut emitter = ExprEmitter {
 		arena,
 		methods,
@@ -24,6 +24,13 @@ pub fn emit_method<'model, 'emit>(
 		stack_depth: n_parameters,
 	};
 	emitter.emit_expr(body);
+	let arity = usize_to_u8(parameters.len());
+	if arity != 0 {
+		emitter.write(body.loc, Instruction::UnLet(arity));
+		emitter.stack_depth -= arity;
+	}
+	assert_eq!(emitter.stack_depth, 1);
+	emitter.write(body.loc, Instruction::Return);
 	emitter.w.finish()
 }
 
@@ -78,17 +85,17 @@ impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 	}
 
 	fn emit_expr(&mut self, expr: &'model Expr<'model>) {
-		let &Expr(loc, ref data) = expr;
+		let &Expr { loc, ref data, .. } = expr;
 		match *data {
-			ExprData::Bogus | ExprData::BogusCast(_, _) =>
+			ExprData::Bogus | ExprData::BogusCast(_) =>
 				// Should not reach here.
 				unimplemented!(),
-			ExprData::AccessParameter(param, _) =>
+			ExprData::AccessParameter(param) =>
 				self.fetch(loc, param.index),
 			ExprData::AccessLocal(local) => {
 				// Get the index of the local
 				let index = self.locals.iter().position(|l| l.ptr_eq(local)).unwrap();
-				let local_depth = u8_add(self.n_parameters, to_u8(index));
+				let local_depth = u8_add(self.n_parameters, usize_to_u8(index));
 				self.fetch(loc, local_depth)
 			}
 			ExprData::Let(ref pattern, value, then) => {
@@ -129,38 +136,38 @@ impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 				})
 			},
 			ExprData::IfElse { .. } => unimplemented!(),
-			ExprData::WhenTest(_, _, _) => unimplemented!(),
+			ExprData::WhenTest(_, _) => unimplemented!(),
 			ExprData::Try { .. } => unimplemented!(),
 			ExprData::For { .. } => unimplemented!(),
-			ExprData::StaticMethodCall(method, args, _) => {
+			ExprData::StaticMethodCall { method, args } => {
 				for arg in args {
 					self.emit_expr(arg);
 				}
 				let insn = self.call_instruction(method);
 				self.write(loc, insn);
-				self.pops(method.0.arity());
+				self.pops(method.method_decl.arity());
 				self.pushes(1);
 			},
-			ExprData::InstanceMethodCall(_, _, _, _) => unimplemented!(),
-			ExprData::MyInstanceMethodCall(_, _, _) => unimplemented!(),
-			ExprData::New(_, _) => unimplemented!(),
-			ExprData::ArrayLiteral { .. } => unimplemented!(),
-			ExprData::GetMySlot(_, _) => unimplemented!(),
-			ExprData::GetSlot(_, _, _) => unimplemented!(),
+			ExprData::InstanceMethodCall { .. } => unimplemented!(),
+			ExprData::MyInstanceMethodCall { .. } => unimplemented!(),
+			ExprData::New(_) => unimplemented!(),
+			ExprData::ArrayLiteral(_) => unimplemented!(),
+			ExprData::GetMySlot(_) => unimplemented!(),
+			ExprData::GetSlot(_, _) => unimplemented!(),
 			ExprData::SetSlot(_, _) => unimplemented!(),
-			ExprData::SelfExpr(_) => unimplemented!(),
+			ExprData::SelfExpr => unimplemented!(),
 			ExprData::Assert(_) => unimplemented!(),
 			ExprData::Recur(_, _) => unimplemented!(),
 		}
 	}
 
-	fn call_instruction(&self, inst_method: &'model InstMethod<'model>) -> Instruction<'model, 'emit> {
-		if !inst_method.1.is_empty() {
+	fn call_instruction(&self, &InstMethod { method_decl, ty_args }: &'model InstMethod<'model>) -> Instruction<'model, 'emit> {
+		if !ty_args.is_empty() {
 			// Type arguments present
 			unimplemented!()
 		}
 
-		match inst_method.0 {
+		match method_decl {
 			MethodOrImplOrAbstract::Method(m) =>
 				self.call_code(MethodOrImpl::Method(m), self.methods.get_method(m)),
 			MethodOrImplOrAbstract::Impl(i) =>

@@ -1,6 +1,7 @@
 use serde::{Serialize, Serializer};
 
 use util::arena::NoDrop;
+use util::iter::slice_is_empty;
 use util::late::Late;
 use util::loc::Loc;
 use util::sym::Sym;
@@ -8,13 +9,15 @@ use util::up::SerializeUp;
 
 use super::method::{AbstractMethod, Impl, MethodWithBody};
 
-use super::ty::{InstCls, Ty, TypeParameter};
+use super::ty::{InstClass, Ty, TypeParameter};
 
 #[derive(Serialize)]
 pub struct ClassDeclaration<'a> {
 	pub name: Sym,
+	#[serde(skip_serializing_if = "slice_is_empty")]
 	pub type_parameters: &'a [TypeParameter<'a>],
 	pub head: Late<ClassHead<'a>>,
+	#[serde(skip_serializing_if = "slice_is_empty")]
 	pub supers: Late<&'a [Super<'a>]>,
 	// Abstract methods are stored in the `head`
 	//TODO:PERF would like an array of methods, not references to methods
@@ -36,10 +39,7 @@ impl<'a> ClassDeclaration<'a> {
 }
 
 impl<'a> SerializeUp for ClassDeclaration<'a> {
-	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize_up<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		self.name.serialize(serializer)
 	}
 }
@@ -63,10 +63,7 @@ pub struct SlotDeclaration<'a> {
 }
 impl<'a> NoDrop for SlotDeclaration<'a> {}
 impl<'a> SerializeUp for SlotDeclaration<'a> {
-	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize_up<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		self.name.serialize(serializer)
 	}
 }
@@ -74,7 +71,7 @@ impl<'a> SerializeUp for SlotDeclaration<'a> {
 #[derive(Serialize)]
 pub struct Super<'a> {
 	pub loc: Loc,
-	pub super_class: InstCls<'a>,
+	pub super_class: InstClass<'a>,
 	pub impls: &'a [Impl<'a>],
 }
 impl<'a> NoDrop for Super<'a> {}
@@ -96,10 +93,7 @@ impl<'a> MemberDeclaration<'a> {
 	}
 }
 impl<'a> Serialize for MemberDeclaration<'a> {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		let name = match *self {
 			MemberDeclaration::Slot(s) => s.name,
 			MemberDeclaration::Method(m) => m.name(),

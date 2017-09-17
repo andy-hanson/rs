@@ -4,6 +4,7 @@ extern crate serde_derive;
 extern crate util;
 
 use util::arena::NoDrop;
+use util::iter::slice_is_empty;
 use util::late::Late;
 use util::list::List;
 use util::loc::Loc;
@@ -31,8 +32,10 @@ impl<'a> NoDrop for Import<'a> {}
 #[derive(Serialize)]
 pub struct Class<'a> {
 	pub loc: Loc,
+	#[serde(skip_serializing_if = "slice_is_empty")]
 	pub type_parameters: &'a [Sym],
 	pub head: Option<ClassHead<'a>>,
+	#[serde(skip_serializing_if = "List::is_empty_ref")]
 	pub supers: List<'a, Super<'a>>,
 	pub methods: List<'a, Method<'a>>,
 }
@@ -52,6 +55,7 @@ impl<'a> NoDrop for ClassHeadData<'a> {}
 #[derive(Serialize)]
 pub struct AbstractMethod<'a> {
 	pub loc: Loc,
+	#[serde(skip_serializing_if = "slice_is_empty")]
 	pub type_parameters: &'a [Sym],
 	pub return_ty: Ty<'a>,
 	pub name: Sym,
@@ -92,6 +96,7 @@ impl<'a> NoDrop for Impl<'a> {}
 pub struct Method<'a> {
 	pub loc: Loc,
 	pub is_static: bool,
+	#[serde(skip_serializing_if = "slice_is_empty")]
 	pub type_parameters: &'a [Sym],
 	pub return_ty: Ty<'a>,
 	pub name: Sym,
@@ -130,7 +135,10 @@ pub enum PatternData<'a> {
 impl<'a> NoDrop for PatternData<'a> {}
 
 #[derive(Serialize)]
-pub struct Expr<'a>(pub Loc, pub ExprData<'a>);
+pub struct Expr<'a> {
+	pub loc: Loc,
+	pub data: ExprData<'a>,
+}
 impl<'a> NoDrop for Expr<'a> {}
 
 // Make sure every variant takes less than one word in size!
@@ -138,7 +146,7 @@ impl<'a> NoDrop for Expr<'a> {}
 pub enum ExprData<'a> {
 	Access(Sym),
 	// Sym is u32, so this will fit inside a word on a 64-bit system.
-	StaticAccess(/*class_name*/ Sym, /*static_method_name*/ Sym),
+	StaticAccess { class_name: Sym, static_method_name: Sym },
 	OperatorCall(&'a OperatorCallData<'a>),
 	TypeArguments(&'a TypeArgumentsData<'a>),
 	//TODO:PERF use separate Call0, Call1, Call2 tags?
@@ -165,15 +173,25 @@ pub enum ExprData<'a> {
 impl<'a> NoDrop for ExprData<'a> {}
 
 #[derive(Serialize)]
-pub struct OperatorCallData<'a>(pub Expr<'a>, pub Sym, pub Expr<'a>);
+pub struct OperatorCallData<'a> {
+	pub left: Expr<'a>,
+	pub operator: Sym,
+	pub right: Expr<'a>,
+}
 impl<'a> NoDrop for OperatorCallData<'a> {}
 
 #[derive(Serialize)]
-pub struct TypeArgumentsData<'a>(pub Expr<'a>, pub List<'a, Ty<'a>>);
+pub struct TypeArgumentsData<'a> {
+	pub target: Expr<'a>,
+	pub type_arguments: List<'a, Ty<'a>>,
+}
 impl<'a> NoDrop for TypeArgumentsData<'a> {}
 
 #[derive(Serialize)]
-pub struct CallData<'a>(pub Expr<'a>, pub List<'a, Expr<'a>>);
+pub struct CallData<'a> {
+	pub target: Expr<'a>,
+	pub args: List<'a, Expr<'a>>,
+}
 impl<'a> NoDrop for CallData<'a> {}
 
 #[derive(Serialize)]

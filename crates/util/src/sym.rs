@@ -6,8 +6,7 @@ use std::ops::Deref;
 use std::sync::Mutex;
 
 use super::arena::NoDrop;
-
-use super::string_maker::{Show, Shower};
+use super::show::{Show, Shower};
 use super::u8_slice_ops::U8SliceOps;
 
 lazy_static! {
@@ -51,10 +50,7 @@ impl Show for Sym {
 	}
 }
 impl Serialize for Sym {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		let map = SYMBOL_TO_STRING.lock().unwrap();
 		let str = map.get(self).unwrap(); // TODO: duplicate code...
 		serializer.serialize_str(&str.clone_to_utf8_string())

@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use util::string_maker::{Show, Shower};
+use util::show::{Show, Shower};
 
 pub fn show_equals<T: Show>(value: T, text: &[u8]) -> bool {
 	let mut s = AssertionShower { expected: text, index: 0 };

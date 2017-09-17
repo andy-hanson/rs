@@ -1,7 +1,7 @@
 extern crate util;
 
 use util::arena::NoDrop;
-use util::string_maker::{Show, Shower};
+use util::show::{Show, Shower};
 
 pub enum ParseDiag {
 	TooMuchIndent { old: u32, new: u32 },

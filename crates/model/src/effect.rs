@@ -1,5 +1,5 @@
 use util::arena::NoDrop;
-use util::string_maker::{Show, Shower};
+use util::show::{Show, Shower};
 
 #[derive(Copy, Clone, Eq, PartialEq, Serialize)]
 pub enum Effect {

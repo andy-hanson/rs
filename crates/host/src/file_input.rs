@@ -1,5 +1,5 @@
 use util::arena::Arena;
-use util::file_utils::{read_file, IoError};
+use util::file_utils::{read_file, IoError, ReadFileOptions};
 use util::path::Path;
 use util::sym::Sym;
 
@@ -30,6 +30,6 @@ impl<'a> FileInput for NativeFileInput<'a> {
 	}
 
 	fn read<'out>(&self, path: Path, arena: &'out Arena) -> Result<Option<&'out [u8]>, Self::Error> {
-		read_file(Path::resolve_with_root(self.root_dir, path, arena), arena)
+		read_file(Path::resolve_with_root(self.root_dir, path, arena), ReadFileOptions::Trailing0, arena)
 	}
 }

@@ -2,7 +2,7 @@ use util::arena::{Arena, NoDrop};
 use util::late::Late;
 use util::list::List;
 use util::path::Path;
-use util::string_maker::{Show, Shower};
+use util::show::{Show, Shower};
 use util::sym::Sym;
 use util::up::Up;
 

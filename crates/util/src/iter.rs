@@ -112,3 +112,8 @@ impl<T: Copy> KnownLen for OptionIter<T> {
 		self.0.is_none()
 	}
 }
+
+// Used by serializers.
+pub fn slice_is_empty<T>(slice: &&[T]) -> bool {
+	slice.is_empty()
+}

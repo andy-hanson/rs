@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
 use serde::Serialize;
-use serde_json::to_string as to_json_string;
+use serde_yaml::to_string as to_yaml_string;
 
 use compile::EXTENSION;
 
@@ -12,7 +12,7 @@ use util::dict::MutDict;
 use util::file_utils::{write_file, write_file_and_ensure_directory};
 use util::path::Path;
 
-use super::test_failure::{io_result_to_result, TestFailure, TestResult};
+use super::test_failure::{TestFailure, TestResult};
 
 pub enum BaselinesUpdate {
 	None,
@@ -33,7 +33,7 @@ impl<'a, 'expected> Baselines<'a, 'expected> {
 		extension: &[u8],
 		actual: &T,
 	) -> TestResult<'a, ()> {
-		let actual_str = to_json(actual, self.arena);
+		let actual_str = to_yaml(actual, self.arena);
 		self.assert_baseline_worker(get_module_path_without_extension(module_or_fail), extension, actual_str)
 	}
 
@@ -53,9 +53,9 @@ impl<'a, 'expected> Baselines<'a, 'expected> {
 				} else {
 					match self.update_baselines {
 						BaselinesUpdate::None | BaselinesUpdate::Create =>
-							Err(TestFailure::UnexpectedOutput { actual, expected }),
+							Err(TestFailure::BaselineChanged { path: baseline_path, old: expected, new: actual }),
 						BaselinesUpdate::Change =>
-							io_result_to_result(write_file(full_baseline_path, actual)),
+							write_file(full_baseline_path, actual).map_err(TestFailure::from),
 					}
 				},
 			None =>
@@ -63,7 +63,7 @@ impl<'a, 'expected> Baselines<'a, 'expected> {
 					BaselinesUpdate::None =>
 						Err(TestFailure::NoSuchBaseline(full_baseline_path)),
 					BaselinesUpdate::Create | BaselinesUpdate::Change =>
-						io_result_to_result(write_file_and_ensure_directory(full_baseline_path, actual)),
+						write_file_and_ensure_directory(full_baseline_path, actual).map_err(TestFailure::from),
 				},
 		}
 	}
@@ -74,7 +74,7 @@ fn get_module_path_without_extension(module_or_fail: ModuleOrFail) -> Path {
 	source.full_path.without_extension(EXTENSION)
 }
 
-fn to_json<'out, T: Serialize>(value: &T, arena: &'out Arena) -> &'out [u8] {
+fn to_yaml<'out, T: Serialize>(value: &T, arena: &'out Arena) -> &'out [u8] {
 	//TODO:PERF directly serialize to arena
-	arena.copy_slice(to_json_string(value).unwrap().as_bytes())
+	arena.copy_slice(to_yaml_string(value).unwrap().as_bytes())
 }

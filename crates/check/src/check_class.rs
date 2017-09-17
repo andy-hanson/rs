@@ -1,5 +1,5 @@
 use util::arena::Arena;
-use util::arith::to_u8;
+use util::arith::usize_to_u8;
 use util::iter::KnownLen;
 use util::late::Late;
 use util::list::List;
@@ -79,7 +79,7 @@ fn fill_impl_bodies<'ast, 'builtins_ctx, 'model>(
 	}
 
 	for (super_ast, zuper) in super_asts.zip(supers) {
-		let instantiator = Instantiator::of_inst_cls(&zuper.super_class);
+		let instantiator = Instantiator::of_inst_class(&zuper.super_class);
 		let impl_asts = &super_ast.impls;
 		for (impl_ast, real_impl) in impl_asts.zip(zuper.impls) {
 			let body = match impl_ast.body {
@@ -121,8 +121,6 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 	ctx: &mut Ctx<'builtins_ctx, 'model>,
 	&ast::Super { loc, name, ty_args, impls: impl_asts }: &'ast ast::Super<'ast>,
 ) -> Option<Super<'model>> {
-	//let super_inst_cls = unwrap_or_return!(ctx.instantiate_class_from_ast(loc, name, ty_args), None);
-	//let super_class_declaration = super_inst_cls.class();
 	let super_class_declaration =
 		unwrap_or_return!(ctx.access_class_declaration_or_add_diagnostic(loc, name), None);
 	if super_class_declaration.supers.len() != 0 {
@@ -162,8 +160,8 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 		)
 	};
 
-	let super_inst_cls = unwrap_or_return!(ctx.instantiate_class(super_class_declaration, ty_args), None);
-	Some(Super { loc, super_class: super_inst_cls, impls })
+	let super_inst_class = unwrap_or_return!(ctx.instantiate_class(super_class_declaration, ty_args), None);
+	Some(Super { loc, super_class: super_inst_class, impls })
 }
 
 //TODO:PERF would like to return by value...
@@ -221,7 +219,7 @@ fn check_parameters<'builtins_ctx, 'ast, 'model>(
 				loc,
 				ty: ctx.get_ty_or_ty_parameter(ty_ast, type_parameters),
 				name,
-				index: to_u8(index),
+				index: usize_to_u8(index),
 			}
 		})
 }

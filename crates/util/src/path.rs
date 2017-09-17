@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 
 use super::arena::{Arena, DirectBuilder, NoDrop};
-use super::string_maker::{Show, Shower};
+use super::show::{Show, Shower};
 use super::u8_slice_ops::U8SliceOps;
 
 #[derive(Copy, Clone)]
@@ -28,11 +28,15 @@ impl<'a> Path<'a> {
 	}
 
 	pub fn resolve_with_root<'out>(root: Path, path: Path, arena: &'out Arena) -> Path<'out> {
-		let mut res = arena.direct_builder();
-		res.add_slice(root.0);
-		&mut res <- b'/';
-		res.add_slice(path.0);
-		Path::of_slice(res.finish())
+		if path.is_empty() {
+			root.clone_path_to_arena(arena)
+		} else {
+			let mut res = arena.exact_len_builder(root.0.len() + 1 + path.0.len());
+			res.add_slice(root.0);
+			&mut res <- b'/';
+			res.add_slice(path.0);
+			Path::of_slice(res.finish())
+		}
 	}
 
 	pub fn into_rel(self) -> RelPath<'a> {
@@ -145,10 +149,7 @@ impl<'a> PartialEq for Path<'a> {
 }
 impl<'a> Eq for Path<'a> {}
 impl<'a> Serialize for Path<'a> {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		serializer.serialize_str(&self.to_string())
 	}
 }

@@ -18,5 +18,5 @@ extern crate util;
 mod builtins;
 pub mod emit;
 pub mod emitted_model;
-mod value;
+pub mod value;
 pub mod run;

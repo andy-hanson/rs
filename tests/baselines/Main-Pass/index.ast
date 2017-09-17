@@ -1,1 +1,28 @@
-{"imports":[],"class":{"loc":{"start":3,"end":30},"type_parameters":[],"head":null,"supers":[],"methods":[{"loc":{"start":3,"end":30},"is_static":true,"type_parameters":[],"return_ty":{"loc":{"start":4,"end":8},"effect":"Pure","name":"Void","ty_args":[]},"name":"main","self_effect":"Pure","parameters":[],"body":[{"start":17,"end":29},{"Call":[[{"start":17,"end":27},{"StaticAccess":["Void","value"]}],[]]}]}]}}
+---
+imports: []
+class: 
+  loc: "3-30"
+  head: ~
+  methods: 
+    - 
+      loc: "3-30"
+      is_static: true
+      return_ty: 
+        loc: "4-8"
+        effect: Pure
+        name: Void
+        ty_args: []
+      name: main
+      self_effect: Pure
+      parameters: []
+      body: 
+        loc: "17-29"
+        data: 
+          Call: 
+            target: 
+              loc: "17-27"
+              data: 
+                StaticAccess: 
+                  class_name: Void
+                  static_method_name: value
+            args: []

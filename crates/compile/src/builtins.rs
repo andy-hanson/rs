@@ -1,5 +1,5 @@
 use util::arena::Arena;
-use util::file_utils::read_file;
+use util::file_utils::{ReadFileOptions, read_file};
 use util::iter::KnownLen;
 use util::late::Late;
 use util::list::List;
@@ -8,7 +8,7 @@ use util::sym::Sym;
 use util::sync::UnsafeSync;
 use util::up::Up;
 
-use util::string_maker::{Shower, WriteShower};
+use util::show::{Shower, WriteShower};
 
 use ast::Module as ModuleAst;
 use parse::{parse, ParseDiagnostic};
@@ -17,7 +17,7 @@ use model::class::ClassDeclaration;
 use model::diag::{Diag, Diagnostic};
 use model::diag::show_diagnostics;
 use model::module::{FailModule, Module, ModuleOrFail, ModuleSourceEnum};
-use model::ty::{InstCls, Ty};
+use model::ty::{InstClass, Ty};
 
 use super::check::check_module;
 
@@ -37,7 +37,7 @@ lazy_static! {
 fn load_builtin_file(path_slice: &[u8]) -> &[u8] {
 	let path = Path::of_slice(path_slice);
 	let arena = &BUILTINS_ARENA;
-	match read_file(path, arena.get()).unwrap() {
+	match read_file(path, ReadFileOptions::Trailing0, arena.get()).unwrap() {
 		Some(b) => b,
 		None => {
 			let str = String::from_utf8(path.slice().to_owned()).unwrap();
@@ -101,6 +101,6 @@ pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn {
 	own
 }
 
-fn primitive_ty<'model>(cls: &'model ClassDeclaration<'model>) -> Ty<'model> {
-	Ty::pure_ty(InstCls(Up(cls), &[]))
+fn primitive_ty<'model>(class: &'model ClassDeclaration<'model>) -> Ty<'model> {
+	Ty::pure_ty(InstClass { class: Up(class), ty_args: &[] })
 }

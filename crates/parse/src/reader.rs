@@ -3,7 +3,7 @@ use std::slice::Iter;
 
 use util::arith::u32_to_usize;
 use util::loc::Pos;
-use util::string_maker::{Shower, WriteShower};
+use util::show::{Shower, WriteShower};
 
 pub struct Reader<'text> {
 	source: &'text [u8],

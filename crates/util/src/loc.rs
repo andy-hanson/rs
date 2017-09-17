@@ -4,7 +4,7 @@ use std::ops::{Add, Sub};
 
 use super::arena::NoDrop;
 use super::arith::{mid, u32_to_usize, usize_to_u32};
-use super::string_maker::{Show, Shower};
+use super::show::{Show, Shower, serialize_as_show};
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Pos {
@@ -35,16 +35,13 @@ impl Sub<Pos> for Pos {
 	}
 }
 impl Serialize for Pos {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize<S : Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		serializer.serialize_u32(self.index)
 	}
 }
 impl NoDrop for Pos {}
 
-#[derive(Copy, Clone, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Loc {
 	pub start: Pos,
 	pub end: Pos,
@@ -60,6 +57,17 @@ impl Loc {
 	}
 }
 impl NoDrop for Loc {}
+impl Show for Loc {
+	fn show<S : Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		s.add(self.start.index)?.add('-')?.add(self.end.index)?;
+		Ok(())
+	}
+}
+impl Serialize for Loc {
+	fn serialize<S : Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		serialize_as_show(*self, serializer)
+	}
+}
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)] //TODO:shouldn't need Debug
 pub struct LineAndColumn {

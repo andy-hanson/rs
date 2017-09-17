@@ -1,7 +1,7 @@
 use util::up::Up;
 
 use model::method::InstMethod;
-use model::ty::{InstCls, Ty, TypeParameter};
+use model::ty::{InstClass, Ty, TypeParameter};
 
 pub struct Instantiator<'model>(&'model [TypeParameter<'model>], &'model [Ty<'model>]);
 impl<'model> Instantiator<'model> {
@@ -12,12 +12,12 @@ impl<'model> Instantiator<'model> {
 		Instantiator(params, args)
 	}
 
-	pub fn of_inst_cls(&InstCls(class, type_arguments): &InstCls<'model>) -> Self {
-		Self::new(class.type_parameters, type_arguments)
+	pub fn of_inst_class(&InstClass { class, ty_args }: &InstClass<'model>) -> Self {
+		Self::new(class.type_parameters, ty_args)
 	}
 
-	pub fn of_inst_method(&InstMethod(ref decl, type_arguments): &InstMethod<'model>) -> Self {
-		Self::new(decl.type_parameters(), type_arguments)
+	pub fn of_inst_method(&InstMethod { ref method_decl, ty_args }: &InstMethod<'model>) -> Self {
+		Self::new(method_decl.type_parameters(), ty_args)
 	}
 
 	//fn new(type_parameters: &[Own<TypeParameter>], type_arguments: &[Ty]) -> Self {

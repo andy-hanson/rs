@@ -17,21 +17,8 @@ pub enum LiteralValue<'a> {
 	String(&'a [u8]),
 }
 impl<'a> NoDrop for LiteralValue<'a> {}
-impl<'a> LiteralValue<'a> {
-	fn ty(&self) -> &Ty<'a> {
-		match *self {
-			LiteralValue::Nat(_) => unimplemented!(),
-			LiteralValue::Int(_) => unimplemented!(),
-			LiteralValue::Float(_) => unimplemented!(),
-			LiteralValue::String(_) => unimplemented!(),
-		}
-	}
-}
 impl<'a> Serialize for LiteralValue<'a> {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		match *self {
 			LiteralValue::Nat(n) => serializer.serialize_u32(n),
 			LiteralValue::Int(i) => serializer.serialize_i32(i),
@@ -59,10 +46,7 @@ pub struct Local<'a> {
 }
 impl<'a> NoDrop for Local<'a> {}
 impl<'a> SerializeUp for Local<'a> {
-	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize_up<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		self.name.serialize(serializer)
 	}
 }
@@ -77,16 +61,12 @@ pub struct Catch<'a>(pub Loc, /*caught*/ pub &'a Local<'a>, /*result*/ pub &'a E
 impl<'a> NoDrop for Catch<'a> {}
 
 #[derive(Serialize)]
-pub struct Expr<'a>(pub Loc, pub ExprData<'a>);
+pub struct Expr<'a> {
+	pub loc: Loc,
+	pub ty: Ty<'a>,
+	pub data: ExprData<'a>,
+}
 impl<'a> Expr<'a> {
-	pub fn loc(&self) -> Loc {
-		self.0
-	}
-
-	pub fn ty(&'a self) -> &'a Ty<'a> {
-		self.1.ty()
-	}
-
 	//pub fn children(&self) -> &[Self] {
 	//	self.1.children()
 	//}
@@ -95,69 +75,40 @@ impl<'a> NoDrop for Expr<'a> {}
 
 #[derive(Serialize)]
 pub enum ExprData<'a> {
-	BogusCast(Ty<'a>, &'a Expr<'a>),
+	BogusCast(&'a Expr<'a>),
 	Bogus,
-	AccessParameter(Up<'a, Parameter<'a>>, Ty<'a>),
+	AccessParameter(Up<'a, Parameter<'a>>),
 	AccessLocal(Up<'a, Local<'a>>),
 	Let(Pattern<'a>, &'a Expr<'a>, &'a Expr<'a>),
 	Seq(&'a Expr<'a>, &'a Expr<'a>),
 	Literal(LiteralValue<'a>),
-	IfElse { test: &'a Expr<'a>, then: &'a Expr<'a>, elze: &'a Expr<'a>, ty: Ty<'a> },
-	WhenTest(&'a [Case<'a>], &'a Expr<'a>, Ty<'a>),
-	Try { body: &'a Expr<'a>, catch: Option<Catch<'a>>, finally: Option<&'a Expr<'a>>, ty: Ty<'a> },
+	IfElse { test: &'a Expr<'a>, then: &'a Expr<'a>, elze: &'a Expr<'a> },
+	WhenTest(&'a [Case<'a>], &'a Expr<'a>),
+	Try { body: &'a Expr<'a>, catch: Option<Catch<'a>>, finally: Option<&'a Expr<'a>> },
 	For {
 		local: Local<'a>,
 		looper: &'a Expr<'a>,
 		body: &'a Expr<'a>,
 		provided_ty: Ty<'a>,
 		received_ty: Ty<'a>,
-		result_ty: Ty<'a>,
 	},
 	//TODO:PERF should own InstMethod and args, not reference them
-	StaticMethodCall(&'a InstMethod<'a>, &'a [&'a Expr<'a>], Ty<'a>),
-	InstanceMethodCall(&'a Expr<'a>, &'a InstMethod<'a>, &'a [&'a Expr<'a>], Ty<'a>),
-	MyInstanceMethodCall(&'a InstMethod<'a>, &'a [&'a Expr<'a>], Ty<'a>),
-	// We store the Ty here instead of an InstCls so we can easily get a reference to it;
-	// It should always by Ty::Plain(EFFECT_MAX, some_InstCls).
-	New(Ty<'a>, &'a [&'a Expr<'a>]),
-	ArrayLiteral { element_ty: Ty<'a>, elements: &'a [&'a Expr<'a>] },
-	GetMySlot(Up<'a, SlotDeclaration<'a>>, Ty<'a>),
-	GetSlot(&'a Expr<'a>, Up<'a, SlotDeclaration<'a>>, Ty<'a>),
+	StaticMethodCall { method: &'a InstMethod<'a>, args: &'a [&'a Expr<'a>] },
+	InstanceMethodCall { target: &'a Expr<'a>, method: &'a InstMethod<'a>, args: &'a [&'a Expr<'a>] },
+	MyInstanceMethodCall { method: &'a InstMethod<'a>, args: &'a [&'a Expr<'a>] },
+	// We store the Ty here instead of an InstClass so we can easily get a reference to it;
+	// It should always by Ty::Plain(EFFECT_MAX, some_InstClass).
+	New(&'a [&'a Expr<'a>]),
+	ArrayLiteral(&'a [&'a Expr<'a>]),
+	GetMySlot(Up<'a, SlotDeclaration<'a>>),
+	GetSlot(&'a Expr<'a>, Up<'a, SlotDeclaration<'a>>),
 	SetSlot(Up<'a, SlotDeclaration<'a>>, &'a Expr<'a>),
-	SelfExpr(Ty<'a>),
+	SelfExpr,
 	Assert(&'a Expr<'a>),
 	Recur(MethodOrImpl<'a>, &'a [&'a Expr<'a>]),
 }
 impl<'a> NoDrop for ExprData<'a> {}
 impl<'a> ExprData<'a> {
-	pub fn ty(&self) -> &Ty<'a> {
-		match *self {
-			ExprData::BogusCast(ref ty, _)
-			| ExprData::AccessParameter(_, ref ty)
-			| ExprData::IfElse { ref ty, .. }
-			| ExprData::WhenTest(_, _, ref ty)
-			| ExprData::Try { ref ty, .. }
-			| ExprData::StaticMethodCall(_, _, ref ty)
-			| ExprData::InstanceMethodCall(_, _, _, ref ty)
-			| ExprData::MyInstanceMethodCall(_, _, ref ty)
-			| ExprData::New(ref ty, _)
-			| ExprData::GetMySlot(_, ref ty)
-			| ExprData::GetSlot(_, _, ref ty)
-			| ExprData::SelfExpr(ref ty) => ty,
-			ExprData::Bogus => Ty::bogus_ref(),
-			ExprData::AccessLocal(ref local) => &local.ty,
-			ExprData::Let(_, _, then) | ExprData::Seq(_, then) => then.ty(),
-			ExprData::Literal(ref v) => v.ty(),
-			ExprData::For { ref result_ty, .. } => result_ty,
-			ExprData::ArrayLiteral { .. } => unimplemented!(), //array[array type]
-			ExprData::SetSlot(_, _) => unimplemented!(),       //void
-			ExprData::Assert(_) => unimplemented!(),           //void
-			//&ExprData::RecurMethod(ref method, _) => method.return_ty(),
-			//&ExprData::RecurImpl(ref imp, _) => imp.implemented.return_ty(),
-			ExprData::Recur(ref m, _) => m.return_ty(),
-		}
-	}
-
 	/*pub fn children(&self) -> &'a [&'a Expr<'a>] {
 		match *self {
 			ExprData::Let(_, ref a, ref b)

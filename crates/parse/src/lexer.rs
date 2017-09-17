@@ -108,7 +108,7 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 	}
 
 	pub fn expr_from(&self, start: Pos, data: ExprData<'ast>) -> Expr<'ast> {
-		Expr(self.loc_from(start), data)
+		Expr { loc: self.loc_from(start), data }
 	}
 
 	fn skip_while<F: Fn(u8) -> bool>(&mut self, pred: F) {

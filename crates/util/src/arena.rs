@@ -1,6 +1,4 @@
 use std::cell::{Cell, UnsafeCell};
-use std::fs::File;
-use std::io::{Read, Result as IoResult};
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::ops::{InPlace, Place, Placer};
@@ -61,6 +59,12 @@ impl Arena {
 		if self.locked.get() {
 			panic!("Trying to allocate while in the middle of writing to an array.")
 		}
+	}
+
+	#[allow(mut_from_ref)]
+	pub unsafe fn alloc_uninitialized<T : NoDrop>(&self, len: usize) -> &mut [T] {
+		let (_, _, slice) = self.alloc_n::<T>(len);
+		slice
 	}
 
 	fn alloc_worker<T: NoDrop>(&self) -> *mut T {
@@ -144,34 +148,6 @@ impl Arena {
 		DirectBuilder { arena: self, start: self.next.get() as *mut T }
 	}
 
-	pub fn read_from_file(&self, mut f: File) -> IoResult<&[u8]> {
-		unsafe {
-			//let b = self.direct_builder();
-			//let mut buff = slice_from_to(self.next, self.end);
-			let start = self.next.get();
-			let mut next = start;
-			loop {
-				//let n_bytes_read = f.read(b.remaining_slice();
-				let mut buff = slice_from_to(next, self.end);
-				let n_bytes_read = f.read(&mut buff)?;
-				if n_bytes_read == 0 {
-					break
-				}
-				next = offset(next, n_bytes_read);
-				//`- 1` to make room for the '\0' we add at the end.
-				if next >= self.end.offset(-1) {
-					// Need to alloc more
-					unimplemented!()
-				}
-			}
-
-			*next = b'\0';
-			next = next.offset(1);
-			self.next.set(next);
-			Ok(slice_from_to(start, next))
-		}
-	}
-
 	pub fn copy_slice<T: NoDrop + Copy>(&self, slice: &[T]) -> &[T] {
 		unsafe {
 			let len = slice.len();
@@ -219,7 +195,7 @@ impl<'a, T: 'a + Sized + NoDrop + Copy> MaxLenBuilder<'a, T> {
 		unsafe {
 			let old_next = self.next;
 			self.next = offset(self.next, slice.len());
-			assert!(self.next < self.end);
+			assert!(self.next <= self.end);
 			copy_slice(slice, old_next);
 		}
 	}

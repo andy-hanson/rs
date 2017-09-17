@@ -9,5 +9,6 @@ members = [
 	"crates/model",
 	"crates/parse",
 	"crates/parse_diag",
+	"crates/test",
 	"crates/util"
 ]

@@ -2,7 +2,7 @@ use util::arena::NoDrop;
 use util::iter::KnownLen;
 use util::loc::{LineAndColumnGetter, Loc};
 use util::path::{Path, RelPath};
-use util::string_maker::{Show, Shower};
+use util::show::{Show, Shower};
 use util::sym::Sym;
 use util::up::Up;
 
@@ -91,9 +91,9 @@ impl<'d, 'a> Show for &'d Diag<'a> {
 					.add(actual)?
 					.add(".")?;
 			}
-			Diag::MemberNotFound(cls, name) => {
+			Diag::MemberNotFound(class, name) => {
 				s.add("Class ")?
-					.add(cls.name)?
+					.add(class.name)?
 					.add(" does not have a member named ")?
 					.add(name)?
 					.add(".")?;

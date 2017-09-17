@@ -1,23 +1,37 @@
+#![feature(placement_in_syntax)]
+
+extern crate diff;
+extern crate serde;
+extern crate serde_yaml;
+
+extern crate compile;
+extern crate host;
+extern crate interpret;
+extern crate model;
+extern crate parse;
+#[macro_use]
+extern crate util;
+
 use serde::{Serialize, Serializer};
 use serde::ser::SerializeMap;
 
 use util::arena::Arena;
 use util::dict::MutDict;
-use util::file_utils::read_files_in_directory_recursive_if_exists;
+use util::file_utils::{ReadFileOptions, read_files_in_directory_recursive_if_exists};
 use util::iter::KnownLen;
 use util::list::List;
 use util::loc::LineAndColumnGetter;
 use util::path::Path;
-use util::string_maker::WriteShower;
+use util::show::WriteShower;
 use util::sym::Sym;
 use util::up::Up;
 
 use compile::{compile, CompileResult};
 use model::class::ClassDeclaration;
 use model::diag::Diagnostic;
-use model::module::{Module, ModuleOrFail};
+use model::module::ModuleOrFail;
 use model::program::CompiledProgram;
-use interpret::emitted_model::{Code, Instructions, EmittedProgram};
+use interpret::emitted_model::{Code, EmittedProgram};
 use interpret::run::run_method;
 use interpret::emit::emit_program;
 use parse::parse;
@@ -29,7 +43,7 @@ mod test_failure;
 use self::baselines::Baselines;
 use self::show_equals::show_equals;
 use self::test_document_provider::{ExpectedDiagnostic, TestDocumentProvider};
-use self::test_failure::{io_result_to_result, TestFailure, TestResult};
+use self::test_failure::{TestFailure, TestResult};
 
 pub use self::baselines::BaselinesUpdate;
 
@@ -53,7 +67,7 @@ fn test_single<'a>(test_path: Path, update_baselines: BaselinesUpdate, arena: &'
 
 	let mut document_provider = TestDocumentProvider::new(test_directory);
 	let program = {
-		let compile_result = io_result_to_result(compile(Path::EMPTY, &mut document_provider, None, arena))?;
+		let compile_result = compile(Path::EMPTY, &mut document_provider, None, arena)?;
 		match compile_result {
 			CompileResult::RootMissing => return Err(TestFailure::NoIndex(document_provider.into_root_dir())),
 			CompileResult::RootFound(program) => program,
@@ -61,7 +75,7 @@ fn test_single<'a>(test_path: Path, update_baselines: BaselinesUpdate, arena: &'
 	};
 	let mut expected_diagnostics = document_provider.get_expected_diagnostics();
 	let mut expected_baselines =
-		io_result_to_result(read_files_in_directory_recursive_if_exists(baselines_directory, arena))?;
+		read_files_in_directory_recursive_if_exists(baselines_directory, ReadFileOptions::Plain, arena)?;
 
 	for builtin_module in *program.builtins.all {
 		if !builtin_module.diagnostics().is_empty() {
@@ -79,7 +93,7 @@ fn test_single<'a>(test_path: Path, update_baselines: BaselinesUpdate, arena: &'
 	if expected_baselines.is_empty() {
 		Ok(())
 	} else {
-		Err(TestFailure::ExtraBaselines(arena.map(&expected_baselines, |(path, _)| *path)))
+		Err(TestFailure::ExtraBaselinesOnDisk(arena.map(&expected_baselines, |(path, _)| *path)))
 	}
 }
 
@@ -143,9 +157,7 @@ fn test_interpret<'model, 'expected>(
 	}
 
 	let main = program.root.assert_success().class.find_static_method(Sym::of("main")).unwrap(); //TODO: diagnostic if "main" not found
-	println!("RUNNING...");
 	let res = run_method(Up(main), &emitted_program, Vec::new());
-	println!("RAN...");
 	assert!(res.is_void());
 	Ok(())
 }
@@ -197,8 +209,4 @@ fn diagnostics_match(text: &[u8], actual: List<Diagnostic>, expected: &[Expected
 			lc.loc_at_line_and_column(lc_loc) == loc && show_equals(diag, diag_text)
 		},
 	)
-}
-
-fn any_diagnostics(module: &Module) -> bool {
-	!module.diagnostics.is_empty() || module.imports.iter().any(|m| any_diagnostics(m))
 }

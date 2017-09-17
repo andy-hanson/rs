@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use util::arith::to_u8;
+use util::arith::usize_to_u8;
 use util::up::Up;
 
 use model::method::{MethodOrImpl, MethodWithBody};
@@ -17,7 +17,7 @@ pub fn run_method<'model, 'emit>(
 	arguments: Vec<Value<'model>>,
 ) -> Value<'model> {
 	assert!(method.is_static);
-	assert_eq!(to_u8(arguments.len()), method.arity());
+	assert_eq!(usize_to_u8(arguments.len()), method.arity());
 	let emitted_method = emitted.methods.get_method(method);
 	exec(emitted_method, MethodOrImpl::Method(method), arguments)
 }
@@ -65,7 +65,7 @@ fn exec<'model, 'emit>(
 				return_stack.place_back() <- (cur_method, cur_instructions, instruction_index);
 				cur_method = called_method.copy();
 				cur_instructions = called_method_instructions;
-				instruction_index = 0
+				instruction_index = 0;
 			}
 			Instruction::CallBuiltin(CalledBuiltin(ref called_method, ref builtin)) => {
 				unused!(called_method); //TODO: use this for error reporting

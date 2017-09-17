@@ -3,7 +3,7 @@ use serde::{Serialize, Serializer};
 use util::arena::{Arena, NoDrop};
 use util::iter::KnownLen;
 use util::late::Late;
-use util::string_maker::{Show, Shower};
+use util::show::{Show, Shower, serialize_as_show};
 use util::sym::Sym;
 use util::sync::UnsafeSync;
 use util::up::{SerializeUp, Up};
@@ -15,10 +15,9 @@ use super::method::MethodWithBody;
 // Make a static version of Bogus so it can be used as a ref
 static BOGUS: UnsafeSync<Ty> = UnsafeSync(Ty::Bogus);
 
-#[derive(Serialize)]
 pub enum Ty<'a> {
 	Bogus,
-	Plain(Effect, InstCls<'a>),
+	Plain(Effect, InstClass<'a>),
 	Param(Up<'a, TypeParameter<'a>>),
 }
 impl<'a> NoDrop for Ty<'a> {}
@@ -29,12 +28,12 @@ impl<'a> Ty<'a> {
 		unimplemented!() //&BOGUS.0
 	}
 
-	pub fn pure_ty(cls: InstCls<'a>) -> Self {
-		Ty::Plain(Effect::Pure, cls)
+	pub fn pure_ty(class: InstClass<'a>) -> Self {
+		Ty::Plain(Effect::Pure, class)
 	}
 
-	pub fn io(cls: InstCls<'a>) -> Self {
-		Ty::Plain(Effect::Io, cls)
+	pub fn io(class: InstClass<'a>) -> Self {
+		Ty::Plain(Effect::Io, class)
 	}
 
 	pub fn fast_equals(&self, other: &Self) -> bool {
@@ -42,9 +41,9 @@ impl<'a> Ty<'a> {
 			Ty::Bogus =>
 				// TODO: this should probably always be true, but then don't call this fn "equals"
 				match *other { Ty::Bogus => true, _ => false },
-			Ty::Plain(effect, ref inst_cls) => {
-				if let Ty::Plain(effect_b, ref inst_cls_b) = *other {
-					effect == effect_b && inst_cls.fast_equals(inst_cls_b)
+			Ty::Plain(effect, ref inst_class) => {
+				if let Ty::Plain(effect_b, ref inst_class_b) = *other {
+					effect == effect_b && inst_class.fast_equals(inst_class_b)
 				} else {
 					false
 				}
@@ -62,7 +61,7 @@ impl<'a> Clone for Ty<'a> {
 	fn clone(&self) -> Self {
 		match *self {
 			Ty::Bogus => Ty::Bogus,
-			Ty::Plain(effect, ref inst_cls) => Ty::Plain(effect, inst_cls.clone()),
+			Ty::Plain(effect, ref inst_class) => Ty::Plain(effect, inst_class.clone()),
 			Ty::Param(tp) => Ty::Param(tp),
 		}
 	}
@@ -73,8 +72,8 @@ impl<'t, 'a> Show for &'t Ty<'a> {
 			Ty::Bogus => {
 				s.add("<bogus>")?;
 			}
-			Ty::Plain(effect, ref inst_cls) => {
-				s.add(effect)?.add(' ')?.add(inst_cls)?;
+			Ty::Plain(effect, ref inst_class) => {
+				s.add(effect)?.add(' ')?.add(inst_class)?;
 			}
 			Ty::Param(p) => {
 				s.add(p.name)?;
@@ -83,51 +82,34 @@ impl<'t, 'a> Show for &'t Ty<'a> {
 		Ok(())
 	}
 }
-/*impl Serialize for Ty {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer
-	{
-		match *self {
-			Ty::Bogus => serializer.serialize_unit_variant("Ty", 0, "Bogus"),
-			Ty::Plain(_, _) => {
-				unimplemented!()
-			}
-			Ty::Param(_) => {
-				//Don't serialize the param normally, we're just referencing it!
-				unimplemented!()
-			}
-		}
+impl<'a> Serialize for Ty<'a> {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		serialize_as_show(self, serializer)
 	}
-}*/
+}
 
-#[derive(Serialize)]
-pub struct InstCls<'a>(pub Up<'a, ClassDeclaration<'a>>, pub &'a [Ty<'a>]);
-impl<'a> InstCls<'a> {
-	pub fn generic_self_reference(cls: Up<'a, ClassDeclaration<'a>>, arena: &'a Arena) -> Self {
-		let type_arguments = arena.map(cls.type_parameters, |tp| Ty::Param(Up(tp)));
-		InstCls(cls, type_arguments)
-	}
-
-	pub fn class(&self) -> &'a ClassDeclaration<'a> {
-		(self.0).0
+#[derive(Clone, Serialize)]
+pub struct InstClass<'a> {
+	pub class: Up<'a, ClassDeclaration<'a>>,
+	pub ty_args: &'a [Ty<'a>],
+}
+impl<'a> InstClass<'a> {
+	pub fn generic_self_reference(class: Up<'a, ClassDeclaration<'a>>, arena: &'a Arena) -> Self {
+		let ty_args = arena.map(class.type_parameters, |tp| Ty::Param(Up(tp)));
+		InstClass { class, ty_args }
 	}
 
 	pub fn fast_equals(&self, other: &Self) -> bool {
-		self.0.ptr_eq(other.0) && self.1.each_equals(other.1, Ty::fast_equals)
+		self.class.ptr_eq(other.class) && self.ty_args.each_equals(other.ty_args, Ty::fast_equals)
 	}
 }
-impl<'a> NoDrop for InstCls<'a> {}
-impl<'a> Clone for InstCls<'a> {
-	fn clone(&self) -> Self {
-		InstCls(self.0, self.1)
-	}
-}
-impl<'i, 'a> Show for &'i InstCls<'a> {
+impl<'a> NoDrop for InstClass<'a> {}
+impl<'i, 'a> Show for &'i InstClass<'a> {
 	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
-		s.add(self.0.name)?;
-		if !self.1.is_empty() {
+		s.add(self.class.name)?;
+		if !self.ty_args.is_empty() {
 			s.add('[')?;
-			s.join(self.1)?;
+			s.join(self.ty_args)?;
 			s.add(']')?;
 		}
 		Ok(())
@@ -143,7 +125,7 @@ impl<'a> TypeParameterOrigin<'a> {
 	//TODO:just derive Copy
 	fn copy(&self) -> Self {
 		match *self {
-			TypeParameterOrigin::Class(ref cls) => TypeParameterOrigin::Class(cls.clone_as_up()),
+			TypeParameterOrigin::Class(ref class) => TypeParameterOrigin::Class(class.clone_as_up()),
 			TypeParameterOrigin::Method(ref m) => TypeParameterOrigin::Method(m.clone_as_up()),
 		}
 	}
@@ -166,19 +148,13 @@ impl<'a> TypeParameter<'a> {
 	}
 }
 impl<'a> Serialize for TypeParameter<'a> {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		// We just seralized the origin, so skip that.
 		self.name.serialize(serializer)
 	}
 }
 impl<'a> SerializeUp for TypeParameter<'a> {
-	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize_up<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		self.name.serialize(serializer)
 	}
 }

@@ -1,10 +1,10 @@
 use serde::{Serialize, Serializer};
 
 use util::arena::NoDrop;
-use util::arith::to_u8;
+use util::arith::usize_to_u8;
 use util::late::Late;
 use util::loc::Loc;
-use util::string_maker::{Show, Shower};
+use util::show::{Show, Shower, serialize_as_show};
 use util::sym::Sym;
 use util::up::{SerializeUp, Up};
 
@@ -54,15 +54,12 @@ impl<'a> AbstractMethod<'a> {
 
 	pub fn arity(&self) -> u8 {
 		// + 1 for the 'self' parameter
-		to_u8(self.parameters().len()) + 1
+		usize_to_u8(self.parameters().len()) + 1
 	}
 }
 impl<'a> NoDrop for AbstractMethod<'a> {}
 impl<'a> SerializeUp for AbstractMethod<'a> {
-	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize_up<S : Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		self.name().serialize(serializer)
 	}
 }
@@ -107,14 +104,11 @@ impl<'a> MethodWithBody<'a> {
 	}
 
 	pub fn arity(&self) -> u8 {
-		to_u8(self.parameters().len()) + if self.is_static { 0 } else { 1 }
+		usize_to_u8(self.parameters().len()) + if self.is_static { 0 } else { 1 }
 	}
 }
 impl<'a> SerializeUp for MethodWithBody<'a> {
-	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize_up<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		self.name().serialize(serializer)
 	}
 }
@@ -128,17 +122,33 @@ pub struct Parameter<'a> {
 }
 impl<'a> NoDrop for Parameter<'a> {}
 impl<'a> SerializeUp for Parameter<'a> {
-	fn serialize_up<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
+	fn serialize_up<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	{
 		self.name.serialize(serializer)
 	}
 }
 
-#[derive(Serialize)]
-pub struct InstMethod<'a>(pub MethodOrImplOrAbstract<'a>, pub &'a [Ty<'a>]);
+pub struct InstMethod<'a> {
+	pub method_decl: MethodOrImplOrAbstract<'a>,
+	pub ty_args: &'a [Ty<'a>],
+}
 impl<'a> NoDrop for InstMethod<'a> {}
+impl<'i, 'a> Show for &'i InstMethod<'a> {
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		s.add(self.method_decl.name())?;
+		if !self.ty_args.is_empty() {
+			s.add('[')?;
+			s.join(self.ty_args)?;
+			s.add(']')?;
+		}
+		Ok(())
+	}
+}
+impl<'a> Serialize for InstMethod<'a> {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		serialize_as_show(self, serializer)
+	}
+}
 
 #[derive(Serialize)]
 pub struct Impl<'a> {
@@ -297,10 +307,7 @@ impl<'a> MethodOrImplOrAbstract<'a> {
 	}
 }
 impl<'a> Serialize for MethodOrImplOrAbstract<'a> {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		match *self {
 			MethodOrImplOrAbstract::Method(m) => m.serialize(serializer),
 			MethodOrImplOrAbstract::Impl(i) => i.serialize(serializer),

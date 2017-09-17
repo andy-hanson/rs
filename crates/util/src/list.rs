@@ -24,8 +24,13 @@ impl<'a, T: NoDrop + 'a> List<'a, T> {
 		))
 	}
 
-	pub fn iter(&self) -> ListIter<'a, T> {
+	pub fn iter(self) -> ListIter<'a, T> {
 		ListIter(self.0.map(|head| &head.node))
+	}
+
+	// Only use this in serde attributes. Operates on a ref instead of on a copy.
+	pub fn is_empty_ref(&self) -> bool {
+		self.is_empty()
 	}
 }
 impl<'a, T: NoDrop + 'a> NoDrop for List<'a, T> {}

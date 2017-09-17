@@ -24,6 +24,7 @@ pub mod path;
 pub mod loc;
 pub mod late;
 pub mod list;
+pub mod show;
 pub mod string_maker;
 pub mod sync;
 pub mod sym;

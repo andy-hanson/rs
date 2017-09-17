@@ -1,37 +1,20 @@
-#![allow(dead_code)] // TODO
-#![allow(unknown_lints)] // Clippy lints aren't known to rustc?
-//#![feature(core_intrinsics)]
-#![feature(custom_attribute)] // Used for serde
-#![feature(placement_in_syntax)]
-#![feature(placement_new_protocol)]
-#![feature(conservative_impl_trait)]
-#![feature(offset_to)]
-#![feature(core_intrinsics)] // TODO: remove
-#![feature(collection_placement)]
-#![allow(needless_lifetimes)] //TODO
-#![allow(unused_imports)] //TODO
+#![allow(dead_code)]
+#![allow(unused_imports)]
 
-extern crate serde;
-extern crate serde_json;
+extern crate serde_yaml;
 
-extern crate compile;
-extern crate host;
-extern crate interpret;
-extern crate model;
 extern crate parse;
-#[macro_use]
+extern crate test;
 extern crate util;
-
-mod test;
 
 use std::process::exit;
 use test::{BaselinesUpdate, do_test_single};
 use util::path::Path;
 use parse::{parse, ParseDiagnostic};
-use util::string_maker::{Shower, WriteShower};
+use util::show::{Shower, WriteShower};
 use util::arena::Arena;
 use util::loc::LineAndColumnGetter;
-use serde_json::to_string as to_json_string;
+use serde_yaml::to_string as to_yaml_string;
 
 fn main() {
 	//test_parse().unwrap();
@@ -53,7 +36,7 @@ fn test_parse() -> ::std::io::Result<()> {
 	match res {
 		Result::Ok(ref ast) => {
 			let mut e = WriteShower::stderr();
-			e.add(to_json_string(ast).unwrap().as_str())?;
+			e.add(to_yaml_string(ast).unwrap().as_str())?;
 			e.nl()?;
 		}
 		Result::Err(ParseDiagnostic(loc, ref diag)) => {

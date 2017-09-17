@@ -1,0 +1,16 @@
+[package]
+name = "test"
+version = "0.1.0"
+authors = ["Andy Hanson <andy.pj.hanson@gmail.com>"]
+
+[dependencies]
+diff = "0.1.10"
+serde = "1.0"
+serde_yaml = "0.7"
+
+compile = { path = "../compile" }
+host = { path = "../host" }
+interpret = { path = "../interpret" }
+model = { path = "../model" }
+parse = { path = "../parse" }
+util = { path = "../util" }

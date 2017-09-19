@@ -2,6 +2,7 @@
 #![allow(new_without_default)]
 #![allow(new_without_default_derive)]
 #![feature(collection_placement)]
+#![feature(conservative_impl_trait)]
 #![feature(offset_to)]
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]

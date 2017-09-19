@@ -16,6 +16,7 @@ use util::output_shower::OutputShower;
 use util::path::Path;
 use util::show::Shower;
 use util::loc::LineAndColumnGetter;
+use util::sym::Sym;
 
 use parse::{parse, ParseDiagnostic};
 
@@ -27,7 +28,7 @@ fn main() {
 }
 
 fn run_test() {
-	let exit_code = do_test_single(Path::of_slice(b"Main-Pass"), BaselinesUpdate::Create);
+	let exit_code = do_test_single(Path::of(b"Main-Pass"), BaselinesUpdate::Create);
 	exit(exit_code)
 }
 

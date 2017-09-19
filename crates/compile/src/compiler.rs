@@ -8,9 +8,12 @@ use util::sym::Sym;
 use util::up::Up;
 
 use ast::{Class as ClassAst, Import as ImportAst, Module as ModuleAst};
-use parse::parse;
+
+use check::check_module;
 
 use host::document_provider::DocumentProvider;
+
+use parse::parse;
 
 use model::builtins::BuiltinsOwn;
 use model::diag::{Diag, Diagnostic};
@@ -18,9 +21,7 @@ use model::document_info::DocumentInfo;
 use model::module::{FailModule, Module, ModuleOrFail, ModuleSource, ModuleSourceEnum};
 use model::program::CompiledProgram;
 
-use super::super::builtins::get_builtins;
-use super::super::check::check_module;
-
+use super::builtins::get_builtins;
 use super::CompileResult;
 use super::module_resolver::{get_document_from_logical_path, GetDocumentResult};
 
@@ -177,7 +178,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 				let module =
 					self.arena <- Module { source, imports, class: Late::new(), diagnostics: Late::new() };
 				let name = match logical_path.file_name() {
-					Some(name) => Sym::from_slice(name),
+					Some(name) => Sym::of(name),
 					None => self.document_provider.root_name(),
 				};
 				// Initializes module.class and module.diagnostics.
@@ -243,7 +244,7 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 			ImportAst::Local(loc, rel_path) => {
 				let relative_path = RelPath::clone_path_to_arena(rel_path, self.arena);
 				let (imported_module, is_import_reused) =
-					self.compile_single(full_path.resolve(relative_path))?;
+					self.compile_single(full_path.resolve(relative_path, self.arena))?;
 				*all_dependencies_reused &= is_import_reused;
 				Ok(match imported_module {
 					CompileSingleResult::Circular => {

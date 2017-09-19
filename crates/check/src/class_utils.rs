@@ -1,7 +1,6 @@
 use util::sym::Sym;
 
-use model::class::{ClassDeclaration, ClassHead, MemberDeclaration};
-use model::ty::InstClass;
+use model::class::{ClassDeclaration, ClassHead, InstClass, MemberDeclaration};
 
 use super::instantiator::Instantiator;
 

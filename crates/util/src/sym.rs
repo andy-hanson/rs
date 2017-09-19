@@ -21,11 +21,7 @@ pub struct Sym(u32);
 impl NoDrop for Sym {}
 
 impl Sym {
-	pub fn of(s: &'static str) -> Self {
-		Sym::from_slice(s.as_bytes())
-	}
-
-	pub fn from_slice(input: &[u8]) -> Self {
+	pub fn of(input: &[u8]) -> Self {
 		let mut string_to_symbol = STRING_TO_SYMBOL.lock().unwrap();
 		let cached_symbol = string_to_symbol.get(input).cloned();
 		cached_symbol.unwrap_or_else(|| {

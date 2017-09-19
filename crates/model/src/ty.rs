@@ -1,23 +1,23 @@
 use serde::{Serialize, Serializer};
 
-use util::arena::{Arena, NoDrop};
-use util::iter::KnownLen;
+use util::arena::NoDrop;
 use util::late::Late;
 use util::show::{Show, Shower, serialize_as_show};
 use util::sym::Sym;
 use util::sync::UnsafeSync;
 use util::up::{SerializeUp, Up};
 
-use super::class::ClassDeclaration;
+use super::class::{ClassDeclaration, InstClass};
 use super::effect::Effect;
 use super::method::MethodWithBody;
 
 // Make a static version of Bogus so it can be used as a ref
 static BOGUS: UnsafeSync<Ty> = UnsafeSync(Ty::Bogus);
 
+#[derive(Hash)]
 pub enum Ty<'a> {
 	Bogus,
-	Plain(Effect, InstClass<'a>),
+	Plain(PlainTy<'a>),
 	Param(Up<'a, TypeParameter<'a>>),
 }
 impl<'a> NoDrop for Ty<'a> {}
@@ -28,12 +28,12 @@ impl<'a> Ty<'a> {
 		unimplemented!() //&BOGUS.0
 	}
 
-	pub fn pure_ty(class: InstClass<'a>) -> Self {
-		Ty::Plain(Effect::Pure, class)
+	pub fn pure_ty(inst_class: InstClass<'a>) -> Self {
+		Ty::Plain(PlainTy { effect: Effect::Pure, inst_class })
 	}
 
-	pub fn io(class: InstClass<'a>) -> Self {
-		Ty::Plain(Effect::Io, class)
+	pub fn io(inst_class: InstClass<'a>) -> Self {
+		Ty::Plain(PlainTy { effect: Effect::Io, inst_class })
 	}
 
 	pub fn fast_equals(&self, other: &Self) -> bool {
@@ -41,9 +41,9 @@ impl<'a> Ty<'a> {
 			Ty::Bogus =>
 				// TODO: this should probably always be true, but then don't call this fn "equals"
 				match *other { Ty::Bogus => true, _ => false },
-			Ty::Plain(effect, ref inst_class) => {
-				if let Ty::Plain(effect_b, ref inst_class_b) = *other {
-					effect == effect_b && inst_class.fast_equals(inst_class_b)
+			Ty::Plain(PlainTy { effect: effect_a, inst_class: ref inst_class_a }) => {
+				if let Ty::Plain(PlainTy { effect: effect_b, inst_class: ref inst_class_b }) = *other {
+					effect_a == effect_b && inst_class_a.fast_equals(inst_class_b)
 				} else {
 					false
 				}
@@ -56,12 +56,19 @@ impl<'a> Ty<'a> {
 				}
 		}
 	}
+
+	pub fn assert_plain(&self) -> &PlainTy<'a> {
+		match *self {
+			Ty::Plain(ref p) => p,
+			_ => unreachable!(),
+		}
+	}
 }
 impl<'a> Clone for Ty<'a> {
 	fn clone(&self) -> Self {
 		match *self {
 			Ty::Bogus => Ty::Bogus,
-			Ty::Plain(effect, ref inst_class) => Ty::Plain(effect, inst_class.clone()),
+			Ty::Plain(ref plain) => Ty::Plain(plain.clone()),
 			Ty::Param(tp) => Ty::Param(tp),
 		}
 	}
@@ -69,15 +76,9 @@ impl<'a> Clone for Ty<'a> {
 impl<'t, 'a> Show for &'t Ty<'a> {
 	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
 		match *self {
-			Ty::Bogus => {
-				s.add("<bogus>")?;
-			}
-			Ty::Plain(effect, ref inst_class) => {
-				s.add(effect)?.add(' ')?.add(inst_class)?;
-			}
-			Ty::Param(p) => {
-				s.add(p.name)?;
-			}
+			Ty::Bogus => { s.add("<Bogus>")?; }
+			Ty::Plain(ref p) => { s.add(p)?; }
+			Ty::Param(p) => { s.add(p.name)?; }
 		}
 		Ok(())
 	}
@@ -88,30 +89,14 @@ impl<'a> Serialize for Ty<'a> {
 	}
 }
 
-#[derive(Clone, Serialize)]
-pub struct InstClass<'a> {
-	pub class: Up<'a, ClassDeclaration<'a>>,
-	pub ty_args: &'a [Ty<'a>],
+#[derive(Clone, Hash)]
+pub struct PlainTy<'a> {
+	pub effect: Effect,
+	pub inst_class: InstClass<'a>,
 }
-impl<'a> InstClass<'a> {
-	pub fn generic_self_reference(class: Up<'a, ClassDeclaration<'a>>, arena: &'a Arena) -> Self {
-		let ty_args = arena.map(class.type_parameters, |tp| Ty::Param(Up(tp)));
-		InstClass { class, ty_args }
-	}
-
-	pub fn fast_equals(&self, other: &Self) -> bool {
-		self.class.ptr_eq(other.class) && self.ty_args.each_equals(other.ty_args, Ty::fast_equals)
-	}
-}
-impl<'a> NoDrop for InstClass<'a> {}
-impl<'i, 'a> Show for &'i InstClass<'a> {
+impl<'t, 'a> Show for &'t PlainTy<'a> {
 	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
-		s.add(self.class.name)?;
-		if !self.ty_args.is_empty() {
-			s.add('[')?;
-			s.join(self.ty_args)?;
-			s.add(']')?;
-		}
+		s.add(self.effect)?.add(' ')?.add(&self.inst_class)?;
 		Ok(())
 	}
 }

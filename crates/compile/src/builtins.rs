@@ -10,15 +10,19 @@ use util::sym::Sym;
 use util::up::Up;
 
 use ast::Module as ModuleAst;
+
+use check::check_module;
+
 use parse::{parse, ParseDiagnostic};
+
 use model::builtins::BuiltinsOwn;
-use model::class::ClassDeclaration;
+use model::class::{ClassDeclaration, InstClass};
 use model::diag::{Diag, Diagnostic};
 use model::diag::show_diagnostics;
 use model::module::{FailModule, Module, ModuleOrFail, ModuleSourceEnum};
-use model::ty::{InstClass, Ty};
+use model::ty::Ty;
 
-use super::check::check_module;
+use super::module_resolver::EXTENSION;
 
 pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn {
 	let own = arena <- BuiltinsOwn {
@@ -33,11 +37,11 @@ pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn {
 	const LEN: usize = 5;
 	let mut ctx = GetBuiltinsCtx { own, all: arena.exact_len_builder(LEN), all_successes: arena.max_len_builder(LEN), arena };
 
-	&own.void <- ctx.add_builtin(b"Void", b"builtins/Void.nz"); //TODO: don't duplicate `builtins/` every time
-	&own.bool <- ctx.add_builtin(b"Bool", b"builtins/Bool.nz");
-	&own.nat <- ctx.add_builtin(b"Nat", b"builtins/Nat.nz");
-	&own.int <- ctx.add_builtin(b"Int", b"builtins/Int.nz");
-	&own.float <- ctx.add_builtin(b"Float", b"builtins/Float.nz");
+	&own.void <- ctx.add_builtin(b"Void");
+	&own.bool <- ctx.add_builtin(b"Bool");
+	&own.nat <- ctx.add_builtin(b"Nat");
+	&own.int <- ctx.add_builtin(b"Int");
+	&own.float <- ctx.add_builtin(b"Float");
 	//TODO: string
 
 	&own.all <- ctx.all.finish();
@@ -52,9 +56,9 @@ struct GetBuiltinsCtx<'model> {
 	arena: &'model Arena,
 }
 impl<'model> GetBuiltinsCtx<'model> {
-	fn add_builtin(&mut self, name_str: &'static [u8], file_name: &'static [u8]) -> Ty<'model> {
-		let name = Sym::from_slice(name_str);
-		let text = load_builtin_file(file_name, self.arena);
+	fn add_builtin(&mut self, name_str: &'static [u8]) -> Ty<'model> {
+		let name = Sym::of(name_str);
+		let text = load_builtin_file(name_str, self.arena);
 		let source = ModuleSourceEnum::Builtin { name, text };
 		let ast_arena = Arena::new();
 		let (ty, module_or_fail) = match parse(&ast_arena, text) {
@@ -89,10 +93,12 @@ impl<'model> GetBuiltinsCtx<'model> {
 	}
 }
 
-fn load_builtin_file<'model>(path_slice: &[u8], arena: &'model Arena) -> &'model [u8] {
-	read_file(Path::of_slice(path_slice), ReadFileOptions::Trailing0, arena).unwrap().unwrap_or_else(|| {
-		let str = String::from_utf8(path_slice.to_owned()).unwrap();
-		panic!("Can't load builtin from {}", str)
+fn load_builtin_file<'model>(name: &[u8], arena: &'model Arena) -> &'model [u8] {
+	let builtins_base_path = Path::of(b"builtins");
+	let scratch = Arena::new();
+	let path = builtins_base_path.child(name.chain(EXTENSION), &scratch);
+	read_file(path, ReadFileOptions::Trailing0, arena).unwrap().unwrap_or_else(|| {
+		panic!("Can't load builtin from {}", ::std::str::from_utf8(path.slice()).unwrap())
 	})
 }
 

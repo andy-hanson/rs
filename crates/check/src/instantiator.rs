@@ -1,7 +1,8 @@
 use util::up::Up;
 
+use model::class::InstClass;
 use model::method::InstMethod;
-use model::ty::{InstClass, Ty, TypeParameter};
+use model::ty::{Ty, TypeParameter};
 
 pub struct Instantiator<'model>(&'model [TypeParameter<'model>], &'model [Ty<'model>]);
 impl<'model> Instantiator<'model> {

@@ -76,7 +76,7 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 	}
 
 	pub fn token_sym(&mut self, token_start: Pos) -> Sym {
-		Sym::from_slice(self.token_slice(token_start))
+		Sym::of(self.token_slice(token_start))
 	}
 
 	fn read_char(&mut self) -> u8 {
@@ -537,17 +537,17 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 				ParseDiag::UnexpectedCharacterType { actual: first, expected_desc: b"name or operator" },
 			))
 		}
-		Ok(Sym::from_slice(self.slice_from(start_pos)))
+		Ok(Sym::of(self.slice_from(start_pos)))
 	}
 
 	pub fn take_name(&mut self) -> Result<Sym> {
 		let v = self.take_name_slice()?;
-		Ok(Sym::from_slice(v))
+		Ok(Sym::of(v))
 	}
 
 	pub fn take_ty_name(&mut self) -> Result<Sym> {
 		let v = self.take_ty_name_slice()?;
-		Ok(Sym::from_slice(v))
+		Ok(Sym::of(v))
 	}
 
 	pub fn unexpected_token(

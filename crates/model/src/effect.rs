@@ -1,7 +1,7 @@
 use util::arena::NoDrop;
 use util::show::{Show, Shower};
 
-#[derive(Copy, Clone, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Eq, Hash, PartialEq, Serialize)]
 pub enum Effect {
 	Pure,
 	Get,

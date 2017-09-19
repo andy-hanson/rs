@@ -11,13 +11,13 @@ use util::utils::todo;
 
 use ast;
 
-use model::class::{ClassDeclaration, ClassHead, MemberDeclaration, SlotDeclaration};
+use model::class::{ClassDeclaration, ClassHead, InstClass, MemberDeclaration, SlotDeclaration};
 use model::diag::Diag;
 use model::effect::Effect;
 use model::expr::{Case, Catch, Expr, ExprData, Local, Pattern, LetData, InstanceMethodCallData, TryData, MyInstanceMethodCallData,
 	StaticMethodCallData, WhenTestData, SetSlotData, GetSlotData, RecurData, IfElseData, SeqData};
 use model::method::{InstMethod, MethodOrImplOrAbstract, MethodOrImpl, Parameter};
-use model::ty::{InstClass, Ty};
+use model::ty::{PlainTy, Ty};
 
 use super::class_utils::{try_get_member_of_inst_class, InstMember};
 use super::ctx::Ctx;
@@ -194,7 +194,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 					let ty = self.instantiate_ty(&slot.ty, &instantiator);
 					self.check_subtype(&ty, arg)
 				});
-				let ty = Ty::Plain(Effect::MAX, inst_class);
+				let ty = Ty::io(inst_class);
 				self.handle(expected, loc, ty, ExprData::New(args))
 			}
 			ast::ExprData::ArrayLiteral(&ast::ArrayLiteralData(ref element_ty, args)) => {
@@ -205,7 +205,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 				let target = self.check_infer(target_ast);
 				let (slot, slot_ty) = match target.ty {
 					Ty::Bogus => return self.bogus(loc),
-					Ty::Plain(target_effect, ref target_class) => {
+					Ty::Plain(PlainTy { effect: target_effect, inst_class: ref target_class }) => {
 						let InstMember(member_decl, instantiator) =
 							//TODO: just get_slot_of_inst_class
 							unwrap_or_return!(
@@ -312,7 +312,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 						|| so it will be instantiated to return Foo[Int].
 						foo.get-self()
 				*/
-				let ty = Ty::Plain(self.self_effect, self.current_inst_class());
+				let ty = Ty::Plain(PlainTy { effect: self.self_effect, inst_class: self.current_inst_class() });
 				self.handle(expected, loc, ty, ExprData::SelfExpr)
 			}
 			ast::ExprData::IfElse(&ast::IfElseData(ref test_ast, ref then_ast, ref else_ast)) => {
@@ -541,7 +541,7 @@ impl<'ctx, 'instantiator, 'builtins_ctx, 'model>
 			Ty::Bogus =>
 				// Already issued an error, don't need another.
 				return self.bogus(loc),
-			Ty::Plain(target_effect, ref target_inst_class) => {
+			Ty::Plain(PlainTy { effect: target_effect, inst_class: ref target_inst_class }) => {
 				let InstMember(member_decl, member_instantiator) = unwrap_or_return!(
 					self.get_member_of_inst_class(loc, target_inst_class, method_name),
 					self.bogus(loc));

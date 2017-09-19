@@ -26,7 +26,7 @@ impl<'a> FileInput for NativeFileInput<'a> {
 	type Error = IoError;
 
 	fn root_name(&self) -> Sym {
-		Sym::from_slice(self.root_dir.file_name().unwrap())
+		Sym::of(self.root_dir.file_name().unwrap())
 	}
 
 	fn read<'out>(&self, path: Path, arena: &'out Arena) -> Result<Option<&'out [u8]>, Self::Error> {

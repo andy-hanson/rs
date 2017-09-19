@@ -3,7 +3,8 @@ use serde::{Serialize, Serializer};
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 
-use super::arena::{Arena, DirectBuilder, NoDrop};
+use super::arena::{Arena, NoDrop};
+use super::iter::KnownLen;
 use super::show::{Show, Shower};
 use super::u8_slice_ops::U8SliceOps;
 
@@ -13,14 +14,14 @@ impl<'a> NoDrop for Path<'a> {}
 impl<'a> Path<'a> {
 	pub const EMPTY: Path<'static> = Path(&[]);
 
-	pub fn of_slice(slice: &'a [u8]) -> Self {
+	pub fn of(slice: &'a [u8]) -> Self {
 		assert_ne!(slice.first().cloned(), Some(b'/'));
 		assert_ne!(slice.last().cloned(), Some(b'/'));
 		Path(slice)
 	}
 
 	pub fn clone_path_to_arena(self, arena: &Arena) -> Path {
-		Path::of_slice(arena.copy_slice(self.0))
+		Path::of(arena.copy_slice(self.0))
 	}
 
 	pub fn slice(self) -> &'a [u8] {
@@ -35,7 +36,7 @@ impl<'a> Path<'a> {
 			res.add_slice(root.0);
 			&mut res <- b'/';
 			res.add_slice(path.0);
-			Path::of_slice(res.finish())
+			Path::of(res.finish())
 		}
 	}
 
@@ -43,45 +44,28 @@ impl<'a> Path<'a> {
 		RelPath { n_parents: 0, rel_to_parent: self }
 	}
 
-	pub fn child<'out>(self, child_name: &[u8], arena: &'out Arena) -> Path<'out> {
+	pub fn resolve<'out>(self, _: RelPath, _: &'out Arena) -> Path<'out> {
+		unimplemented!()
+	}
+
+	pub fn child<'x, 'out, I : KnownLen<Item=&'x u8>>(self, child_name: I, arena: &'out Arena) -> Path<'out> {
 		assert!(is_path_part(child_name));
 		if self.is_empty() {
-			Path(arena.copy_slice(child_name))
+			//TODO: use copy_slice if possible?
+			let mut res = arena.exact_len_builder(child_name.len());
+			for c in child_name {
+				&mut res <- *c;
+			}
+			Path::of(res.finish())
 		} else {
-			let mut res: DirectBuilder<'out, u8> = arena.direct_builder();
+			let mut res = arena.exact_len_builder(self.0.len() + 1 + child_name.len());
 			res.add_slice(self.0);
 			&mut res <- b'/';
-			res.add_slice(child_name);
-			Path::of_slice(res.finish())
-		}
-	}
-
-	pub fn resolve(self, rel: RelPath) -> Self {
-		unused!(rel);
-		//TODO: walk backwards until you've passed n_parents '/' characters, then concat with rel.rel_to_parent
-		unimplemented!()
-	}
-
-	pub fn rel_to(self, other: Self) -> RelPath<'a> {
-		unused!(other);
-		/*let min_length = min(self.0.len(), other.0.len());
-		let mut first_different_part = 0;
-		loop {
-			if first_different_part == min_length {
-				break
+			for c in child_name {
+				&mut res <- *c;
 			}
-
-			if self.0[first_different_part] != other.0[first_different_part] {
-				break
-			}
-
-			first_different_part += 1
+			Path::of(res.finish())
 		}
-
-		let n_parents = self.0.len() - first_different_part - 1;
-		let rel_to_parent = Path(other.0.copy_slice(first_different_part, other.0.len()));
-		RelPath { n_parents, rel_to_parent }*/
-		unimplemented!()
 	}
 
 	pub fn file_name(self) -> Option<&'a [u8]> {
@@ -96,14 +80,14 @@ impl<'a> Path<'a> {
 	}
 
 	pub fn without_extension(self, extension: &[u8]) -> Self {
-		Path::of_slice(self.0.without_end_if_ends_with(extension))
+		Path::of(self.0.without_end_if_ends_with(extension))
 	}
 
 	pub fn add_extension<'out>(self, extension: &[u8], arena: &'out Arena) -> Path<'out> {
-		let mut b = arena.direct_builder();
+		let mut b = arena.exact_len_builder(self.0.len() + extension.len());
 		b.add_slice(self.0);
 		b.add_slice(extension);
-		Path::of_slice(b.finish())
+		Path::of(b.finish())
 	}
 
 	pub fn name_of_containing_directory(self) -> &'a [u8] {
@@ -159,8 +143,8 @@ impl<'a> Borrow<[u8]> for Path<'a> {
 	}
 }
 
-fn is_path_part(s: &[u8]) -> bool {
-	s.iter().all(|&ch| match ch {
+fn is_path_part<'x, I : IntoIterator<Item=&'x u8>>(s: I) -> bool {
+	s.into_iter().all(|&ch| match ch {
 		b'/' | b'\\' => false,
 		_ => true,
 	})

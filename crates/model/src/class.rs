@@ -1,15 +1,16 @@
 use serde::{Serialize, Serializer};
 
-use util::arena::NoDrop;
-use util::iter::slice_is_empty;
+use util::arena::{Arena, NoDrop};
+use util::iter::{KnownLen, slice_is_empty};
 use util::late::Late;
 use util::loc::Loc;
+use util::show::{Show, Shower};
 use util::sym::Sym;
-use util::up::SerializeUp;
+use util::up::{SerializeUp, Up};
 
 use super::method::{AbstractMethod, Impl, MethodWithBody};
 
-use super::ty::{InstClass, Ty, TypeParameter};
+use super::ty::{Ty, TypeParameter};
 
 #[derive(Serialize)]
 pub struct ClassDeclaration<'a> {
@@ -98,5 +99,39 @@ impl<'a> Serialize for MemberDeclaration<'a> {
 			MemberDeclaration::AbstractMethod(a) => a.name(),
 		};
 		name.serialize(serializer)
+	}
+}
+
+#[derive(Clone, Hash, Serialize)]
+pub struct InstClass<'a> {
+	pub class: Up<'a, ClassDeclaration<'a>>,
+	pub ty_args: &'a [Ty<'a>],
+}
+impl<'a> InstClass<'a> {
+	pub fn generic_self_reference(class: Up<'a, ClassDeclaration<'a>>, arena: &'a Arena) -> Self {
+		let ty_args = arena.map(class.type_parameters, |tp| Ty::Param(Up(tp)));
+		InstClass { class, ty_args }
+	}
+
+	pub fn fast_equals(&self, other: &Self) -> bool {
+		self.class.ptr_eq(other.class) && self.ty_args.each_equals(other.ty_args, Ty::fast_equals)
+	}
+}
+impl<'a> Eq for InstClass<'a> {}
+impl<'a> PartialEq for InstClass<'a> {
+	fn eq(&self, other: &InstClass<'a>) -> bool {
+		self.class.ptr_eq(other.class) && self.ty_args.each_equals(other.ty_args, Ty::fast_equals)
+	}
+}
+impl<'a> NoDrop for InstClass<'a> {}
+impl<'i, 'a> Show for &'i InstClass<'a> {
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		s.add(self.class.name)?;
+		if !self.ty_args.is_empty() {
+			s.add('[')?;
+			s.join(self.ty_args)?;
+			s.add(']')?;
+		}
+		Ok(())
 	}
 }

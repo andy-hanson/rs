@@ -1,9 +1,10 @@
+use util::arena::Arena;
 use util::up::Up;
 
 use model::method::{MethodOrImpl, MethodWithBody};
 use model::program::CompiledProgram;
 
-use value::{Value, ValueCtx};
+use value::ValueCtx;
 
 use super::emitted_model::{BuiltinCode, Code, EmittedProgram, Instruction, Instructions, CalledInstructions, CalledBuiltin};
 
@@ -14,18 +15,17 @@ pub fn run_method<'model, 'emit>(
 ) -> () {
 	assert!(method.is_static);
 	assert_eq!(0, method.arity());
-	let mut ctx = ValueCtx::new(program.builtins);
+	let ctx_arena = Arena::new();
+	let mut ctx = ValueCtx::new(program.builtins, &ctx_arena);
 	let emitted_method = emitted.methods.get_method(method);
-	let res = exec(&mut ctx, emitted_method, MethodOrImpl::Method(method));
-	res.assert_void(&ctx)
+	exec(&mut ctx, emitted_method, MethodOrImpl::Method(method))
 }
 
 fn exec<'model : 'value, 'emit, 'value>(
-	ctx: &mut ValueCtx<'model, 'value>,
+	ctx: &'value mut ValueCtx<'model, 'value>,
 	first_code: &Code<'model, 'emit>,
 	mut cur_method: MethodOrImpl<'model>,
-) -> Value<'model, 'value> {
-	let mut stack = ctx.new_stack();
+) {
 	let mut return_stack = Vec::<(MethodOrImpl, &'emit Instructions, usize)>::new();
 	let mut cur_instructions: &Instructions<'model, 'emit> = match *first_code {
 		Code::Instructions(ref i) => i,
@@ -38,21 +38,24 @@ fn exec<'model : 'value, 'emit, 'value>(
 		instruction_index += 1;
 		match *instruction {
 			Instruction::LiteralNat(n) => {
-				stack.push(ctx.nat(n));
+				let nat = ctx.nat(n);
+				ctx.push(nat);
 			}
 			Instruction::LiteralInt(i) => {
-				stack.push(ctx.int(i));
+				let int = ctx.int(i);
+				ctx.push(int);
 			}
 			Instruction::LiteralFloat(f) => {
-				stack.push(ctx.float(f));
+				let float = ctx.float(f);
+				ctx.push(float);
 			}
 			Instruction::LiteralString(s) => {
 				unused!(s);
-				unimplemented!() //stack <- Value::String(Rc::clone(s)),
+				unimplemented!()
 			}
-			Instruction::Fetch(n) => stack.fetch(n),
-			Instruction::UnLet(n) => stack.un_let(n),
-			Instruction::PopVoid => stack.pop().assert_void(ctx),
+			Instruction::Fetch(n) => ctx.fetch(n),
+			Instruction::UnLet(n) => ctx.un_let(n),
+			Instruction::PopVoid => ctx.pop().assert_void(ctx),
 			Instruction::CallInstructions(CalledInstructions(ref called_method, ref called_method_instructions)) => {
 				return_stack.place_back() <- (cur_method, cur_instructions, instruction_index);
 				cur_method = called_method.copy();
@@ -63,22 +66,25 @@ fn exec<'model : 'value, 'emit, 'value>(
 				unused!(called_method); //TODO: use this for error reporting
 				match *builtin {
 					BuiltinCode::Fn0(f) => {
-						stack.push(f(ctx));
+						let res = f(ctx);
+						ctx.push(res);
 					}
 					BuiltinCode::Fn1(f) => {
-						let a = stack.pop();
-						stack.push(f(ctx, a));
+						let a = ctx.pop();
+						let res = f(ctx, a);
+						ctx.push(res);
 					}
 					BuiltinCode::Fn2(f) => {
-						let a = stack.pop();
-						let b = stack.pop();
-						stack.push(f(ctx, a, b));
+						let a = ctx.pop();
+						let b = ctx.pop();
+						let res = f(ctx, a, b);
+						ctx.push(res);
 					}
 				}
 			}
 			Instruction::Return => {
 				//pop parameters
-				stack.un_let(cur_method.arity());
+				ctx.un_let(cur_method.arity());
 				match return_stack.pop() {
 					Some((method, instructions, index)) => {
 						cur_method = method;
@@ -88,9 +94,11 @@ fn exec<'model : 'value, 'emit, 'value>(
 					None => break,
 				}
 			}
+			Instruction::NewSlots(ty, n) => ctx.pop_slots_and_push_new_value(ty, n),
 		}
 	}
 
-	assert_eq!(stack.depth(), 1);
-	stack.pop()
+	assert_eq!(ctx.depth(), 1);
+	let res = ctx.pop();
+	res.assert_void(ctx)
 }

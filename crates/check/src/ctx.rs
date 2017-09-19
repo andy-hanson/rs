@@ -8,11 +8,11 @@ use util::up::Up;
 use ast;
 
 use model::builtins::BuiltinsOwn;
-use model::class::ClassDeclaration;
+use model::class::{ClassDeclaration, InstClass};
 use model::diag::{Diag, Diagnostic};
 use model::method::{InstMethod, MethodOrImplOrAbstract};
 use model::module::Module;
-use model::ty::{InstClass, Ty, TypeParameter};
+use model::ty::{PlainTy, Ty, TypeParameter};
 
 use super::ast_utils::effect_to_effect;
 use super::expected::Expected;
@@ -83,7 +83,7 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 
 		let class = unwrap_or_return!(self.access_class_declaration_or_add_diagnostic(loc, name), Ty::Bogus);
 		let ty_args = self.arena.map(ty_arg_asts, |ty_ast| self.get_ty_or_ty_parameter(ty_ast, extra_ty_parameters));
-		Ty::Plain(effect_to_effect(effect), InstClass { class, ty_args })
+		Ty::Plain(PlainTy { effect: effect_to_effect(effect), inst_class: InstClass { class, ty_args } })
 	}
 
 	pub fn instantiate_class_from_ast<'ast>(

@@ -62,8 +62,8 @@ pub fn do_test_single(test_path: Path, update_baselines: BaselinesUpdate) -> i32
 }
 
 fn test_single<'a>(test_path: Path, update_baselines: BaselinesUpdate, arena: &'a Arena) -> TestResult<'a, ()> {
-	let test_directory = Path::resolve_with_root(Path::of_slice(CASES_ROOT_DIR), test_path, arena);
-	let baselines_directory = Path::resolve_with_root(Path::of_slice(BASELINES_ROOT_DIR), test_path, arena);
+	let test_directory = Path::resolve_with_root(Path::of(CASES_ROOT_DIR), test_path, arena);
+	let baselines_directory = Path::resolve_with_root(Path::of(BASELINES_ROOT_DIR), test_path, arena);
 
 	let mut document_provider = TestDocumentProvider::new(test_directory);
 	let program = {
@@ -156,7 +156,7 @@ fn test_interpret<'model, 'expected>(
 		baselines.assert_baseline(ModuleOrFail::Module(module), EXT_EMIT, &ModuleEmitted { emitted_program: &emitted_program, class: &*module.class })?
 	}
 
-	let main = program.root.assert_success().class.find_static_method(Sym::of("main")).unwrap(); //TODO: diagnostic if "main" not found
+	let main = program.root.assert_success().class.find_static_method(Sym::of(b"main")).unwrap(); //TODO: diagnostic if "main" not found
 	run_method(program, Up(main), &emitted_program);
 	Ok(())
 }

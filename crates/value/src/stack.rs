@@ -1,6 +1,6 @@
 use util::arith::{usize_to_u8, u8_to_usize};
 
-use super::Value;
+use super::value::Value;
 
 // Every value takes up exactly one word. This may be a pointer.
 pub struct ValueStack<'model : 'value, 'value> {
@@ -11,8 +11,19 @@ impl<'model, 'value> ValueStack<'model, 'value> {
 		ValueStack { values: Vec::new() }
 	}
 
+	pub fn get_slice_of_top(&self, n: usize) -> &[Value<'model, 'value>] {
+		let _ = n;
+		unimplemented!()
+	}
+
 	pub fn depth(&self) -> usize {
 		self.values.len()
+	}
+
+	pub fn drop(&mut self, n: usize) {
+		for _ in 0..n {
+			self.values.pop().unwrap();
+		}
 	}
 
 	pub fn pop(&mut self) -> Value<'model, 'value> {

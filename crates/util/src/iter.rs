@@ -1,4 +1,4 @@
-use std::iter::{Enumerate, Iterator, Zip};
+use std::iter::{Chain, Enumerate, Iterator, Zip};
 use std::mem::replace;
 
 // Not using ExactSizeIterator because that requires the iterator to keep track of its length;
@@ -9,6 +9,11 @@ where
 {
 	fn len(self) -> usize;
 	fn is_empty(self) -> bool;
+
+	//TODO: shouldn't need where clause...
+	fn chain<I : KnownLen<Item = Self::Item>>(self, other: I) -> ChainKnownLen<Self::Item, Self, I> where Self::Item : Copy { //TODO: impl KnownLen<Item=Self::Item> {
+		ChainKnownLen(self, other)
+	}
 
 	fn each_equals<I: KnownLen<Item = Self::Item>, F: Fn(Self::Item, Self::Item) -> bool>(
 		self,
@@ -29,11 +34,11 @@ where
 				.all(|(a, b)| f(a, b))
 	}
 
-	fn enumerate(self) -> EnumeratedKnownLen<Self> {
+	fn enumerate(self) -> EnumeratedKnownLen<Self> { //TODO: impl KnownLen<Self::Item> {
 		EnumeratedKnownLen(self)
 	}
 
-	fn zip<U, I: KnownLen<Item = U>>(self, other: I) -> ZipKnownLen<Self, I> {
+	fn zip<U, I: KnownLen<Item = U>>(self, other: I) -> ZipKnownLen<Self, I> {//TODO: impl KnownLen<(Self::Item, U)> {
 		assert_eq!(self.len(), other.len());
 		ZipKnownLen(self, other)
 	}
@@ -45,6 +50,32 @@ impl<'a, T> KnownLen for &'a [T] {
 
 	fn is_empty(self) -> bool {
 		self.is_empty()
+	}
+}
+
+//TODO: shouldn't need T : Copy since we don't ever contain a T...
+#[derive(Copy, Clone)]
+pub struct ChainKnownLen<T : Copy, A : KnownLen<Item=T>, B : KnownLen<Item=T>>(A, B);
+//impl<T, A : KnownLen<Item=T>, B : KnownLen<Item=T>> Clone for ChainKnownLen<T, A, B> {
+//	fn clone(&self) -> Self {
+//		ChainKnownLen(self.0.clone(), self.1.clone())
+//	}
+//}
+impl<T : Copy, A : KnownLen<Item=T>, B : KnownLen<Item=T>> KnownLen for ChainKnownLen<T, A, B> {
+	fn len(self) -> usize {
+		self.0.len() + self.1.len()
+	}
+
+	fn is_empty(self) -> bool {
+		self.0.is_empty() && self.1.is_empty()
+	}
+}
+impl<T : Copy, A : KnownLen<Item=T>, B : KnownLen<Item=T>> IntoIterator for ChainKnownLen<T, A, B> {
+	type Item = T;
+	type IntoIter = Chain<A::IntoIter, B::IntoIter>;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.0.into_iter().chain(self.1)
 	}
 }
 

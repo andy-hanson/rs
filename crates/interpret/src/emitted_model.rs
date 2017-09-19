@@ -6,6 +6,7 @@ use util::late::Late;
 use util::up::Up;
 
 use model::method::{Impl, MethodOrImpl, MethodWithBody};
+use model::ty::Ty;
 
 use value::{Value, ValueCtx};
 
@@ -76,6 +77,9 @@ pub enum Instruction<'model: 'emit, 'emit> {
 	CallInstructions(CalledInstructions<'model, 'emit>),
 	CallBuiltin(CalledBuiltin<'model>),
 	Return,
+	// Pops N values off the stack and pushes them into slots on the heap, then stores the result back on the stack.
+	// TODO:PERF omit ty
+	NewSlots(&'model Ty<'model>, usize), //TODO:PERF store this kind of object as its content...
 }
 impl<'model, 'emit> NoDrop for Instruction<'model, 'emit> {}
 

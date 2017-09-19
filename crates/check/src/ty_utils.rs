@@ -3,21 +3,22 @@ use util::iter::KnownLen;
 use util::list::ListBuilder;
 use util::loc::Loc;
 
+use model::class::InstClass;
 use model::diag::Diagnostic;
 use model::effect::Effect;
-use model::ty::{InstClass, Ty};
+use model::ty::{PlainTy, Ty};
 
 use super::instantiator::Instantiator;
 
 pub fn common_ty<'a>(a: &Ty<'a>, b: &Ty<'a>) -> Option<Ty<'a>> {
 	match *a {
 		Ty::Bogus => Some(b.clone()),
-		Ty::Plain(effect_a, ref inst_class_a) =>
+		Ty::Plain(PlainTy { effect: effect_a, inst_class: ref inst_class_a }) =>
 			match *b {
 				Ty::Bogus => Some(a.clone()),
-				Ty::Plain(effect_b, ref inst_class_b) =>
+				Ty::Plain(PlainTy { effect: effect_b, inst_class: ref inst_class_b }) =>
 					if inst_class_a.fast_equals(inst_class_b) {
-						Some(Ty::Plain(effect_a.min_common_effect(effect_b), inst_class_a.clone()))
+						Some(Ty::Plain(PlainTy { effect: effect_a.min_common_effect(effect_b), inst_class: inst_class_a.clone() }))
 					} else {
 						None
 					},
@@ -35,10 +36,10 @@ pub fn is_assignable<'a>(expected: &Ty<'a>, actual: &Ty<'a>, arena: &'a Arena) -
 				Ty::Param(tpa) => tpe.ptr_eq(tpa),
 				_ => false,
 			},
-		Ty::Plain(effect_expected, ref inst_class_expected) =>
+		Ty::Plain(PlainTy { effect: effect_expected, inst_class: ref inst_class_expected }) =>
 			match *actual {
 				Ty::Bogus => true,
-				Ty::Plain(effect_actual, ref inst_class_actual) =>
+				Ty::Plain(PlainTy { effect: effect_actual, inst_class: ref inst_class_actual }) =>
 					effect_actual.contains(effect_expected) &&
 						is_subclass(inst_class_expected, inst_class_actual, arena),
 				Ty::Param(_) => unimplemented!(),
@@ -101,10 +102,10 @@ pub fn instantiate_and_narrow_effects<'a>(
 ) -> Ty<'a> {
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
-		Ty::Plain(original_effect, ref inst_class) =>
-			Ty::Plain(
-				original_effect.min_common_effect(narrowed_effect),
-				instantiate_inst_class_and_forbid_effects(
+		Ty::Plain(PlainTy { effect: original_effect, ref inst_class }) =>
+			Ty::Plain(PlainTy {
+				effect: original_effect.min_common_effect(narrowed_effect),
+				inst_class: instantiate_inst_class_and_forbid_effects(
 					narrowed_effect,
 					inst_class,
 					instantiator,
@@ -112,7 +113,7 @@ pub fn instantiate_and_narrow_effects<'a>(
 					diags,
 					arena,
 				),
-			),
+			}),
 		Ty::Param(p) => instantiator.replace_or_same(p),
 	}
 }
@@ -137,11 +138,11 @@ fn instantiate_ty_and_forbid_effects<'a>(
 ) -> Ty<'a> {
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
-		Ty::Plain(effect, ref inst_class) =>
+		Ty::Plain(PlainTy { effect, ref inst_class }) =>
 			if narrowed_effect.contains(effect) {
-				Ty::Plain(
+				Ty::Plain(PlainTy {
 					effect,
-					instantiate_inst_class_and_forbid_effects(
+					inst_class: instantiate_inst_class_and_forbid_effects(
 						narrowed_effect,
 						inst_class,
 						instantiator,
@@ -149,7 +150,7 @@ fn instantiate_ty_and_forbid_effects<'a>(
 						diags,
 						arena,
 					),
-				)
+				})
 			} else {
 				//TODO:Diagnostic
 				unimplemented!()
@@ -191,9 +192,9 @@ pub fn instantiate_ty<'a>(ty: &Ty<'a>, instantiator: &Instantiator<'a>, arena: &
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
 		Ty::Param(p) => instantiator.replace_or_same(p),
-		Ty::Plain(effect, ref inst_class) => {
+		Ty::Plain(PlainTy { effect, ref inst_class }) => {
 			let class = instantiate_inst_class(inst_class, instantiator, arena);
-			Ty::Plain(effect, class)
+			Ty::Plain(PlainTy { effect, inst_class: class })
 		}
 	}
 }

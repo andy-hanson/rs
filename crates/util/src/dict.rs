@@ -1,11 +1,13 @@
 use std::borrow::Borrow;
 use std::collections::HashMap;
-use std::collections::hash_map::{Entry, IntoIter, Iter, Values};
+use std::collections::hash_map::{IntoIter, Iter, Values};
 use std::hash::Hash;
 use std::iter::FromIterator;
 
 use super::arena::{NoDrop, PointerPlace};
 use super::iter::KnownLen;
+
+pub use std::collections::hash_map::Entry;
 
 // TODO:PERF don't use HashMap
 // Immutable hash map
@@ -40,6 +42,15 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 	pub fn new() -> Self {
 		MutDict(HashMap::new())
 	}
+
+	pub fn entry(&mut self, key: K) -> Entry<K, V> {
+		self.0.entry(key)
+	}
+
+	//pub fn get_or_add<F : Fn() -> V>(&mut self, key: &K, f: F) -> V where K : Clone {
+	//	let entry = self.0.entry(key.clone());
+	//	unimplemented!()
+	//}
 
 	pub fn from_iterator<T: IntoIterator<Item = (K, V)>>(i: T) -> Self {
 		MutDict(HashMap::from_iter(i))

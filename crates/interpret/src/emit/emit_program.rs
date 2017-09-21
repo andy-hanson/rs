@@ -8,19 +8,22 @@ use model::method::{MethodOrImpl, Parameter};
 use model::module::Module;
 use model::program::CompiledProgram;
 
+use value::ValueCtx;
+
 use super::super::builtins::get_builtin;
 use super::super::emitted_model::{Code, EmittedProgram, MethodMaps};
 
 use super::emit_error::EmitResult;
 use super::emit_expr::emit_method;
 
-pub fn emit_program<'model : 'emit, 'emit>(
+pub fn emit_program<'model: 'emit, 'value, 'emit>(
 	program: &CompiledProgram<'model>,
+	value_ctx: &mut ValueCtx<'model, 'value>,
 	arena: &'emit Arena,
 ) -> EmitResult<'model, EmittedProgram<'model, 'emit>> {
 	// Emit all dependencies first.
 	let mut emitter =
-		Emitter { arena, emitted_modules: MutSet::new(), methods: MethodMaps::new() };
+		Emitter { value_ctx, arena, emitted_modules: MutSet::new(), methods: MethodMaps::new() };
 	for b in *program.builtins.all_successes {
 		emitter.emit_module(b)?
 	}
@@ -28,12 +31,13 @@ pub fn emit_program<'model : 'emit, 'emit>(
 	Ok(EmittedProgram { methods: emitter.methods })
 }
 
-struct Emitter<'model: 'emit, 'emit> {
+struct Emitter<'value_ctx, 'model: 'value_ctx + 'value + 'emit, 'value: 'value_ctx, 'emit> {
+	value_ctx: &'value_ctx mut ValueCtx<'model, 'value>,
 	arena: &'emit Arena,
 	emitted_modules: MutSet<Up<'model, Module<'model>>>,
 	methods: MethodMaps<'model, 'emit>,
 }
-impl<'model, 'emit> Emitter<'model, 'emit> {
+impl<'value_ctx, 'model, 'value, 'emit> Emitter<'value_ctx, 'model, 'value, 'emit> {
 	fn is_module_already_emitted(&self, module: &Module<'model>) -> bool {
 		self.emitted_modules.has(Up(module))
 	}
@@ -66,12 +70,24 @@ impl<'model, 'emit> Emitter<'model, 'emit> {
 		for an_impl in class.all_impls() {
 			let implemented = &an_impl.implemented;
 			if let Some(ref body) = *an_impl.body {
-				self.fill_code(self.methods.get_impl(Up(an_impl)), implemented.parameters(), body, self.arena)
+				self.fill_code(
+					self.methods.get_impl(Up(an_impl)),
+					/*has_self*/ true,
+					implemented.parameters(),
+					body,
+					self.arena,
+				)
 			}
 		}
 		for method in *class.methods {
 			if let Some(ref body) = *method.body {
-				self.fill_code(self.methods.get_method(Up(method)), method.parameters(), body, self.arena)
+				self.fill_code(
+					self.methods.get_method(Up(method)),
+					/*has_self*/ !method.is_static,
+					method.parameters(),
+					body,
+					self.arena,
+				)
 			}
 		}
 
@@ -90,11 +106,18 @@ impl<'model, 'emit> Emitter<'model, 'emit> {
 		})
 	}
 
-	fn fill_code(&self, code: &Code<'model, 'emit>, parameters: &'model [Parameter<'model>], body: &'model Expr<'model>, arena: &'emit Arena) {
+	fn fill_code(
+		&self,
+		code: &Code<'model, 'emit>,
+		has_self: bool,
+		parameters: &'model [Parameter<'model>],
+		body: &'model Expr<'model>,
+		arena: &'emit Arena,
+	) {
 		match *code {
 			Code::Builtin(_) => unreachable!(),
 			Code::Instructions(ref i) => {
-				i <- emit_method(parameters, body, arena, &self.methods);
+				i <- emit_method(self.value_ctx, has_self, parameters, body, arena, &self.methods);
 			}
 		}
 	}

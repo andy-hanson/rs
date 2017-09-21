@@ -46,7 +46,11 @@ impl<'a> AssertionShower<'a> {
 impl<'a> Shower for AssertionShower<'a> {
 	type Error = (); // Thrown when not equal
 
-	fn color<F : FnMut() -> Result<(), Self::Error>>(&mut self, _: Color, mut f: F) -> Result<(), Self::Error> {
+	fn color<F: FnMut() -> Result<(), Self::Error>>(
+		&mut self,
+		_: Color,
+		mut f: F,
+	) -> Result<(), Self::Error> {
 		f()
 	}
 

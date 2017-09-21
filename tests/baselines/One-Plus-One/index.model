@@ -1,0 +1,48 @@
+---
+name: "One-Plus-One"
+head: Static
+methods: 
+  - 
+    containing_class: "One-Plus-One"
+    is_static: true
+    signature: 
+      class: "One-Plus-One"
+      loc: "3-35"
+      name: main
+      type_parameters: []
+      return_ty: pure Void
+      self_effect: Pure
+      parameters: []
+    body: 
+      loc: "17-35"
+      ty: pure Void
+      data: 
+        Assert: 
+          loc: "24-35"
+          ty: pure Bool
+          data: 
+            InstanceMethodCall: 
+              target: 
+                loc: "24-32"
+                ty: pure Nat
+                data: 
+                  InstanceMethodCall: 
+                    target: 
+                      loc: "24-25"
+                      ty: pure Nat
+                      data: 
+                        LiteralNat: 1
+                    method: +
+                    args: 
+                      - 
+                        loc: "28-29"
+                        ty: pure Nat
+                        data: 
+                          LiteralNat: 1
+              method: "=="
+              args: 
+                - 
+                  loc: "33-34"
+                  ty: pure Nat
+                  data: 
+                    LiteralNat: 2

@@ -5,7 +5,7 @@ use model::ty::Ty;
 use super::ctx::ValueCtx;
 
 #[derive(Copy, Clone)]
-pub struct Value<'model : 'value, 'value> {
+pub struct Value<'model: 'value, 'value> {
 	pub(crate) value: ValueInner<'model, 'value>,
 	//TODO:PERF cfg[debug]
 	pub(crate) ty: &'model Ty<'model>,
@@ -36,13 +36,17 @@ impl<'model, 'value> Value<'model, 'value> {
 		unsafe { self.value.float }
 	}
 
+	pub fn get_slot(&self, offset: usize) -> Self {
+		unsafe { self.value.ptr[offset] }
+	}
+
 	fn assert_ty(&self, ty: &Ty<'model>) {
 		assert!(self.ty.fast_equals(ty));
 	}
 }
 
 #[derive(Copy, Clone)]
-pub(crate) union ValueInner<'model : 'value, 'value> {
+pub(crate) union ValueInner<'model: 'value, 'value> {
 	pub void: (),
 	pub bool: bool,
 	pub nat: u32,

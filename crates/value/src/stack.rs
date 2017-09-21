@@ -1,9 +1,9 @@
-use util::arith::{usize_to_u8, u8_to_usize};
+use util::arith::{u8_to_usize, usize_to_u8};
 
 use super::value::Value;
 
 // Every value takes up exactly one word. This may be a pointer.
-pub struct ValueStack<'model : 'value, 'value> {
+pub struct ValueStack<'model: 'value, 'value> {
 	values: Vec<Value<'model, 'value>>,
 }
 impl<'model, 'value> ValueStack<'model, 'value> {
@@ -11,9 +11,9 @@ impl<'model, 'value> ValueStack<'model, 'value> {
 		ValueStack { values: Vec::new() }
 	}
 
+	// Does not actually take it off, just shows it as a slice.
 	pub fn get_slice_of_top(&self, n: usize) -> &[Value<'model, 'value>] {
-		let _ = n;
-		unimplemented!()
+		&self.values[self.values.len() - n..]
 	}
 
 	pub fn depth(&self) -> usize {
@@ -35,8 +35,8 @@ impl<'model, 'value> ValueStack<'model, 'value> {
 	}
 
 	pub fn fetch(&mut self, by: u8) {
-		let index = usize_to_u8(self.values.len()) - 1 - by;
-		let value = self.values[u8_to_usize(index)].clone();
+		let index = usize_to_u8(self.values.len()) - by;
+		let value = self.values[u8_to_usize(index)];
 		self.push(value)
 	}
 

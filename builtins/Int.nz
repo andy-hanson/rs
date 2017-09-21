@@ -1,3 +1,19 @@
 builtin
 
 def Bool ==(Int i)
+
+def Bool <(Int i)
+
+def Bool >(Int i)
+
+def Bool <=(Int i)
+
+def Bool >=(Int i)
+
+def Int +(Int i)
+
+def Int -(Int i)
+
+def Int *(Int i)
+
+def Int /(Int i)

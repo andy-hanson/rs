@@ -15,7 +15,7 @@ pub struct Reader<'text> {
 impl<'text> Reader<'text> {
 	pub fn new(source: &'text [u8]) -> Self {
 		// Usually DocumentProvider does this, but builtins work differently.
-		// Super important to assert this so we don't read past the end of `source`.
+  // Super important to assert this so we don't read past the end of `source`.
 		assert_readable(source);
 		let mut iter = source.iter();
 		let peek = *iter.next().unwrap();
@@ -71,8 +71,15 @@ impl<'text> Reader<'text> {
 			None => 1,
 		};
 
-		self.debug_show_worker(line_no, pos, match nl_before { Some(n) => n + 1, None => 0 }, line_end)
-			.unwrap();
+		self.debug_show_worker(
+			line_no,
+			pos,
+			match nl_before {
+				Some(n) => n + 1,
+				None => 0,
+			},
+			line_end,
+		).unwrap();
 	}
 	fn debug_show_worker(
 		&self,
@@ -81,9 +88,16 @@ impl<'text> Reader<'text> {
 		line_start: usize,
 		line_end: usize,
 	) -> Result<(), IoError> {
-		OutputShower::stderr().add("Pos ")?.add(pos)?.add(": Line ")?
+		OutputShower::stderr()
+			.add("Pos ")?
+			.add(pos)?
+			.add(": Line ")?
 			.add(line_no)?
-			.add(" (")?.add(line_start)?.add("-")?.add(line_end)?.add("): ")?
+			.add(" (")?
+			.add(line_start)?
+			.add("-")?
+			.add(line_end)?
+			.add("): ")?
 			.add(&self.source[line_start..pos])?
 			.add("|")?
 			.add(&self.source[pos..line_end])?

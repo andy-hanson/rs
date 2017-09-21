@@ -1,0 +1,51 @@
+---
+name: "Local-Variable"
+head: Static
+methods: 
+  - 
+    containing_class: "Local-Variable"
+    is_static: true
+    signature: 
+      class: "Local-Variable"
+      loc: "3-38"
+      name: main
+      type_parameters: []
+      return_ty: pure Void
+      self_effect: Pure
+      parameters: []
+    body: 
+      loc: "17-38"
+      ty: pure Void
+      data: 
+        Let: 
+          pattern: 
+            Single: 
+              loc: "17-18"
+              ty: pure Nat
+              name: x
+          value: 
+            loc: "21-22"
+            ty: pure Nat
+            data: 
+              LiteralNat: 1
+          then: 
+            loc: "24-38"
+            ty: pure Void
+            data: 
+              Assert: 
+                loc: "31-38"
+                ty: pure Bool
+                data: 
+                  InstanceMethodCall: 
+                    target: 
+                      loc: "31-32"
+                      ty: pure Nat
+                      data: 
+                        AccessLocal: x
+                    method: "=="
+                    args: 
+                      - 
+                        loc: "36-37"
+                        ty: pure Nat
+                        data: 
+                          LiteralNat: 1

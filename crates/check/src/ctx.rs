@@ -15,14 +15,12 @@ use model::module::Module;
 use model::ty::{PlainTy, Ty, TypeParameter};
 
 use super::ast_utils::effect_to_effect;
-use super::expected::Expected;
 use super::class_utils::{try_get_member_from_class_declaration, InstMember};
 
 pub struct Ctx<'builtins_ctx, 'model: 'builtins_ctx> {
 	pub arena: &'model Arena,
 	pub current_class: Up<'model, ClassDeclaration<'model>>,
-	// Just mutable so `expected_void` can be referenced mutably -- but it won't actually be mutated, only Expected::Infer is mutated.
-	builtins: &'builtins_ctx BuiltinsOwn<'model>,
+	pub builtins: &'builtins_ctx BuiltinsOwn<'model>,
 	imports: &'model [Up<'model, Module<'model>>],
 	pub diags: ListBuilder<'model, Diagnostic<'model>>,
 }
@@ -38,18 +36,6 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 
 	pub fn finish(self) -> List<'model, Diagnostic<'model>> {
 		self.diags.finish()
-	}
-
-	pub fn void(&self) -> Ty<'model> {
-		self.builtins.void.clone()
-	}
-
-	pub fn expected_void(&self) -> Expected<'builtins_ctx, 'model> {
-		Expected::SubTypeOf(&*self.builtins.void)
-	}
-
-	pub fn expected_bool(&self) -> Expected<'builtins_ctx, 'model> {
-		Expected::SubTypeOf(&*self.builtins.bool)
 	}
 
 	pub fn get_ty<'ast>(&mut self, ty_ast: &'ast ast::Ty<'ast>) -> Ty<'model> {
@@ -82,7 +68,8 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		}
 
 		let class = unwrap_or_return!(self.access_class_declaration_or_add_diagnostic(loc, name), Ty::Bogus);
-		let ty_args = self.arena.map(ty_arg_asts, |ty_ast| self.get_ty_or_ty_parameter(ty_ast, extra_ty_parameters));
+		let ty_args = self.arena
+			.map(ty_arg_asts, |ty_ast| self.get_ty_or_ty_parameter(ty_ast, extra_ty_parameters));
 		Ty::Plain(PlainTy { effect: effect_to_effect(effect), inst_class: InstClass { class, ty_args } })
 	}
 
@@ -137,7 +124,11 @@ impl<'builtins_ctx, 'model: 'builtins_ctx> Ctx<'builtins_ctx, 'model> {
 		res
 	}
 
-	fn access_class_declaration(&mut self, loc: Loc, name: Sym) -> Option<Up<'model, ClassDeclaration<'model>>> {
+	fn access_class_declaration(
+		&mut self,
+		loc: Loc,
+		name: Sym,
+	) -> Option<Up<'model, ClassDeclaration<'model>>> {
 		if name == self.current_class.name {
 			return Some(self.current_class)
 		}

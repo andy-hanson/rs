@@ -2,3 +2,4 @@ target/
 .idea
 .incremental
 rs.iml
+noze_vscode/node_modules

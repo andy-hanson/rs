@@ -3,8 +3,8 @@ use util::loc::Pos;
 use util::path::{Path, RelPath};
 use util::sym::Sym;
 
-use super::ast::{AbstractMethod, Class, ClassHead, ClassHeadData, Effect, Expr, Impl, Import, Method, Module,
-                 Parameter, Slot, Super, Ty};
+use super::ast::{AbstractMethod, Class, ClassHead, ClassHeadData, Effect, Expr, Impl, Import, Method,
+                 Module, Parameter, Slot, Super, Ty};
 use super::lexer::{Lexer, MethodKw, NewlineOrDedent, NewlineOrIndent, Result, SlotKw};
 use super::parse_expr::parse_block;
 use super::parse_ty::{parse_self_effect_or_ty, parse_ty, try_take_ty_parameters, SelfEffectOrTy};

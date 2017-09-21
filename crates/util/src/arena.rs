@@ -62,7 +62,7 @@ impl Arena {
 	}
 
 	#[allow(mut_from_ref)]
-	pub unsafe fn alloc_uninitialized<T : NoDrop>(&self, len: usize) -> &mut [T] {
+	pub unsafe fn alloc_uninitialized<T: NoDrop>(&self, len: usize) -> &mut [T] {
 		let (_, _, slice) = self.alloc_n::<T>(len);
 		slice
 	}
@@ -94,13 +94,27 @@ impl Arena {
 	}
 
 	#[allow(mut_from_ref)]
-	pub fn map<T, U: NoDrop, I: KnownLen<Item = T>, F: FnMut(T) -> U>(&self, inputs: I, mut f: F) -> &mut [U] {
+	pub fn map<T, U: NoDrop, I: KnownLen<Item = T>, F: FnMut(T) -> U>(
+		&self,
+		inputs: I,
+		mut f: F,
+	) -> &mut [U] {
 		self.map_with_place(inputs, |x, place| place <- f(x))
 	}
 
 	//fn returns the placed value as proof that it initialized the memory.
 	#[allow(needless_lifetimes)] // False positive
-	pub fn map_with_place<'a, T, U : NoDrop, I : KnownLen<Item = T>, F: FnMut(T, PointerPlace<'a, U>) -> &'a U>(&'a self, inputs: I, mut f: F) -> &mut [U] {
+	pub fn map_with_place<
+		'a,
+		T,
+		U: NoDrop,
+		I: KnownLen<Item = T>,
+		F: FnMut(T, PointerPlace<'a, U>) -> &'a U,
+	>(
+		&'a self,
+		inputs: I,
+		mut f: F,
+	) -> &mut [U] {
 		unsafe {
 			let len = inputs.len();
 			let (start, end, slice) = self.alloc_n::<U>(len);

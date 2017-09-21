@@ -260,6 +260,7 @@ dependencies = [
  "serde 1.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "util 0.1.0",
+ "value 0.1.0",
 ]
 
 [[package]]

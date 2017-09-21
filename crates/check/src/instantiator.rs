@@ -22,8 +22,8 @@ impl<'model> Instantiator<'model> {
 	}
 
 	//fn new(type_parameters: &[Own<TypeParameter>], type_arguments: &[Ty]) -> Self {
-	//	Instantiator(type_parameters.zip(type_arguments.into_iter(), |tp, ta| Inner(tp.ptr(), ta.clone())))
-	//}
+ //	Instantiator(type_parameters.zip(type_arguments.into_iter(), |tp, ta| Inner(tp.ptr(), ta.clone())))
+ //}
 
 	pub fn replace_or_same(&self, ty: Up<'model, TypeParameter<'model>>) -> Ty<'model> {
 		self.replace(ty).unwrap_or_else(|| Ty::Param(ty))

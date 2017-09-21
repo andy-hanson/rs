@@ -1,4 +1,4 @@
-use std::{isize, u32, u8, usize};
+use std::{isize, usize, i32, u32, u8};
 
 pub fn mid(a: usize, b: usize) -> usize {
 	(a + b) / 2
@@ -10,6 +10,11 @@ pub fn u8_to_usize(u: u8) -> usize {
 
 pub fn u32_to_usize(u: u32) -> usize {
 	u as usize
+}
+
+pub fn u32_to_i32(u: u32) -> i32 {
+	assert!(u < i32::MAX as u32);
+	u as i32
 }
 
 pub fn u64_to_usize(u: u64) -> usize {

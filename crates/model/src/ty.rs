@@ -2,7 +2,7 @@ use serde::{Serialize, Serializer};
 
 use util::arena::NoDrop;
 use util::late::Late;
-use util::show::{Show, Shower, serialize_as_show};
+use util::show::{serialize_as_show, Show, Shower};
 use util::sym::Sym;
 use util::sync::UnsafeSync;
 use util::up::{SerializeUp, Up};
@@ -76,9 +76,15 @@ impl<'a> Clone for Ty<'a> {
 impl<'t, 'a> Show for &'t Ty<'a> {
 	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
 		match *self {
-			Ty::Bogus => { s.add("<Bogus>")?; }
-			Ty::Plain(ref p) => { s.add(p)?; }
-			Ty::Param(p) => { s.add(p.name)?; }
+			Ty::Bogus => {
+				s.add("<Bogus>")?;
+			}
+			Ty::Plain(ref p) => {
+				s.add(p)?;
+			}
+			Ty::Param(p) => {
+				s.add(p.name)?;
+			}
 		}
 		Ok(())
 	}

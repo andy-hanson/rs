@@ -18,7 +18,10 @@ pub fn common_ty<'a>(a: &Ty<'a>, b: &Ty<'a>) -> Option<Ty<'a>> {
 				Ty::Bogus => Some(a.clone()),
 				Ty::Plain(PlainTy { effect: effect_b, inst_class: ref inst_class_b }) =>
 					if inst_class_a.fast_equals(inst_class_b) {
-						Some(Ty::Plain(PlainTy { effect: effect_a.min_common_effect(effect_b), inst_class: inst_class_a.clone() }))
+						Some(Ty::Plain(PlainTy {
+							effect: effect_a.min_common_effect(effect_b),
+							inst_class: inst_class_a.clone(),
+						}))
 					} else {
 						None
 					},
@@ -40,8 +43,8 @@ pub fn is_assignable<'a>(expected: &Ty<'a>, actual: &Ty<'a>, arena: &'a Arena) -
 			match *actual {
 				Ty::Bogus => true,
 				Ty::Plain(PlainTy { effect: effect_actual, inst_class: ref inst_class_actual }) =>
-					effect_actual.contains(effect_expected) &&
-						is_subclass(inst_class_expected, inst_class_actual, arena),
+					effect_actual.contains(effect_expected)
+						&& is_subclass(inst_class_expected, inst_class_actual, arena),
 				Ty::Param(_) => unimplemented!(),
 			},
 	}
@@ -49,7 +52,7 @@ pub fn is_assignable<'a>(expected: &Ty<'a>, actual: &Ty<'a>, arena: &'a Arena) -
 
 fn is_subclass<'a>(expected: &InstClass<'a>, actual: &InstClass<'a>, arena: &'a Arena) -> bool {
 	// TODO: generics variance.
-	// Until then, only a subtype if every generic parameter is *exactly* equal.
+ // Until then, only a subtype if every generic parameter is *exactly* equal.
 	let &InstClass { class: expected_class, ty_args: expected_ty_args } = expected;
 	let &InstClass { class: actual_class, ty_args: actual_ty_args } = actual;
 	if expected_class.ptr_eq(actual_class) && expected_ty_args.each_equals(actual_ty_args, Ty::fast_equals) {

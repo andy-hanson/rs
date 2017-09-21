@@ -12,6 +12,10 @@ impl<'a, T> Up<'a, T> {
 		ptr_eq(self.0, other.0)
 	}
 
+	pub fn up_ref(self) -> &'a T {
+		self.0
+	}
+
 	//TODO: shouldn't be needed, this is Copy!
 	pub fn clone_as_up(&self) -> Up<'a, T> {
 		Up(self.0)
@@ -26,6 +30,8 @@ impl<'a, T> Clone for Up<'a, T> {
 }
 impl<'a, T> Deref for Up<'a, T> {
 	type Target = T;
+	// Unfortunately, the way Deref is designed forces the returned type to have a lifetime scoped to the Up.
+ // To get around this you can use `.up_ref()` explicitly.
 	fn deref(&self) -> &T {
 		self.0
 	}
@@ -50,7 +56,7 @@ impl<'a, T> PartialEq for Up<'a, T> {
 // Like Serialize, but since this is just a *reference* to the data,
 // don't serialize everything, just e.g. the name.
 pub trait SerializeUp {
-	fn serialize_up<S : Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>;
+	fn serialize_up<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>;
 }
 
 fn ptr_eq<T>(a: &T, b: &T) -> bool {

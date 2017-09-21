@@ -32,5 +32,4 @@ pub mod string_maker;
 pub mod sync;
 pub mod sym;
 pub mod up;
-pub mod utils;
 pub mod u8_slice_ops;

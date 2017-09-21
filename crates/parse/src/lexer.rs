@@ -1,4 +1,5 @@
 use std::mem::replace;
+use std::str::from_utf8;
 
 use util::arena::Arena;
 use util::loc::{Loc, Pos};
@@ -59,20 +60,24 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 		Next { pos, token }
 	}
 
-	pub fn token_nat(&mut self) -> u32 {
-		panic!()
+	pub fn token_nat(&mut self, token_start: Pos) -> u32 {
+		self.str_slice(token_start).parse::<u32>().unwrap()
 	}
 
-	pub fn token_int(&mut self) -> i32 {
-		panic!()
+	pub fn token_int(&mut self, token_start: Pos) -> i32 {
+		self.str_slice(token_start).parse::<i32>().unwrap()
 	}
 
-	pub fn token_float(&mut self) -> f64 {
-		panic!()
+	pub fn token_float(&mut self, token_start: Pos) -> f64 {
+		self.str_slice(token_start).parse::<f64>().unwrap()
 	}
 
 	pub fn token_slice(&self, token_start: Pos) -> &[u8] {
 		self.reader.slice_from(token_start)
+	}
+
+	fn str_slice(&self, token_start: Pos) -> &str {
+		from_utf8(self.token_slice(token_start)).unwrap()
 	}
 
 	pub fn token_sym(&mut self, token_start: Pos) -> Sym {
@@ -308,7 +313,10 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 		if pred(actual) {
 			Ok(())
 		} else {
-			Err(ParseDiagnostic(self.single_char_loc(), ParseDiag::UnexpectedCharacterType { actual, expected_desc }))
+			Err(ParseDiagnostic(
+				self.single_char_loc(),
+				ParseDiag::UnexpectedCharacterType { actual, expected_desc },
+			))
 		}
 	}
 
@@ -338,7 +346,8 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 			Token::Newline
 		} else if new > old {
 			if new != old + 1 {
-				self.diagnostic = Some(ParseDiagnostic(self.single_char_loc(), ParseDiag::TooMuchIndent { old, new }));
+				self.diagnostic =
+					Some(ParseDiagnostic(self.single_char_loc(), ParseDiag::TooMuchIndent { old, new }));
 				Token::Diagnostic
 			} else {
 				Token::Indent
@@ -353,7 +362,7 @@ impl<'ast, 'text: 'ast> Lexer<'ast, 'text> {
 	pub fn take_newline_or_dedent(&mut self) -> Result<NewlineOrDedent> {
 		self.expect_newline_character()?;
 		self.skip_empty_lines();
-		for _ in 0..self.indent {
+		for _ in 0..self.indent - 1 {
 			self.expect_tab_character()?
 		}
 

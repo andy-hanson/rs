@@ -29,7 +29,7 @@ impl<K: Hash + Eq, V> Dict<K, V> {
 		MutDict::from_iterator(i).freeze()
 	}
 
-	pub fn get<Q : Hash + Eq>(&self, k: Q) -> Option<&V>
+	pub fn get<Q: Hash + Eq>(&self, k: Q) -> Option<&V>
 	where
 		K: Borrow<Q>,
 	{
@@ -48,9 +48,9 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 	}
 
 	//pub fn get_or_add<F : Fn() -> V>(&mut self, key: &K, f: F) -> V where K : Clone {
-	//	let entry = self.0.entry(key.clone());
-	//	unimplemented!()
-	//}
+ //	let entry = self.0.entry(key.clone());
+ //	unimplemented!()
+ //}
 
 	pub fn from_iterator<T: IntoIterator<Item = (K, V)>>(i: T) -> Self {
 		MutDict(HashMap::from_iter(i))
@@ -83,14 +83,14 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 		self.0.remove(&key)
 	}
 
-	pub fn has_key<Q : Hash + Eq>(&self, k: Q) -> bool
+	pub fn has_key<Q: Hash + Eq>(&self, k: Q) -> bool
 	where
 		K: Borrow<Q>,
 	{
 		self.0.contains_key(&k)
 	}
 
-	pub fn get<Q : Hash + Eq>(&self, k: Q) -> Option<&V>
+	pub fn get<Q: Hash + Eq>(&self, k: Q) -> Option<&V>
 	where
 		K: Borrow<Q>,
 	{
@@ -141,7 +141,7 @@ impl<K: Hash + Eq> MutSet<K> {
 		self.0.add(value) <- ()
 	}
 
-	pub fn has<Q:  Hash + Eq>(&self, value: Q) -> bool
+	pub fn has<Q: Hash + Eq>(&self, value: Q) -> bool
 	where
 		K: Borrow<Q>,
 	{

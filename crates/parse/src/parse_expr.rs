@@ -114,7 +114,7 @@ fn parse_expr_2<'a, 't>(
 			if ctx == Ctx::NoOperators {
 				Ok((first, next))
 			} else {
-				slurp_operators(l, start, first)
+				slurp_operators(l, start, next.pos, first)
 			},
 
 		Token::Space => {
@@ -165,14 +165,14 @@ fn parse_expr_2<'a, 't>(
 					if ctx == Ctx::NoOperators {
 						Ok((first, next))
 					} else {
-						slurp_operators(l, start, first)
+						slurp_operators(l, start, next.pos, first)
 					},
 
 				_ => {
 					let (args, next_2) = parse_args_2(l, Ctx::NoOperators, next)?;
 					let call = l.expr_from(start, ExprData::Call(l.arena <- CallData { target: first, args }));
 					if ctx != Ctx::NoOperators && next_2.token == Token::Operator {
-						slurp_operators(l, start, call)
+						slurp_operators(l, start, next_2.pos, call)
 					} else {
 						Ok((call, next_2))
 					}
@@ -259,14 +259,19 @@ fn parse_for<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos) -> Result<Expr<'a>> {
 	Ok(l.expr_from(start, ExprData::For(l.arena <- ForData { local_name, looper, body })))
 }
 
-fn slurp_operators<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, first: Expr<'a>) -> Result<(Expr<'a>, Next)> {
+fn slurp_operators<'a, 't>(
+	l: &mut Lexer<'a, 't>,
+	start: Pos,
+	operator_start: Pos,
+	mut left: Expr<'a>,
+) -> Result<(Expr<'a>, Next)> {
 	// Just saw Token::Operator
-	let mut operator = l.token_sym(start);
-	let mut left = first;
+	let mut operator = l.token_sym(operator_start);
 	loop {
 		l.take_space()?; // operator must be followed by space.
 		let (right, next) = parse_expr(l, Ctx::NoOperators)?;
-		left = l.expr_from(start, ExprData::OperatorCall(l.arena <- OperatorCallData { left, operator, right }));
+		left =
+			l.expr_from(start, ExprData::OperatorCall(l.arena <- OperatorCallData { left, operator, right }));
 		match next.token {
 			Token::Operator => operator = l.token_sym(next.pos),
 			_ => break Ok((left, next)),
@@ -336,9 +341,9 @@ fn parse_simple_expr_without_suffixes<'a, 't>(
 			ExprData::StaticAccess { class_name, static_method_name }
 		}
 		Token::Name => ExprData::Access(l.token_sym(start)),
-		Token::NatLiteral => ExprData::LiteralNat(l.token_nat()),
-		Token::IntLiteral => ExprData::LiteralInt(l.token_int()),
-		Token::FloatLiteral => ExprData::LiteralFloat(l.token_float()),
+		Token::NatLiteral => ExprData::LiteralNat(l.token_nat(start)),
+		Token::IntLiteral => ExprData::LiteralInt(l.token_int(start)),
+		Token::FloatLiteral => ExprData::LiteralFloat(l.token_float(start)),
 		Token::StringLiteral => ExprData::LiteralString(l.quote_part_value()),
 		Token::SelfKw => ExprData::SelfExpr,
 		_ => unimplemented!(), // TODO:diagnostic

@@ -5,8 +5,8 @@ pub use termcolor::Color;
 use super::string_maker::StringMaker;
 
 pub trait Show
-	where
-		Self: Sized,
+where
+	Self: Sized,
 {
 	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error>;
 
@@ -57,13 +57,13 @@ impl Show for f64 {
 
 
 pub trait Shower
-	where
-		Self: Sized,
+where
+	Self: Sized,
 {
 	type Error;
 
 	// Does nothing (except call the callback) if this is not a colored output.
-	fn color<F : FnMut() -> Result<(), Self::Error>>(&mut self, c: Color, f: F) -> Result<(), Self::Error>;
+	fn color<F: FnMut() -> Result<(), Self::Error>>(&mut self, c: Color, f: F) -> Result<(), Self::Error>;
 
 	fn nl(&mut self) -> Result<&mut Self, Self::Error> {
 		self._add_char('\n')?;
@@ -84,8 +84,8 @@ pub trait Shower
 	}
 
 	fn join<'a, T>(&mut self, arr: &'a [T]) -> Result<&mut Self, Self::Error>
-		where
-			&'a T: Show,
+	where
+		&'a T: Show,
 	{
 		if !arr.is_empty() {
 			arr[0].show(self)?;
@@ -116,6 +116,6 @@ pub trait Shower
 	}
 }
 
-pub fn serialize_as_show<T : Show, S : Serializer>(t: T, serializer: S) -> Result<S::Ok, S::Error> {
+pub fn serialize_as_show<T: Show, S: Serializer>(t: T, serializer: S) -> Result<S::Ok, S::Error> {
 	serializer.serialize_str(&StringMaker::stringify(t))
 }

@@ -48,7 +48,11 @@ impl<'a> Path<'a> {
 		unimplemented!()
 	}
 
-	pub fn child<'x, 'out, I : KnownLen<Item=&'x u8>>(self, child_name: I, arena: &'out Arena) -> Path<'out> {
+	pub fn child<'x, 'out, I: KnownLen<Item = &'x u8>>(
+		self,
+		child_name: I,
+		arena: &'out Arena,
+	) -> Path<'out> {
 		assert!(is_path_part(child_name));
 		if self.is_empty() {
 			//TODO: use copy_slice if possible?
@@ -73,7 +77,7 @@ impl<'a> Path<'a> {
 			None
 		} else {
 			Some(match self.get_last_slash_index() {
-				Some(i) => &self.0[i+1..self.0.len()],
+				Some(i) => &self.0[i + 1..self.0.len()],
 				None => self.0,
 			})
 		}
@@ -143,7 +147,7 @@ impl<'a> Borrow<[u8]> for Path<'a> {
 	}
 }
 
-fn is_path_part<'x, I : IntoIterator<Item=&'x u8>>(s: I) -> bool {
+fn is_path_part<'x, I: IntoIterator<Item = &'x u8>>(s: I) -> bool {
 	s.into_iter().all(|&ch| match ch {
 		b'/' | b'\\' => false,
 		_ => true,
@@ -163,8 +167,8 @@ impl<'a> RelPath<'a> {
 		RelPath { n_parents, rel_to_parent: Path::clone_path_to_arena(rel_to_parent, arena) }
 	}
 	//pub fn clone_path(&self) -> RelPath {
-	//	RelPath { n_parents: self.n_parents, rel_to_parent: self.rel_to_parent.clone_path() }
-	//}
+ //	RelPath { n_parents: self.n_parents, rel_to_parent: self.rel_to_parent.clone_path() }
+ //}
 }
 impl<'a> Show for RelPath<'a> {
 	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {

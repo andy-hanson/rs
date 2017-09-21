@@ -84,7 +84,7 @@ fn parse_expected_errors<'a>(code: &'a [u8], arena: &'a Arena) -> (&'a [u8], &'a
 			b'\t' => {
 				if spaces_indent != 0 {
 					// TODO: show a useful error message.
-					// Test data should never have spaces before tabs.
+	 // Test data should never have spaces before tabs.
 					unimplemented!()
 				}
 				tab_indent += 1;
@@ -97,7 +97,7 @@ fn parse_expected_errors<'a>(code: &'a [u8], arena: &'a Arena) -> (&'a [u8], &'a
 			b'~' => {
 				if tab_indent != last_good_line_indent {
 					// error: Error line should match tab indent of previous line.
-					// (Other indent should be spaces.)
+	 // (Other indent should be spaces.)
 					unimplemented!()
 				}
 

@@ -51,15 +51,18 @@ impl<'a, 'expected> Baselines<'a, 'expected> {
 				} else {
 					match self.update_baselines {
 						BaselinesUpdate::None | BaselinesUpdate::Create =>
-							Err(TestFailure::BaselineChanged { path: baseline_path, old: expected, new: actual }),
+							Err(TestFailure::BaselineChanged {
+								path: baseline_path,
+								old: expected,
+								new: actual,
+							}),
 						BaselinesUpdate::Change =>
 							write_file(full_baseline_path, actual).map_err(TestFailure::from),
 					}
 				},
 			None =>
 				match self.update_baselines {
-					BaselinesUpdate::None =>
-						Err(TestFailure::NoSuchBaseline(full_baseline_path)),
+					BaselinesUpdate::None => Err(TestFailure::NoSuchBaseline(full_baseline_path)),
 					BaselinesUpdate::Create | BaselinesUpdate::Change =>
 						write_file_and_ensure_directory(full_baseline_path, actual).map_err(TestFailure::from),
 				},

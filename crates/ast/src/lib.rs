@@ -13,7 +13,12 @@ use util::sym::Sym;
 
 // Our own copy of model::effect to avoid dependency
 #[derive(Copy, Clone, Eq, PartialEq, Serialize)]
-pub enum Effect { Pure, Get, Set, Io }
+pub enum Effect {
+	Pure,
+	Get,
+	Set,
+	Io,
+}
 
 #[derive(Serialize)]
 pub struct Module<'a> {

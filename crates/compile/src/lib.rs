@@ -37,7 +37,9 @@ pub fn compile_dir<'a>(dir: Path, arena: &'a Arena) -> Result<CompileResult<'a>,
 }
 
 pub fn compile_file<'a>(path: Path<'a>, arena: &'a Arena) -> Result<CompileResult<'a>, IoError> {
-	let file_name = path.file_name().unwrap().without_end_if_ends_with(EXTENSION);
+	let file_name = path.file_name()
+		.unwrap()
+		.without_end_if_ends_with(EXTENSION);
 	let file_path = if file_name.equals_str("index") {
 		Path::EMPTY
 	} else {

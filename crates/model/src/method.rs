@@ -4,7 +4,7 @@ use util::arena::NoDrop;
 use util::arith::usize_to_u8;
 use util::late::Late;
 use util::loc::Loc;
-use util::show::{Show, Shower, serialize_as_show};
+use util::show::{serialize_as_show, Show, Shower};
 use util::sym::Sym;
 use util::up::{SerializeUp, Up};
 
@@ -59,7 +59,7 @@ impl<'a> AbstractMethod<'a> {
 }
 impl<'a> NoDrop for AbstractMethod<'a> {}
 impl<'a> SerializeUp for AbstractMethod<'a> {
-	fn serialize_up<S : Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+	fn serialize_up<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		self.name().serialize(serializer)
 	}
 }
@@ -117,8 +117,7 @@ pub struct Parameter<'a> {
 }
 impl<'a> NoDrop for Parameter<'a> {}
 impl<'a> SerializeUp for Parameter<'a> {
-	fn serialize_up<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	{
+	fn serialize_up<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		self.name.serialize(serializer)
 	}
 }
@@ -222,8 +221,7 @@ impl<'a> MethodOrImpl<'a> {
 	}
 }
 impl<'a> Serialize for MethodOrImpl<'a> {
-	fn serialize<S : Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	{
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		match *self {
 			MethodOrImpl::Method(ref m) => m.serialize(serializer),
 			MethodOrImpl::Impl(ref i) => i.serialize(serializer),
@@ -231,8 +229,10 @@ impl<'a> Serialize for MethodOrImpl<'a> {
 	}
 }
 impl<'a> Show for MethodOrImpl<'a> {
-	fn show<S : Shower>(self, s: &mut S) -> Result<(), S::Error> {
-		s.add(self.containing_class().name)?.add('.')?.add(self.name())?;
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		s.add(self.containing_class().name)?
+			.add('.')?
+			.add(self.name())?;
 		Ok(())
 	}
 }

@@ -12,15 +12,15 @@ use std::process::exit;
 use serde_yaml::to_string as to_yaml_string;
 
 use util::arena::Arena;
+use util::loc::LineAndColumnGetter;
 use util::output_shower::OutputShower;
 use util::path::Path;
 use util::show::Shower;
-use util::loc::LineAndColumnGetter;
 use util::sym::Sym;
 
 use parse::{parse, ParseDiagnostic};
 
-use test::{BaselinesUpdate, do_test_single};
+use test::{do_test_single, BaselinesUpdate};
 
 fn main() {
 	//test_parse().unwrap();
@@ -28,7 +28,7 @@ fn main() {
 }
 
 fn run_test() {
-	let exit_code = do_test_single(Path::of(b"Main-Pass"), BaselinesUpdate::Create);
+	let exit_code = do_test_single(Path::of(b"New-Slots"), BaselinesUpdate::Change);
 	exit(exit_code)
 }
 
@@ -41,11 +41,17 @@ fn test_parse() -> ::std::io::Result<()> {
 	let res = parse(&parse_arena, text);
 	match res {
 		Result::Ok(ref ast) => {
-			OutputShower::stdout().add(to_yaml_string(ast).unwrap().as_str())?.nl()?;
+			OutputShower::stdout()
+				.add(to_yaml_string(ast).unwrap().as_str())?
+				.nl()?;
 		}
 		Result::Err(ParseDiagnostic(loc, ref diag)) => {
 			let lc = LineAndColumnGetter::new(text);
-			OutputShower::stderr().add(&lc.line_and_column_at_loc(loc))?.add(": ")?.add(diag)?.nl()?;
+			OutputShower::stderr()
+				.add(&lc.line_and_column_at_loc(loc))?
+				.add(": ")?
+				.add(diag)?
+				.nl()?;
 		}
 	}
 	Ok(())

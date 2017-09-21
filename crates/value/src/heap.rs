@@ -12,7 +12,7 @@ impl<'value> Heap<'value> {
 	}
 
 	//TODO: this should return Option because we might need to start a GC instead...
-	pub fn new_slots<'model : 'value>(&self, slice: &[Value<'model, 'value>]) -> ValueInner<'model, 'value> {
+	pub fn new_slots<'model: 'value>(&self, slice: &[Value<'model, 'value>]) -> ValueInner<'model, 'value> {
 		ValueInner { ptr: self.arena.copy_slice(slice) }
 	}
 }

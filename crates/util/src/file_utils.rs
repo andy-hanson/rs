@@ -1,4 +1,4 @@
-use std::fs::{read_dir as fs_read_dir, File, ReadDir, DirBuilder};
+use std::fs::{read_dir as fs_read_dir, DirBuilder, File, ReadDir};
 use std::io::{ErrorKind, Read, Write};
 
 pub use std::io::{Error as IoError, Result as IoResult};
@@ -63,7 +63,11 @@ fn readdir_worker<'a>(
 	Ok(())
 }
 
-pub fn read_file<'out>(path: Path, options: ReadFileOptions, arena: &'out Arena) -> IoResult<Option<&'out [u8]>> {
+pub fn read_file<'out>(
+	path: Path,
+	options: ReadFileOptions,
+	arena: &'out Arena,
+) -> IoResult<Option<&'out [u8]>> {
 	match do_read_file(path, options, arena) {
 		Ok(text) => Ok(Some(text)),
 		Err(e) =>
@@ -77,7 +81,10 @@ pub fn read_file<'out>(path: Path, options: ReadFileOptions, arena: &'out Arena)
 fn do_read_file<'out>(path: Path, options: ReadFileOptions, arena: &'out Arena) -> IoResult<&'out [u8]> {
 	let mut file = File::open(path.to_string())?;
 	let file_len = u64_to_usize(file.metadata()?.len());
-	let trailing_0 = match options { ReadFileOptions::Plain => false, ReadFileOptions::Trailing0 => true };
+	let trailing_0 = match options {
+		ReadFileOptions::Plain => false,
+		ReadFileOptions::Trailing0 => true,
+	};
 	// For safety, must ensure that we write to all of those uninitialized bytes!
 	let buff = unsafe { arena.alloc_uninitialized(file_len + if trailing_0 { 1 } else { 0 }) };
 	let mut idx = 0;
@@ -113,7 +120,7 @@ pub fn write_file_and_ensure_directory(path: Path, content: &[u8]) -> IoResult<(
 					create_directory(path.directory().unwrap())?;
 					write_file(path, content)
 				}
-				_ => Err(e)
+				_ => Err(e),
 			}
 		}
 	}

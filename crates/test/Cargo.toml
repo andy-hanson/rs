@@ -14,3 +14,4 @@ interpret = { path = "../interpret" }
 model = { path = "../model" }
 parse = { path = "../parse" }
 util = { path = "../util" }
+value = { path = "../value" }

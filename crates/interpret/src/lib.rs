@@ -16,7 +16,10 @@ extern crate model;
 extern crate util;
 extern crate value;
 
+#[macro_use]
+mod builtins_macro;
 mod builtins;
 pub mod emit;
 pub mod emitted_model;
+mod from_ctx;
 pub mod run;

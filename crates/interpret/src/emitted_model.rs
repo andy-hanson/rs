@@ -15,8 +15,9 @@ pub struct EmittedProgram<'model: 'emit, 'emit> {
 }
 impl<'model, 'emit> NoDrop for EmittedProgram<'model, 'emit> {}
 
-pub struct MethodMaps<'model : 'emit, 'emit> {
-	//TODO:PERF Would be nice if this stored the Code directly. But that would require is to be able to store a Dict in the Arena.
+pub struct MethodMaps<'model: 'emit, 'emit> {
+	// TODO:PERF Would be nice if this stored the Code directly.
+	// But that would require is to be able to store a Dict in the Arena.
 	pub methods: MutDict<Up<'model, MethodWithBody<'model>>, &'emit Code<'model, 'emit>>,
 	pub impls: MutDict<Up<'model, Impl<'model>>, &'emit Code<'model, 'emit>>,
 }
@@ -41,10 +42,30 @@ pub enum Code<'model: 'emit, 'emit> {
 impl<'model, 'emit> NoDrop for Code<'model, 'emit> {}
 #[derive(Copy, Clone)]
 pub enum BuiltinCode {
-	Fn0(for<'a, 'b> fn(ctx: &ValueCtx<'a, 'b>) -> Value<'a, 'b>),
-	Fn1(for<'a, 'b> fn(ctx: &ValueCtx<'a, 'b>, Value<'a, 'b>) -> Value<'a, 'b>),
-	Fn2(for<'a, 'b> fn(ctx: &ValueCtx<'a, 'b>, Value<'a, 'b>, Value<'a, 'b>) -> Value<'a, 'b>),
+	Fn0(
+		for<'model, 'value> fn(ctx: &ValueCtx<'model, 'value>)
+			-> Value<'model, 'value>,
+	),
+	Fn1(
+		for<'ctx, 'model, 'value> fn(Fn1Args<'ctx, 'model, 'value>)
+			-> Value<'model, 'value>,
+	),
+	Fn2(
+		for<'ctx, 'model, 'value> fn(Fn2Args<'ctx, 'model, 'value>)
+			-> Value<'model, 'value>,
+	),
 }
+
+pub struct Fn1Args<'ctx, 'model: 'ctx + 'value, 'value: 'ctx>(
+	pub &'ctx ValueCtx<'model, 'value>,
+	pub Value<'model, 'value>,
+);
+pub struct Fn2Args<'ctx, 'model: 'ctx + 'value, 'value: 'ctx>(
+	pub &'ctx ValueCtx<'model, 'value>,
+	pub Value<'model, 'value>,
+	pub Value<'model, 'value>,
+);
+
 impl BuiltinCode {
 	pub fn arity(self) -> u8 {
 		match self {
@@ -77,14 +98,21 @@ pub enum Instruction<'model: 'emit, 'emit> {
 	CallInstructions(CalledInstructions<'model, 'emit>),
 	CallBuiltin(CalledBuiltin<'model>),
 	Return,
-	// Pops N values off the stack and pushes them into slots on the heap, then stores the result back on the stack.
+	// Pops N values off the stack and pushes them into slots on the heap,
+	// then stores the result back on the stack.
 	// TODO:PERF omit ty
 	NewSlots(&'model Ty<'model>, usize), //TODO:PERF store this kind of object as its content...
+	// usize is the offset in words from the start of the object.
+	GetSlot(usize),
+	Assert,
 }
 impl<'model, 'emit> NoDrop for Instruction<'model, 'emit> {}
 
 #[derive(Copy, Clone)]
-pub struct CalledInstructions<'model : 'emit, 'emit>(pub MethodOrImpl<'model>, pub Up<'emit, Instructions<'model, 'emit>>);
+pub struct CalledInstructions<'model: 'emit, 'emit>(
+	pub MethodOrImpl<'model>,
+	pub Up<'emit, Instructions<'model, 'emit>>,
+);
 impl<'model, 'emit> Serialize for CalledInstructions<'model, 'emit> {
 	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		self.0.serialize(serializer)
@@ -98,4 +126,3 @@ impl<'model> Serialize for CalledBuiltin<'model> {
 		self.0.serialize(serializer)
 	}
 }
-

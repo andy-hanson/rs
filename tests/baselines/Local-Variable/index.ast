@@ -1,0 +1,45 @@
+---
+imports: []
+class: 
+  loc: "3-38"
+  head: ~
+  methods: 
+    - 
+      loc: "3-38"
+      is_static: true
+      return_ty: 
+        loc: "4-8"
+        effect: Pure
+        name: Void
+        ty_args: []
+      name: main
+      self_effect: Pure
+      parameters: []
+      body: 
+        loc: "17-38"
+        data: 
+          Let: 
+            - 
+              - "17-18"
+              - 
+                Single: x
+            - 
+              loc: "21-22"
+              data: 
+                LiteralNat: 1
+            - 
+              loc: "24-38"
+              data: 
+                Assert: 
+                  loc: "31-38"
+                  data: 
+                    OperatorCall: 
+                      left: 
+                        loc: "31-32"
+                        data: 
+                          Access: x
+                      operator: "=="
+                      right: 
+                        loc: "36-37"
+                        data: 
+                          LiteralNat: 1

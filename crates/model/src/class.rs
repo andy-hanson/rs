@@ -1,7 +1,7 @@
 use serde::{Serialize, Serializer};
 
 use util::arena::{Arena, NoDrop};
-use util::iter::{KnownLen, slice_is_empty};
+use util::iter::{slice_is_empty, KnownLen};
 use util::late::Late;
 use util::loc::Loc;
 use util::show::{Show, Shower};
@@ -32,7 +32,7 @@ impl<'a> ClassDeclaration<'a> {
 			.find(|m| m.is_static && m.name() == name)
 	}
 
-	pub fn all_impls(&self) -> impl Iterator<Item=&'a Impl<'a>> {
+	pub fn all_impls(&self) -> impl Iterator<Item = &'a Impl<'a>> {
 		self.supers.iter().flat_map(|s: &'a Super<'a>| s.impls)
 	}
 }
@@ -47,14 +47,22 @@ impl<'a> SerializeUp for ClassDeclaration<'a> {
 pub enum ClassHead<'a> {
 	Static,
 	Abstract(Loc, &'a [AbstractMethod<'a>]),
-	Slots(Loc, &'a [SlotDeclaration<'a>]),
+	Slots(SlotsData<'a>),
 	// Implementation details are completely hidden.
 	Builtin,
 }
 impl<'a> NoDrop for ClassHead<'a> {}
 
 #[derive(Serialize)]
+pub struct SlotsData<'a> {
+	pub loc: Loc,
+	pub slots: Late<&'a [SlotDeclaration<'a>]>,
+}
+
+#[derive(Serialize)]
 pub struct SlotDeclaration<'a> {
+	#[serde(skip_serializing)]
+	pub slots: Up<'a, SlotsData<'a>>,
 	pub loc: Loc,
 	pub mutable: bool,
 	pub ty: Ty<'a>,

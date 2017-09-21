@@ -81,12 +81,7 @@ pub fn try_take_ty_parameters<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<&'a [Sym]
 	}
 }
 
-fn finish_parse_ty<'a, 't>(
-	l: &mut Lexer<'a, 't>,
-	start: Pos,
-	effect: Effect,
-	name: Sym,
-) -> Result<Ty<'a>> {
+fn finish_parse_ty<'a, 't>(l: &mut Lexer<'a, 't>, start: Pos, effect: Effect, name: Sym) -> Result<Ty<'a>> {
 	let ty_args = try_take_ty_arguments(l)?;
 	Ok(Ty { loc: l.loc_from(start), effect, name, ty_args })
 }
@@ -109,9 +104,7 @@ pub fn try_take_ty_arguments<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, T
 	}
 }
 
-pub fn take_ty_arguments_after_passing_bracketl<'a, 't>(
-	l: &mut Lexer<'a, 't>,
-) -> Result<List<'a, Ty<'a>>> {
+pub fn take_ty_arguments_after_passing_bracketl<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Ty<'a>>> {
 	let mut b = ListBuilder::<Ty>::new(l.arena);
 	loop {
 		&mut b <- parse_ty(l)?;

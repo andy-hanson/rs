@@ -1,6 +1,6 @@
 use util::sym::Sym;
 
-use model::class::{ClassDeclaration, ClassHead, InstClass, MemberDeclaration};
+use model::class::{ClassDeclaration, ClassHead, InstClass, MemberDeclaration, SlotsData};
 
 use super::instantiator::Instantiator;
 
@@ -28,8 +28,8 @@ fn get_member_worker<'a>(
 
 	match *class.head {
 		ClassHead::Static | ClassHead::Builtin => {}
-		ClassHead::Slots(_, slots) =>
-			for slot in slots {
+		ClassHead::Slots(SlotsData { loc: _, ref slots }) =>
+			for slot in **slots {
 				if slot.name == member_name {
 					return Some(InstMember(MemberDeclaration::Slot(slot), instantiator))
 				}

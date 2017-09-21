@@ -12,7 +12,7 @@ pub trait U8SliceOps {
 	fn equals_str(&self, s: &str) -> bool {
 		unused!(s);
 		//TODO:PERF
-		//self.each_equals(&Arr::copy_from_str(s), |a, b| a == b)
+  //self.each_equals(&Arr::copy_from_str(s), |a, b| a == b)
 		unimplemented!()
 	}
 

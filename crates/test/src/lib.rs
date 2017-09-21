@@ -11,30 +11,32 @@ extern crate model;
 extern crate parse;
 #[macro_use]
 extern crate util;
+extern crate value;
 
 use serde::{Serialize, Serializer};
 use serde::ser::SerializeMap;
 
 use util::arena::Arena;
 use util::dict::MutDict;
-use util::file_utils::{ReadFileOptions, read_files_in_directory_recursive_if_exists};
+use util::file_utils::{read_files_in_directory_recursive_if_exists, ReadFileOptions};
 use util::iter::KnownLen;
 use util::list::List;
 use util::loc::LineAndColumnGetter;
-use util::path::Path;
 use util::output_shower::OutputShower;
+use util::path::Path;
 use util::sym::Sym;
 use util::up::Up;
 
 use compile::{compile, CompileResult};
+use interpret::emit::emit_program;
+use interpret::emitted_model::{Code, EmittedProgram};
+use interpret::run::run_method;
 use model::class::ClassDeclaration;
 use model::diag::Diagnostic;
 use model::module::ModuleOrFail;
 use model::program::CompiledProgram;
-use interpret::emitted_model::{Code, EmittedProgram};
-use interpret::run::run_method;
-use interpret::emit::emit_program;
 use parse::parse;
+use value::ValueCtx;
 
 mod baselines;
 mod show_equals;
@@ -61,7 +63,11 @@ pub fn do_test_single(test_path: Path, update_baselines: BaselinesUpdate) -> i32
 	}
 }
 
-fn test_single<'a>(test_path: Path, update_baselines: BaselinesUpdate, arena: &'a Arena) -> TestResult<'a, ()> {
+fn test_single<'a>(
+	test_path: Path,
+	update_baselines: BaselinesUpdate,
+	arena: &'a Arena,
+) -> TestResult<'a, ()> {
 	let test_directory = Path::resolve_with_root(Path::of(CASES_ROOT_DIR), test_path, arena);
 	let baselines_directory = Path::resolve_with_root(Path::of(BASELINES_ROOT_DIR), test_path, arena);
 
@@ -145,23 +151,38 @@ fn test_interpret<'model, 'expected>(
 	baselines: &mut Baselines<'model, 'expected>,
 	program: &CompiledProgram<'model>,
 ) -> TestResult<'model, ()> {
+	let value_arena = Arena::new();
+	let mut value_ctx = ValueCtx::new(program, &value_arena);
+
 	let emit_arena = Arena::new();
-	let emitted_program = match emit_program(program, &emit_arena) {
+	let emitted_program = match emit_program(program, &mut value_ctx, &emit_arena) {
 		Ok(p) => p,
 		Err(e) => return Err(TestFailure::EmitError(e)),
 	};
 
 	for &module_or_fail in program.modules.values() {
-		let module = match module_or_fail { ModuleOrFail::Module(m) => m, _ => unreachable!(), };
-		baselines.assert_baseline(ModuleOrFail::Module(module), EXT_EMIT, &ModuleEmitted { emitted_program: &emitted_program, class: &*module.class })?
+		let module = match module_or_fail {
+			ModuleOrFail::Module(m) => m,
+			_ => unreachable!(),
+		};
+		baselines.assert_baseline(
+			ModuleOrFail::Module(module),
+			EXT_EMIT,
+			&ModuleEmitted { emitted_program: &emitted_program, class: &*module.class },
+		)?
 	}
 
-	let main = program.root.assert_success().class.find_static_method(Sym::of(b"main")).unwrap(); //TODO: diagnostic if "main" not found
-	run_method(program, Up(main), &emitted_program);
+	let main = program
+		.root
+		.assert_success()
+		.class
+		.find_static_method(Sym::of(b"main"))
+		.unwrap(); //TODO: diagnostic if "main" not found
+	run_method(&mut value_ctx, Up(main), &emitted_program);
 	Ok(())
 }
 
-struct ModuleEmitted<'model : 'emit, 'emit> {
+struct ModuleEmitted<'model: 'emit, 'emit> {
 	emitted_program: &'emit EmittedProgram<'model, 'emit>,
 	class: &'model ClassDeclaration<'model>,
 }
@@ -171,18 +192,14 @@ impl<'model, 'emit> Serialize for ModuleEmitted<'model, 'emit> {
 		for an_impl in self.class.all_impls() {
 			match *self.emitted_program.methods.get_impl(Up(an_impl)) {
 				Code::Builtin(_) => unreachable!(),
-				Code::Instructions(ref i) => {
-					map.serialize_entry(&an_impl.name(), i)?
-				}
+				Code::Instructions(ref i) => map.serialize_entry(&an_impl.name(), i)?,
 			}
 		}
 		for method in *self.class.methods {
 			//TODO:duplicate code of above
 			match *self.emitted_program.methods.get_method(Up(method)) {
 				Code::Builtin(_) => unreachable!(),
-				Code::Instructions(ref i) => {
-					map.serialize_entry(&method.name(), i)?
-				}
+				Code::Instructions(ref i) => map.serialize_entry(&method.name(), i)?,
 			}
 		}
 		map.end()

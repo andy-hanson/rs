@@ -1,27 +1,24 @@
-use util::arena::Arena;
 use util::up::Up;
 
 use model::method::{MethodOrImpl, MethodWithBody};
-use model::program::CompiledProgram;
 
 use value::ValueCtx;
 
-use super::emitted_model::{BuiltinCode, Code, EmittedProgram, Instruction, Instructions, CalledInstructions, CalledBuiltin};
+use super::emitted_model::{BuiltinCode, CalledBuiltin, CalledInstructions, Code, EmittedProgram, Fn1Args,
+                           Fn2Args, Instruction, Instructions};
 
-pub fn run_method<'model, 'emit>(
-	program: &CompiledProgram<'model>,
+pub fn run_method<'model, 'value, 'emit>(
+	value_ctx: &'value mut ValueCtx<'model, 'value>,
 	method: Up<'model, MethodWithBody<'model>>,
 	emitted: &EmittedProgram<'model, 'emit>,
 ) -> () {
 	assert!(method.is_static);
 	assert_eq!(0, method.arity());
-	let ctx_arena = Arena::new();
-	let mut ctx = ValueCtx::new(program.builtins, &ctx_arena);
 	let emitted_method = emitted.methods.get_method(method);
-	exec(&mut ctx, emitted_method, MethodOrImpl::Method(method))
+	exec(value_ctx, emitted_method, MethodOrImpl::Method(method))
 }
 
-fn exec<'model : 'value, 'emit, 'value>(
+fn exec<'model: 'value, 'emit, 'value>(
 	ctx: &'value mut ValueCtx<'model, 'value>,
 	first_code: &Code<'model, 'emit>,
 	mut cur_method: MethodOrImpl<'model>,
@@ -56,7 +53,9 @@ fn exec<'model : 'value, 'emit, 'value>(
 			Instruction::Fetch(n) => ctx.fetch(n),
 			Instruction::UnLet(n) => ctx.un_let(n),
 			Instruction::PopVoid => ctx.pop().assert_void(ctx),
-			Instruction::CallInstructions(CalledInstructions(ref called_method, ref called_method_instructions)) => {
+			Instruction::CallInstructions(
+				CalledInstructions(ref called_method, ref called_method_instructions),
+			) => {
 				return_stack.place_back() <- (cur_method, cur_instructions, instruction_index);
 				cur_method = called_method.copy();
 				cur_instructions = called_method_instructions;
@@ -71,13 +70,13 @@ fn exec<'model : 'value, 'emit, 'value>(
 					}
 					BuiltinCode::Fn1(f) => {
 						let a = ctx.pop();
-						let res = f(ctx, a);
+						let res = f(Fn1Args(ctx, a));
 						ctx.push(res);
 					}
 					BuiltinCode::Fn2(f) => {
 						let a = ctx.pop();
 						let b = ctx.pop();
-						let res = f(ctx, a, b);
+						let res = f(Fn2Args(ctx, a, b));
 						ctx.push(res);
 					}
 				}
@@ -95,6 +94,19 @@ fn exec<'model : 'value, 'emit, 'value>(
 				}
 			}
 			Instruction::NewSlots(ty, n) => ctx.pop_slots_and_push_new_value(ty, n),
+			Instruction::GetSlot(offset) => {
+				let obj = ctx.pop();
+				ctx.push(obj.get_slot(offset))
+			}
+			Instruction::Assert => {
+				let asserted = ctx.pop().as_bool(ctx);
+				if !asserted {
+					//TODO: noze exception
+					unimplemented!()
+				}
+				let void = ctx.void();
+				ctx.push(void)
+			}
 		}
 	}
 

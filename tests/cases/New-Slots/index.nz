@@ -1,0 +1,6 @@
+slots
+	val Nat x
+
+fun Void main()
+	inst = new 42
+	assert inst.x == 42

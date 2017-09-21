@@ -5,10 +5,10 @@
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
-extern crate util;
 extern crate ast;
 extern crate parse_diag;
+#[macro_use]
+extern crate util;
 
 use util::arena::Arena;
 

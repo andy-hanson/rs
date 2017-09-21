@@ -21,8 +21,8 @@ use model::document_info::DocumentInfo;
 use model::module::{FailModule, Module, ModuleOrFail, ModuleSource, ModuleSourceEnum};
 use model::program::CompiledProgram;
 
-use super::builtins::get_builtins;
 use super::CompileResult;
+use super::builtins::get_builtins;
 use super::module_resolver::{get_document_from_logical_path, GetDocumentResult};
 
 pub fn compile<'a, 'old, D: DocumentProvider<'a>>(
@@ -76,7 +76,8 @@ struct Compiler<'document_provider, 'old, 'model, D: DocumentProvider<'model> + 
 	builtins: &'model BuiltinsOwn<'model>,
 	document_provider: &'document_provider mut D,
 	// We consume the old program, so we module values out of its map when we reuse them.
-	// Intentionally using `Path<'model>` instead of `Path<'old>` as keys so we can look this up using Path<'model> keys.
+	// Intentionally using `Path<'model>` instead of `Path<'old>` as keys,
+	// so we can look this up using Path<'model> keys.
 	old_modules: MutDict<Path<'model>, ModuleOrFail<'old>>,
 	// Keys are logical paths.
 	modules: MutDict<Path<'model>, ModuleState<'model>>,
@@ -156,11 +157,11 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		let (resolved_imports, all_dependencies_reused) = self.resolve_imports(full_path, import_asts)?;
 
 		// We will only bother looking at the old module if all of our dependencies were safely reused.
-		// If oldModule doesn't exactly match, we'll ignore it completely.
+  // If oldModule doesn't exactly match, we'll ignore it completely.
 		if all_dependencies_reused {
 			if let Some(old_module_or_fail) = self.old_modules.try_extract(logical_path) {
 				// old_modules only stores modules from source code, not builtins,
-				// so unwrap() should succeed.
+	// so unwrap() should succeed.
 				if old_module_or_fail
 					.source()
 					.assert_normal()
@@ -175,14 +176,13 @@ impl<'document_provider, 'old, 'model, D: DocumentProvider<'model>>
 		let source = ModuleSourceEnum::Normal(ModuleSource { logical_path, full_path, is_index, document });
 		let res = match resolved_imports {
 			ResolvedImports::Success(imports) => {
-				let module =
-					self.arena <- Module { source, imports, class: Late::new(), diagnostics: Late::new() };
+				let module = self.arena <- Module { source, imports, class: Late::new(), diagnostics: Late::new() };
 				let name = match logical_path.file_name() {
 					Some(name) => Sym::of(name),
 					None => self.document_provider.root_name(),
 				};
 				// Initializes module.class and module.diagnostics.
-				// (There are no parse/import diagnostics or we wouldn't have gotten here.)
+	// (There are no parse/import diagnostics or we wouldn't have gotten here.)
 				check_module(module, self.builtins, class_ast, name, self.arena);
 				ModuleOrFail::Module(module)
 			}

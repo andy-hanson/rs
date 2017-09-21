@@ -5,7 +5,7 @@ use util::arena::NoDrop;
 use model::ty::Ty;
 
 #[derive(Copy, Clone)]
-pub enum Expected<'ty, 'model : 'ty> {
+pub enum Expected<'ty, 'model: 'ty> {
 	/* Return is identical to SubTypeOf, but marks that we're in a tail call position. */
 	Return(&'ty Ty<'model>),
 	SubTypeOf(&'ty Ty<'model>),
@@ -17,7 +17,7 @@ impl<'ty, 'model> Expected<'ty, 'model> {
 	pub fn current_expected_ty(self) -> Option<&'ty Ty<'model>> {
 		match self {
 			Expected::Return(ty) | Expected::SubTypeOf(ty) => Some(ty),
-			Expected::Infer(cell) => unsafe { cell.get().as_ref() } .unwrap().as_ref(),
+			Expected::Infer(cell) => unsafe { cell.get().as_ref() }.unwrap().as_ref(),
 		}
 	}
 

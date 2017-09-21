@@ -1,0 +1,68 @@
+---
+imports: []
+class: 
+  loc: "5-70"
+  head: 
+    - "5-18"
+    - 
+      Slots: 
+        - 
+          loc: "7-16"
+          mutable: false
+          ty: 
+            loc: "11-14"
+            effect: Pure
+            name: Nat
+            ty_args: []
+          name: x
+  methods: 
+    - 
+      loc: "18-70"
+      is_static: true
+      return_ty: 
+        loc: "22-26"
+        effect: Pure
+        name: Void
+        ty_args: []
+      name: main
+      self_effect: Pure
+      parameters: []
+      body: 
+        loc: "35-70"
+        data: 
+          Let: 
+            - 
+              - "35-39"
+              - 
+                Single: inst
+            - 
+              loc: "42-50"
+              data: 
+                New: 
+                  - []
+                  - 
+                    - 
+                      loc: "46-48"
+                      data: 
+                        LiteralNat: 42
+            - 
+              loc: "50-70"
+              data: 
+                Assert: 
+                  loc: "57-70"
+                  data: 
+                    OperatorCall: 
+                      left: 
+                        loc: "57-63"
+                        data: 
+                          GetProperty: 
+                            - 
+                              loc: "57-61"
+                              data: 
+                                Access: inst
+                            - x
+                      operator: "=="
+                      right: 
+                        loc: "67-69"
+                        data: 
+                          LiteralNat: 42

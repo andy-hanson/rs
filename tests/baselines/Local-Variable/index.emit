@@ -1,0 +1,14 @@
+---
+main: 
+  - 
+    LiteralNat: 1
+  - 
+    Fetch: 1
+  - 
+    LiteralNat: 1
+  - 
+    CallBuiltin: "=="
+  - Assert
+  - 
+    UnLet: 1
+  - Return

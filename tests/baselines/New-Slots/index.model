@@ -1,0 +1,70 @@
+---
+name: "New-Slots"
+head: 
+  Slots: 
+    loc: "5-18"
+    slots: 
+      - 
+        loc: "7-16"
+        mutable: false
+        ty: pure Nat
+        name: x
+methods: 
+  - 
+    containing_class: "New-Slots"
+    is_static: true
+    signature: 
+      class: "New-Slots"
+      loc: "18-70"
+      name: main
+      type_parameters: []
+      return_ty: pure Void
+      self_effect: Pure
+      parameters: []
+    body: 
+      loc: "35-70"
+      ty: pure Void
+      data: 
+        Let: 
+          pattern: 
+            Single: 
+              loc: "35-39"
+              ty: "io New-Slots"
+              name: inst
+          value: 
+            loc: "42-50"
+            ty: "io New-Slots"
+            data: 
+              New: 
+                - 
+                  loc: "46-48"
+                  ty: pure Nat
+                  data: 
+                    LiteralNat: 42
+          then: 
+            loc: "50-70"
+            ty: pure Void
+            data: 
+              Assert: 
+                loc: "57-70"
+                ty: pure Bool
+                data: 
+                  InstanceMethodCall: 
+                    target: 
+                      loc: "57-63"
+                      ty: io Nat
+                      data: 
+                        GetSlot: 
+                          target: 
+                            loc: "57-61"
+                            ty: "io New-Slots"
+                            data: 
+                              AccessLocal: inst
+                          slot: x
+                    method: "=="
+                    args: 
+                      - 
+                        loc: "67-69"
+                        ty: pure Nat
+                        data: 
+                          LiteralNat: 42

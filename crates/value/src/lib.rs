@@ -1,5 +1,6 @@
 #![allow(unknown_lints)]
 #![allow(new_without_default_derive)]
+#![allow(unneeded_field_pattern)]
 #![feature(placement_in_syntax)]
 
 extern crate model;

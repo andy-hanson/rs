@@ -1,3 +1,17 @@
 builtin
 
 def Bool <(Float f)
+
+def Bool >(Float f)
+
+def Bool <=(Float f)
+
+def Bool >=(Float f)
+
+def Float +(Float f)
+
+def Float -(Float f)
+
+def Float *(Float f)
+
+def Float /(Float f)

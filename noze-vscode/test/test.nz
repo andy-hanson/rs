@@ -1,0 +1,26 @@
+generic<T>
+abstract
+slots
+    var Float x
+    val Float y
+enum
+    Some(T value)
+    None
+
+fun Int foo(Int x, List<Int> y)
+    0b0101
+    0o1234567
+    0x1234567abcdef
+    123
+    1.23
+    pass
+
+def String toString()
+    "Point({x}, {y}) \"escape\" "
+    fn = \Int y Int z
+        y + z
+
+fun Arr<T> double<T>(Arr<T> arr)
+    for b, x in arr.seq
+        b.add x
+        b.add x

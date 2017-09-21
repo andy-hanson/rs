@@ -21,6 +21,10 @@ pub struct Sym(u32);
 impl NoDrop for Sym {}
 
 impl Sym {
+	pub fn of_str(str: &str) -> Self {
+		Sym::of(str.as_bytes())
+	}
+
 	pub fn of(input: &[u8]) -> Self {
 		let mut string_to_symbol = STRING_TO_SYMBOL.lock().unwrap();
 		let cached_symbol = string_to_symbol.get(input).cloned();

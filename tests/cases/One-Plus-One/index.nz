@@ -1,2 +1,2 @@
 fun Void main()
-	pass
+	assert 1 + 1 == 2

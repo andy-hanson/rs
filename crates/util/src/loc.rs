@@ -4,7 +4,7 @@ use std::ops::{Add, Sub};
 
 use super::arena::NoDrop;
 use super::arith::{mid, u32_to_usize, usize_to_u32};
-use super::show::{Show, Shower, serialize_as_show};
+use super::show::{serialize_as_show, Show, Shower};
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Pos {
@@ -35,7 +35,7 @@ impl Sub<Pos> for Pos {
 	}
 }
 impl Serialize for Pos {
-	fn serialize<S : Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		serializer.serialize_u32(self.index)
 	}
 }
@@ -58,13 +58,13 @@ impl Loc {
 }
 impl NoDrop for Loc {}
 impl Show for Loc {
-	fn show<S : Shower>(self, s: &mut S) -> Result<(), S::Error> {
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
 		s.add(self.start.index)?.add('-')?.add(self.end.index)?;
 		Ok(())
 	}
 }
 impl Serialize for Loc {
-	fn serialize<S : Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		serialize_as_show(*self, serializer)
 	}
 }
@@ -138,8 +138,8 @@ impl LineAndColumnGetter {
 	pub fn line_and_column_at_pos(&self, pos: Pos) -> LineAndColumn {
 		let pos_index = pos.index;
 		// Both low_line and high_line are inclusive,
-		// meaning the range of possible answers is [low_line..high_line]
-		// and we stop when this range has only one element.
+  // meaning the range of possible answers is [low_line..high_line]
+  // and we stop when this range has only one element.
 		let mut low_line: usize = 0;
 		// EXCLUSIVE, not a valid line.
 		let mut high_line = self.line_to_pos.len();
@@ -157,7 +157,7 @@ impl LineAndColumnGetter {
 				high_line = middle_line
 			} else {
 				// pos_index > middle_pos
-				// This is a possible line; pos may be somewhere on this line.
+	// This is a possible line; pos may be somewhere on this line.
 				low_line = middle_line
 			}
 		}

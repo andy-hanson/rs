@@ -1,14 +1,20 @@
 use util::arena::{Arena, DirectBuilder};
-use util::arith::{usize_to_u8, u8_add, u8_add_mut, u8_sub, u8_sub_mut};
+use util::arith::{u8_add, u8_add_mut, u8_sub, u8_sub_mut, usize_to_u8};
 use util::loc::Loc;
 use util::up::Up;
 
-use model::expr::{Expr, ExprData, LiteralValue, Local, Pattern, LetData, StaticMethodCallData, SeqData};
+use model::expr::{Expr, ExprData, GetSlotData, InstanceMethodCallData, LetData, Local,
+                  MyInstanceMethodCallData, Pattern, SeqData, StaticMethodCallData};
 use model::method::{InstMethod, MethodOrImpl, MethodOrImplOrAbstract, Parameter};
 
-use super::super::emitted_model::{Code, Instruction, Instructions, CalledInstructions, CalledBuiltin, MethodMaps};
+use value::ValueCtx;
 
-pub fn emit_method<'model, 'emit>(
+use super::super::emitted_model::{CalledBuiltin, CalledInstructions, Code, Instruction, Instructions,
+                                  MethodMaps};
+
+pub fn emit_method<'model, 'value, 'emit>(
+	value_ctx: &ValueCtx<'model, 'value>,
+	has_self: bool,
 	parameters: &[Parameter<'model>],
 	body: &'model Expr<'model>,
 	arena: &'emit Arena,
@@ -16,9 +22,11 @@ pub fn emit_method<'model, 'emit>(
 ) -> Instructions<'model, 'emit> {
 	let n_parameters = usize_to_u8(parameters.len());
 	let mut emitter = ExprEmitter {
+		value_ctx,
 		arena,
 		methods,
 		w: InstructionWriter::new(arena),
+		has_self,
 		n_parameters,
 		locals: Vec::new(),
 		stack_depth: n_parameters,
@@ -52,11 +60,13 @@ impl<'model, 'emit> InstructionWriter<'model, 'emit> {
 	}
 }
 
-struct ExprEmitter<'model: 'emit, 'emit : 'maps, 'maps> {
+struct ExprEmitter<'value_ctx, 'model: 'value_ctx + 'value + 'emit, 'value: 'value_ctx, 'emit: 'maps, 'maps> {
+	value_ctx: &'value_ctx ValueCtx<'model, 'value>,
 	arena: &'emit Arena,
 	methods: &'maps MethodMaps<'model, 'emit>,
 	w: InstructionWriter<'model, 'emit>,
-	// Number of parameters the current function has.
+	has_self: bool,
+	// Number of parameters the current function has, not including 'self'
 	n_parameters: u8,
 	// Stack of all current locals.
 	locals: Vec<Up<'model, Local<'model>>>,
@@ -65,15 +75,20 @@ struct ExprEmitter<'model: 'emit, 'emit : 'maps, 'maps> {
 	// there are currently temporary values on the stack.
 	stack_depth: u8,
 }
-impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
+impl<'ctx, 'model, 'value, 'emit, 'maps> ExprEmitter<'ctx, 'model, 'value, 'emit, 'maps> {
 	fn write(&mut self, loc: Loc, instruction: Instruction<'model, 'emit>) {
 		self.w.write(loc, instruction)
 	}
 
-	fn fetch(&mut self, loc: Loc, from_stack_depth: u8) {
+	// Takes an absolute stack depth; instruction uses depth relative to current stack top.
+	fn fetch_at_depth(&mut self, loc: Loc, fetch_from_stack_depth: u8) {
+		let by = u8_sub(self.stack_depth, fetch_from_stack_depth);
+		self.write(loc, Instruction::Fetch(by));
 		self.pushes(1);
-		let depth_above_current = u8_sub(self.stack_depth, from_stack_depth);
-		self.write(loc, Instruction::Fetch(depth_above_current))
+	}
+
+	fn fetch_self(&mut self, loc: Loc) {
+		self.fetch_at_depth(loc, 0);
 	}
 
 	fn pushes(&mut self, amount: u8) {
@@ -84,19 +99,29 @@ impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 		u8_sub_mut(&mut self.stack_depth, amount)
 	}
 
+	fn n_parameters_and_self(&self) -> u8 {
+		if self.has_self {
+			self.n_parameters + 1
+		} else {
+			self.n_parameters
+		}
+	}
+
 	fn emit_expr(&mut self, expr: &'model Expr<'model>) {
-		let &Expr { loc, ref data, .. } = expr;
+		let &Expr { loc, ref ty, ref data } = expr;
 		match *data {
 			ExprData::Bogus | ExprData::BogusCast(_) =>
 				// Should not reach here.
 				unimplemented!(),
-			ExprData::AccessParameter(param) =>
-				self.fetch(loc, param.index),
+			ExprData::AccessParameter(param) => {
+				let index = if self.has_self { param.index + 1 } else { param.index };
+				self.fetch_at_depth(loc, index)
+			}
 			ExprData::AccessLocal(local) => {
 				// Get the index of the local
 				let index = self.locals.iter().position(|l| l.ptr_eq(local)).unwrap();
-				let local_depth = u8_add(self.n_parameters, usize_to_u8(index));
-				self.fetch(loc, local_depth)
+				let local_depth = u8_add(self.n_parameters_and_self(), usize_to_u8(index));
+				self.fetch_at_depth(loc, local_depth)
 			}
 			ExprData::Let(&LetData { ref pattern, ref value, ref then }) => {
 				self.emit_expr(value);
@@ -123,18 +148,22 @@ impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 				self.pops(1);
 				self.emit_expr(then)
 			}
-			ExprData::Literal(ref value) => {
+			ExprData::LiteralNat(n) => {
 				self.pushes(1);
-				self.write(loc, match *value {
-					LiteralValue::Nat(n) => Instruction::LiteralNat(n),
-					LiteralValue::Int(i) => Instruction::LiteralInt(i),
-					LiteralValue::Float(f) => Instruction::LiteralFloat(f),
-					LiteralValue::String(s) => {
-						unused!(s);
-						unimplemented!()//Instruction::LiteralString(Rc::clone(s)),
-					}
-				})
-			},
+				self.write(loc, Instruction::LiteralNat(n))
+			}
+			ExprData::LiteralInt(i) => {
+				self.pushes(1);
+				self.write(loc, Instruction::LiteralInt(i))
+			}
+			ExprData::LiteralFloat(f) => {
+				self.pushes(1);
+				self.write(loc, Instruction::LiteralFloat(f));
+			}
+			ExprData::LiteralString(s) => {
+				self.pushes(1);
+				self.write(loc, Instruction::LiteralString(s));
+			}
 			ExprData::IfElse { .. } => unimplemented!(),
 			ExprData::WhenTest(_) => unimplemented!(),
 			ExprData::Try(_) => unimplemented!(),
@@ -148,20 +177,58 @@ impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 				self.pops(method.method_decl.arity());
 				self.pushes(1);
 			},
-			ExprData::InstanceMethodCall { .. } => unimplemented!(),
-			ExprData::MyInstanceMethodCall { .. } => unimplemented!(),
-			ExprData::New(_) => unimplemented!(),
+			ExprData::InstanceMethodCall(&InstanceMethodCallData { ref target, ref method, args }) => {
+				self.emit_expr(target);
+				for arg in args {
+					self.emit_expr(arg);
+				}
+				let insn = self.call_instruction(method);
+				self.write(loc, insn);
+				self.pops(method.method_decl.arity());
+				self.pushes(1);
+			},
+			ExprData::MyInstanceMethodCall(&MyInstanceMethodCallData { ref method, args }) => {
+				self.fetch_self(loc);
+				//TODO:DUPLICATE CODE
+				for arg in args {
+					self.emit_expr(arg);
+				}
+				let insn = self.call_instruction(method);
+				self.write(loc, insn);
+				self.pops(method.method_decl.arity());
+				self.pushes(1);
+			},
+			ExprData::New(args) => {
+				for arg in args {
+					self.emit_expr(arg);
+				}
+				self.write(loc, Instruction::NewSlots(ty, args.len()));
+				self.pops(usize_to_u8(args.len()));
+				self.pushes(1);
+			}
 			ExprData::ArrayLiteral(_) => unimplemented!(),
 			ExprData::GetMySlot(_) => unimplemented!(),
-			ExprData::GetSlot(_) => unimplemented!(),
+			ExprData::GetSlot(&GetSlotData { ref target, slot }) => {
+				self.emit_expr(target);
+				let offset = self.value_ctx.get_slot_offset(slot);
+				self.write(loc, Instruction::GetSlot(offset));
+				// Net 0 stack effect -- pops an object, pushes the value from the slot.
+			},
 			ExprData::SetSlot(_) => unimplemented!(),
 			ExprData::SelfExpr => unimplemented!(),
-			ExprData::Assert(_) => unimplemented!(),
+			ExprData::Assert(expr) => {
+				self.emit_expr(expr);
+				// Pops the boolean and pushes void -- 0 stack effect.
+				self.write(loc, Instruction::Assert);
+			},
 			ExprData::Recur(_) => unimplemented!(),
 		}
 	}
 
-	fn call_instruction(&self, &InstMethod { method_decl, ty_args }: &'model InstMethod<'model>) -> Instruction<'model, 'emit> {
+	fn call_instruction(
+		&self,
+		&InstMethod { method_decl, ty_args }: &'model InstMethod<'model>,
+	) -> Instruction<'model, 'emit> {
 		if !ty_args.is_empty() {
 			// Type arguments present
 			unimplemented!()
@@ -172,13 +239,15 @@ impl<'model, 'emit, 'maps> ExprEmitter<'model, 'emit, 'maps> {
 				self.call_code(MethodOrImpl::Method(m), self.methods.get_method(m)),
 			MethodOrImplOrAbstract::Impl(i) =>
 				self.call_code(MethodOrImpl::Impl(i), self.methods.get_impl(i)),
-			MethodOrImplOrAbstract::Abstract(_) => {
-				unimplemented!()
-			}
+			MethodOrImplOrAbstract::Abstract(_) => unimplemented!(),
 		}
 	}
 
-	fn call_code(&self, m: MethodOrImpl<'model>, code: &'emit Code<'model, 'emit>) -> Instruction<'model, 'emit> {
+	fn call_code(
+		&self,
+		m: MethodOrImpl<'model>,
+		code: &'emit Code<'model, 'emit>,
+	) -> Instruction<'model, 'emit> {
 		match *code {
 			Code::Instructions(ref i) => Instruction::CallInstructions(CalledInstructions(m, Up(i))),
 			Code::Builtin(b) => Instruction::CallBuiltin(CalledBuiltin(m, b)),

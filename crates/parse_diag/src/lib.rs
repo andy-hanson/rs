@@ -44,10 +44,16 @@ impl<'a> Show for &'a ParseDiag {
 				s.add("Illegal character '")?.add(ShowChar(ch))?.add("'.")?;
 			}
 			ParseDiag::UnexpectedCharacterType { actual, expected_desc } => {
-				s.add("Unexpected character '")?.add(ShowChar(actual))?.add("'; expected: ")?.add(expected_desc)?;
+				s.add("Unexpected character '")?
+					.add(ShowChar(actual))?
+					.add("'; expected: ")?
+					.add(expected_desc)?;
 			}
 			ParseDiag::UnexpectedCharacter { actual, expected } => {
-				s.add("Unexpected character '")?.add(ShowChar(actual))?.add("'; expected: ")?.add(ShowChar(expected))?;
+				s.add("Unexpected character '")?
+					.add(ShowChar(actual))?
+					.add("'; expected: ")?
+					.add(ShowChar(expected))?;
 			}
 			ParseDiag::UnexpectedToken { expected, actual } => {
 				s.add("Expected token type '")?
@@ -63,7 +69,7 @@ impl<'a> Show for &'a ParseDiag {
 
 struct ShowChar(u8);
 impl Show for ShowChar {
-	fn show<S : Shower>(self, s: &mut S) -> Result<(), S::Error> {
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
 		match self.0 {
 			b'\t' => {
 				s.add("tab")?;

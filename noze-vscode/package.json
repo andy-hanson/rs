@@ -1,0 +1,39 @@
+{
+    "name": "noze",
+    "displayName": "noze",
+    "description": "noze",
+    "version": "0.0.1",
+    "publisher": "noze",
+    "engines": {
+        "vscode": "^1.0.0"
+    },
+    "categories": [
+        "Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "noze",
+                "aliases": [
+                    "noze",
+                    "noze"
+                ],
+                "extensions": [
+                    ".nz"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "noze",
+                "scopeName": "source.noze",
+                "path": "./syntaxes/noze.tmLanguage"
+            }
+        ]
+    },
+    "devDependencies": {
+        "plist": "^1.2.0",
+        "@types/node": "*"
+    }
+}

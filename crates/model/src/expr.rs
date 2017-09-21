@@ -4,31 +4,11 @@ use util::arena::NoDrop;
 use util::late::Late;
 use util::loc::Loc;
 use util::sym::Sym;
-use util::u8_slice_ops::U8SliceOps;
 use util::up::{SerializeUp, Up};
 
 use super::class::SlotDeclaration;
 use super::method::{InstMethod, MethodOrImpl, Parameter};
 use super::ty::Ty;
-
-pub enum LiteralValue<'a> {
-	Nat(u32),
-	Int(i32),
-	Float(f64),
-	String(&'a [u8]),
-}
-impl<'a> NoDrop for LiteralValue<'a> {}
-impl<'a> Serialize for LiteralValue<'a> {
-	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-		match *self {
-			LiteralValue::Nat(n) => serializer.serialize_u32(n),
-			LiteralValue::Int(i) => serializer.serialize_i32(i),
-			LiteralValue::Float(f) => serializer.serialize_f64(f),
-			LiteralValue::String(s) => serializer.serialize_str(&s.clone_to_utf8_string()),
-		}
-	}
-}
-
 
 #[derive(Serialize)]
 pub enum Pattern<'a> {
@@ -75,8 +55,8 @@ pub struct Expr<'a> {
 }
 impl<'a> Expr<'a> {
 	//pub fn children(&self) -> &[Self] {
-	//	self.1.children()
-	//}
+ //	self.1.children()
+ //}
 }
 impl<'a> NoDrop for Expr<'a> {}
 
@@ -89,7 +69,10 @@ pub enum ExprData<'a> {
 	AccessLocal(Up<'a, Local<'a>>),
 	Let(&'a LetData<'a>),
 	Seq(&'a SeqData<'a>),
-	Literal(LiteralValue<'a>),
+	LiteralNat(u32),
+	LiteralInt(i32),
+	LiteralFloat(f64),
+	LiteralString(&'a [u8]),
 	IfElse(&'a IfElseData<'a>),
 	WhenTest(&'a WhenTestData<'a>),
 	Try(&'a TryData<'a>),
@@ -218,7 +201,10 @@ pub struct MyInstanceMethodCallData<'a> {
 impl<'a> NoDrop for MyInstanceMethodCallData<'a> {}
 
 #[derive(Serialize)]
-pub struct GetSlotData<'a>(pub Expr<'a>, pub Up<'a, SlotDeclaration<'a>>);
+pub struct GetSlotData<'a> {
+	pub target: Expr<'a>,
+	pub slot: Up<'a, SlotDeclaration<'a>>,
+}
 impl<'a> NoDrop for GetSlotData<'a> {}
 
 #[derive(Serialize)]
@@ -233,7 +219,7 @@ impl<'a> NoDrop for RecurData<'a> {}
 pub struct TryData<'a> {
 	pub body: Expr<'a>,
 	pub catch: Option<Catch<'a>>,
-	pub finally: Option<Expr<'a>>
+	pub finally: Option<Expr<'a>>,
 }
 impl<'a> NoDrop for TryData<'a> {}
 

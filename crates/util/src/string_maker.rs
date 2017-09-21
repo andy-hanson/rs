@@ -21,7 +21,11 @@ impl StringMaker {
 impl Shower for StringMaker {
 	type Error = Void;
 
-	fn color<F : FnMut() -> Result<(), Self::Error>>(&mut self, _: Color, mut f: F) -> Result<(), Self::Error> {
+	fn color<F: FnMut() -> Result<(), Self::Error>>(
+		&mut self,
+		_: Color,
+		mut f: F,
+	) -> Result<(), Self::Error> {
 		f()
 	}
 

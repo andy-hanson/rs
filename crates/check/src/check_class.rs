@@ -9,7 +9,7 @@ use util::up::Up;
 use ast;
 
 use model::builtins::BuiltinsOwn;
-use model::class::{ClassDeclaration, ClassHead, SlotDeclaration, Super};
+use model::class::{ClassDeclaration, ClassHead, SlotDeclaration, SlotsData, Super};
 use model::diag::Diag;
 use model::method::{AbstractMethod, Impl, MethodOrImpl, MethodSignature, MethodWithBody, Parameter};
 use model::module::Module;
@@ -30,7 +30,7 @@ pub fn check_module<'ast, 'builtins_ctx, 'model>(
 	let type_parameters: &'model [TypeParameter<'model>] =
 		arena.map(ast.type_parameters, |name| TypeParameter::create(*name));
 	// Create the class early and assign its properties later.
-	// This allows us to access the class' type when checking type annotations.
+ // This allows us to access the class' type when checking type annotations.
 	let class: &'model ClassDeclaration<'model> = &module.class <- ClassDeclaration {
 		type_parameters,
 		name,
@@ -48,12 +48,12 @@ fn do_check<'ast, 'builtins_ctx, 'model>(ctx: &mut Ctx<'builtins_ctx, 'model>, a
 	// type parameters already handled before calling this.
 	let &ast::Class { head: ref head_ast, supers: super_asts, methods: method_asts, .. } = ast;
 
-	let methods = ctx.arena.map_with_place(method_asts, |m, place| check_method_initial(ctx, m, place));
+	let methods = ctx.arena
+		.map_with_place(method_asts, |m, place| check_method_initial(ctx, m, place));
 	&ctx.current_class.methods <- methods;
 
 	// Adds slots too
-	let head = check_head(ctx, head_ast.as_ref());
-	&ctx.current_class.head <- head;
+	check_head(ctx, head_ast.as_ref());
 
 	let supers = ctx.arena
 		.map_defined_probably_all(super_asts, |s| check_super_initial(ctx, s));
@@ -155,7 +155,12 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 					unimplemented!() // Should we continue or what?
 				}
 
-				Impl { loc, containing_class: ctx.current_class, implemented: Up(implemented), body: Late::new() }
+				Impl {
+					loc,
+					containing_class: ctx.current_class,
+					implemented: Up(implemented),
+					body: Late::new(),
+				}
 			},
 		)
 	};
@@ -224,30 +229,31 @@ fn check_parameters<'builtins_ctx, 'ast, 'model>(
 		})
 }
 
-fn check_head<'builtins_ctx, 'model>(
-	ctx: &mut Ctx<'builtins_ctx, 'model>,
-	ast: Option<&ast::ClassHead>,
-) -> ClassHead<'model> {
+fn check_head<'builtins_ctx, 'model>(ctx: &mut Ctx<'builtins_ctx, 'model>, ast: Option<&ast::ClassHead>) {
 	let &ast::ClassHead(loc, ref head_data) = unwrap_or_return!(ast, {
 		if !ctx.current_class.type_parameters.is_empty() {
 			unimplemented!() // Error: static class can't have type parameters
 		}
-		ClassHead::Static
+		&ctx.current_class.head <- ClassHead::Static;
 	});
 	match *head_data {
 		ast::ClassHeadData::Abstract(_) => {
 			unused!(loc);
 			unimplemented!()
 		}
-		ast::ClassHeadData::Slots(_) => unimplemented!(),
-		ast::ClassHeadData::Builtin => ClassHead::Builtin,
+		ast::ClassHeadData::Slots(slot_asts) => {
+			let head = &ctx.current_class.up_ref().head <- ClassHead::Slots(SlotsData { loc, slots: Late::new() });
+			let data = match *head {
+				ClassHead::Slots(ref data) => data,
+				_ => unreachable!(),
+			};
+			&data.slots <- ctx.arena.map(slot_asts, |&ast::Slot { loc, mutable, ty: ref ty_ast, name }| {
+				let ty = ctx.get_ty(ty_ast);
+				SlotDeclaration { slots: Up(data), loc, mutable, ty, name }
+			});
+		}
+		ast::ClassHeadData::Builtin => {
+			&ctx.current_class.head <- ClassHead::Builtin;
+		}
 	}
-}
-
-fn check_slot<'builtins_ctx, 'model>(
-	ctx: &mut Ctx<'builtins_ctx, 'model>,
-	slot_ast: &ast::Slot,
-) -> SlotDeclaration<'model> {
-	unused!(ctx, slot_ast);
-	unimplemented!()
 }

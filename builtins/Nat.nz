@@ -1,3 +1,19 @@
 builtin
 
 def Bool ==(Nat n)
+
+def Bool <(Nat n)
+
+def Bool >(Nat n)
+
+def Bool <=(Nat n)
+
+def Bool >=(Nat n)
+
+def Nat +(Nat n)
+
+def Int -(Nat n)
+
+def Nat *(Nat n)
+
+def Nat /(Nat n)

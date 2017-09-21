@@ -22,10 +22,15 @@ impl OutputShower {
 impl Shower for OutputShower {
 	type Error = IoError;
 
-	fn color<F : FnMut() -> Result<(), Self::Error>>(&mut self, c: Color, mut f: F) -> Result<(), <Self as Shower>::Error> {
+	fn color<F: FnMut() -> Result<(), Self::Error>>(
+		&mut self,
+		c: Color,
+		mut f: F,
+	) -> Result<(), <Self as Shower>::Error> {
 		self.0.set_color(ColorSpec::new().set_fg(Some(c)))?;
 		f()?;
-		self.0.set_color(ColorSpec::new().set_fg(Some(Color::White))) //TODO: use prior color
+		self.0
+			.set_color(ColorSpec::new().set_fg(Some(Color::White))) //TODO: use prior color
 	}
 
 	fn _add_char(&mut self, char: char) -> Result<(), Self::Error> {

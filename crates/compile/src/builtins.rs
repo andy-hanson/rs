@@ -1,5 +1,5 @@
 use util::arena::{Arena, ExactLenBuilder, MaxLenBuilder};
-use util::file_utils::{ReadFileOptions, read_file};
+use util::file_utils::{read_file, ReadFileOptions};
 use util::iter::KnownLen;
 use util::late::Late;
 use util::list::List;
@@ -35,17 +35,23 @@ pub fn get_builtins<'model>(arena: &'model Arena) -> &'model BuiltinsOwn {
 		float: Late::new(),
 	};
 	const LEN: usize = 5;
-	let mut ctx = GetBuiltinsCtx { own, all: arena.exact_len_builder(LEN), all_successes: arena.max_len_builder(LEN), arena };
+	let mut ctx = GetBuiltinsCtx {
+		own,
+		all: arena.exact_len_builder(LEN),
+		all_successes: arena.max_len_builder(LEN),
+		arena,
+	};
 
 	&own.void <- ctx.add_builtin(b"Void");
 	&own.bool <- ctx.add_builtin(b"Bool");
+	&own.int <- ctx.add_builtin(b"Int"); // Comes *before* Nat, because Nat subtraction returns Int
 	&own.nat <- ctx.add_builtin(b"Nat");
-	&own.int <- ctx.add_builtin(b"Int");
 	&own.float <- ctx.add_builtin(b"Float");
 	//TODO: string
 
 	&own.all <- ctx.all.finish();
-	own.all_successes.initialize_or_overwrite(ctx.all_successes.finish());
+	own.all_successes
+		.initialize_or_overwrite(ctx.all_successes.finish());
 	own
 }
 
@@ -70,7 +76,9 @@ impl<'model> GetBuiltinsCtx<'model> {
 					diagnostics: Late::new(),
 				};
 				assert!(imports.is_empty());
-				self.own.all_successes.initialize_or_overwrite(self.all_successes.slice_so_far());
+				self.own
+					.all_successes
+					.initialize_or_overwrite(self.all_successes.slice_so_far());
 				check_module(module, self.own, class, name, self.arena);
 				&mut self.all_successes <- Up(module);
 				(primitive_ty(&module.class), ModuleOrFail::Module(module))
@@ -85,7 +93,7 @@ impl<'model> GetBuiltinsCtx<'model> {
 				shower.nl().unwrap();
 				panic!("Bai")
 				//(Ty::Bogus, ???)
-				//TODO: just return it...
+	//TODO: just return it...
 			}
 		};
 		&mut self.all <- module_or_fail;
@@ -97,9 +105,9 @@ fn load_builtin_file<'model>(name: &[u8], arena: &'model Arena) -> &'model [u8] 
 	let builtins_base_path = Path::of(b"builtins");
 	let scratch = Arena::new();
 	let path = builtins_base_path.child(name.chain(EXTENSION), &scratch);
-	read_file(path, ReadFileOptions::Trailing0, arena).unwrap().unwrap_or_else(|| {
-		panic!("Can't load builtin from {}", ::std::str::from_utf8(path.slice()).unwrap())
-	})
+	read_file(path, ReadFileOptions::Trailing0, arena)
+		.unwrap()
+		.unwrap_or_else(|| panic!("Can't load builtin from {}", ::std::str::from_utf8(path.slice()).unwrap()))
 }
 
 fn primitive_ty<'model>(class: &'model ClassDeclaration<'model>) -> Ty<'model> {

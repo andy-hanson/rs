@@ -1,0 +1,8 @@
+slots
+	val Nat x
+
+fun Void main()
+	assert (f 42) == 42
+
+fun Nat f(Nat x)
+	x

@@ -1,10 +1,12 @@
 use serde::{Serialize, Serializer};
 
 use std::cell::{Cell, UnsafeCell};
+use std::hash::{Hash, Hasher};
 use std::mem::uninitialized;
 use std::ops::{Deref, InPlace, Place, Placer};
 
 use super::arena::NoDrop;
+use super::show::{Show, Shower};
 
 // Important that T : NoDrop because we don't want the Late to have a Drop impl,
 // since it might contain uninitialized memory.
@@ -17,9 +19,17 @@ impl<T: NoDrop> Late<T> {
 		Late { initialized: Cell::new(false), value: UnsafeCell::new(unsafe { uninitialized() }) }
 	}
 
+	pub fn full(value: T) -> Late<T> {
+		Late { initialized: Cell::new(true), value: UnsafeCell::new(value) }
+	}
+
 	pub fn into_value(self) -> T {
 		assert!(self.initialized.get());
 		unsafe { self.value.into_inner() }
+	}
+
+	pub fn is_initialized(&self) -> bool {
+		self.initialized.get()
 	}
 
 	pub fn try_get(&self) -> Option<&T> {
@@ -50,7 +60,7 @@ impl<T: NoDrop> Late<T> {
 		}
 	}
 }
-impl<'a, T: NoDrop> NoDrop for Late<&'a T> {}
+impl<'a, T: NoDrop> NoDrop for Late<T> {}
 impl<T: NoDrop> Deref for Late<T> {
 	type Target = T;
 
@@ -61,6 +71,19 @@ impl<T: NoDrop> Deref for Late<T> {
 impl<T: NoDrop + Serialize> Serialize for Late<T> {
 	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		self.deref().serialize(serializer)
+	}
+}
+impl<'a, T: 'a + Hash + NoDrop> Hash for Late<T> {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.deref().hash(state)
+	}
+}
+impl<'a: 'b, 'b, T: 'a + 'b + Sized + NoDrop> Show for &'a Late<T>
+where
+	&'b T: Show,
+{
+	fn show<S: Shower>(self, s: &mut S) -> Result<(), S::Error> {
+		self.deref().show(s)
 	}
 }
 impl<'a, T: NoDrop> Placer<T> for &'a Late<T> {

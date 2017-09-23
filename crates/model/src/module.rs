@@ -66,8 +66,7 @@ impl<'a> ModuleOrFail<'a> {
 		}
 	}
 
-	pub fn copy_to_new_arena<'out>(&self, arena: &'out Arena) -> ModuleOrFail<'out> {
-		unused!(arena);
+	pub fn copy_to_new_arena<'out>(&self, _arena: &'out Arena) -> ModuleOrFail<'out> {
 		unimplemented!()
 	}
 

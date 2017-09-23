@@ -2,9 +2,8 @@ use std::fmt::Write;
 
 use super::show::{Color, Show, Shower};
 use super::u8_slice_ops::U8SliceOps;
+use super::void::Void;
 
-#[derive(Debug)]
-pub enum Void {}
 pub struct StringMaker(String);
 impl StringMaker {
 	pub fn new() -> StringMaker {

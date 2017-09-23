@@ -32,8 +32,7 @@ pub fn compile<'a, 'old, D: DocumentProvider<'a>>(
 	arena: &'a Arena,
 ) -> Result<CompileResult<'a>, D::Error> {
 	let (builtins, old_modules) = match old_program {
-		Some(CompiledProgram { builtins, modules, root }) => {
-			unused!(builtins, modules, root);
+		Some(CompiledProgram { builtins: _, modules: _, root: _ }) => {
 			unimplemented!()
 		}
 		None =>

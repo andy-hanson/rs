@@ -3,6 +3,7 @@ use util::arith::{u8_add, u8_add_mut, u8_sub, u8_sub_mut, usize_to_u8};
 use util::loc::Loc;
 use util::up::Up;
 
+use model::class::SlotDeclaration;
 use model::expr::{Expr, ExprData, GetSlotData, InstanceMethodCallData, LetData, Local,
                   MyInstanceMethodCallData, Pattern, SeqData, StaticMethodCallData};
 use model::method::{InstMethod, MethodOrImpl, MethodOrImplOrAbstract, Parameter};
@@ -10,7 +11,7 @@ use model::method::{InstMethod, MethodOrImpl, MethodOrImplOrAbstract, Parameter}
 use value::ValueCtx;
 
 use super::super::emitted_model::{CalledBuiltin, CalledInstructions, Code, Instruction, Instructions,
-                                  MethodMaps};
+                                  LocAndInstruction, MethodMaps};
 
 pub fn emit_method<'model, 'value, 'emit>(
 	value_ctx: &ValueCtx<'model, 'value>,
@@ -21,6 +22,11 @@ pub fn emit_method<'model, 'value, 'emit>(
 	methods: &MethodMaps<'model, 'emit>,
 ) -> Instructions<'model, 'emit> {
 	let n_parameters = usize_to_u8(parameters.len());
+	let arity = if has_self {
+		n_parameters + 1
+	} else {
+		n_parameters
+	};
 	let mut emitter = ExprEmitter {
 		value_ctx,
 		arena,
@@ -29,21 +35,16 @@ pub fn emit_method<'model, 'value, 'emit>(
 		has_self,
 		n_parameters,
 		locals: Vec::new(),
-		stack_depth: n_parameters,
+		stack_depth: arity,
 	};
 	emitter.emit_expr(body);
-	let arity = usize_to_u8(parameters.len());
-	if arity != 0 {
-		emitter.write(body.loc, Instruction::UnLet(arity));
-		emitter.stack_depth -= arity;
-	}
-	assert_eq!(emitter.stack_depth, 1);
+	assert_eq!(emitter.stack_depth, arity + 1);
 	emitter.write(body.loc, Instruction::Return);
 	emitter.w.finish()
 }
 
 struct InstructionWriter<'model: 'emit, 'emit> {
-	instructions: DirectBuilder<'emit, Instruction<'model, 'emit>>,
+	instructions: DirectBuilder<'emit, LocAndInstruction<'model, 'emit>>,
 }
 impl<'model, 'emit> InstructionWriter<'model, 'emit> {
 	fn new(arena: &'emit Arena) -> Self {
@@ -51,8 +52,7 @@ impl<'model, 'emit> InstructionWriter<'model, 'emit> {
 	}
 
 	fn write(&mut self, loc: Loc, instruction: Instruction<'model, 'emit>) {
-		unused!(loc);
-		&mut self.instructions <- instruction;
+		&mut self.instructions <- LocAndInstruction(loc, instruction);
 	}
 
 	fn finish(self) -> Instructions<'model, 'emit> {
@@ -110,7 +110,7 @@ impl<'ctx, 'model, 'value, 'emit, 'maps> ExprEmitter<'ctx, 'model, 'value, 'emit
 	fn emit_expr(&mut self, expr: &'model Expr<'model>) {
 		let &Expr { loc, ref ty, ref data } = expr;
 		match *data {
-			ExprData::Bogus | ExprData::BogusCast(_) =>
+			ExprData::Bogus =>
 				// Should not reach here.
 				unimplemented!(),
 			ExprData::AccessParameter(param) => {
@@ -174,7 +174,7 @@ impl<'ctx, 'model, 'value, 'emit, 'maps> ExprEmitter<'ctx, 'model, 'value, 'emit
 				}
 				let insn = self.call_instruction(method);
 				self.write(loc, insn);
-				self.pops(method.method_decl.arity());
+				self.pops(method.method_decl.full_arity());
 				self.pushes(1);
 			},
 			ExprData::InstanceMethodCall(&InstanceMethodCallData { ref target, ref method, args }) => {
@@ -184,7 +184,7 @@ impl<'ctx, 'model, 'value, 'emit, 'maps> ExprEmitter<'ctx, 'model, 'value, 'emit
 				}
 				let insn = self.call_instruction(method);
 				self.write(loc, insn);
-				self.pops(method.method_decl.arity());
+				self.pops(method.method_decl.full_arity());
 				self.pushes(1);
 			},
 			ExprData::MyInstanceMethodCall(&MyInstanceMethodCallData { ref method, args }) => {
@@ -195,7 +195,7 @@ impl<'ctx, 'model, 'value, 'emit, 'maps> ExprEmitter<'ctx, 'model, 'value, 'emit
 				}
 				let insn = self.call_instruction(method);
 				self.write(loc, insn);
-				self.pops(method.method_decl.arity());
+				self.pops(method.method_decl.full_arity());
 				self.pushes(1);
 			},
 			ExprData::New(args) => {
@@ -207,15 +207,19 @@ impl<'ctx, 'model, 'value, 'emit, 'maps> ExprEmitter<'ctx, 'model, 'value, 'emit
 				self.pushes(1);
 			}
 			ExprData::ArrayLiteral(_) => unimplemented!(),
-			ExprData::GetMySlot(_) => unimplemented!(),
+			ExprData::GetMySlot(slot) => {
+				self.fetch_self(loc);
+				let insn = self.get_slot_instruction(slot);
+				self.write(loc, insn);
+			},
 			ExprData::GetSlot(&GetSlotData { ref target, slot }) => {
 				self.emit_expr(target);
-				let offset = self.value_ctx.get_slot_offset(slot);
-				self.write(loc, Instruction::GetSlot(offset));
+				let insn = self.get_slot_instruction(slot);
+				self.write(loc, insn);
 				// Net 0 stack effect -- pops an object, pushes the value from the slot.
 			},
 			ExprData::SetSlot(_) => unimplemented!(),
-			ExprData::SelfExpr => unimplemented!(),
+			ExprData::SelfExpr => self.fetch_self(loc),
 			ExprData::Assert(expr) => {
 				self.emit_expr(expr);
 				// Pops the boolean and pushes void -- 0 stack effect.
@@ -225,16 +229,17 @@ impl<'ctx, 'model, 'value, 'emit, 'maps> ExprEmitter<'ctx, 'model, 'value, 'emit
 		}
 	}
 
-	fn call_instruction(
-		&self,
-		&InstMethod { method_decl, ty_args }: &'model InstMethod<'model>,
-	) -> Instruction<'model, 'emit> {
-		if !ty_args.is_empty() {
-			// Type arguments present
-			unimplemented!()
-		}
+	fn get_slot_instruction(&self, slot: Up<'model, SlotDeclaration<'model>>) -> Instruction<'model, 'emit> {
+		let offset = self.value_ctx.get_slot_offset(slot);
+		Instruction::GetSlot(offset)
+	}
 
-		match method_decl {
+	fn call_instruction(&self, inst_method: &'model InstMethod<'model>) -> Instruction<'model, 'emit> {
+		// Currently, all values are exactly one Value in size.
+		// So we can compile a method body only once and it will work for all possible types.
+		// if !inst_method.ty_args.is_empty() {}
+
+		match inst_method.method_decl {
 			MethodOrImplOrAbstract::Method(m) =>
 				self.call_code(MethodOrImpl::Method(m), self.methods.get_method(m)),
 			MethodOrImplOrAbstract::Impl(i) =>

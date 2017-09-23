@@ -1,13 +1,12 @@
 #![allow(dead_code)] // TODO
 #![allow(unknown_lints)]
 #![feature(placement_in_syntax)]
-
-#[macro_use]
-extern crate lazy_static;
+#![feature(plugin)]
+#![plugin(phf_macros)]
+extern crate phf;
 
 extern crate ast;
 extern crate parse_diag;
-#[macro_use]
 extern crate util;
 
 use util::arena::Arena;

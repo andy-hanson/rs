@@ -33,10 +33,10 @@ impl<'t, 'a> Show for &'t TestFailure<'a> {
 			TestFailure::IoError(_) => unimplemented!(),
 			TestFailure::ExtraBaselinesOnDisk(baselines) => {
 				s.add("The following baselines exist on disk but were not generated: ")?
-					.join_map(baselines, |b| *b)?;
+					.join(baselines.iter().map(|b| *b))?;
 			}
-			TestFailure::DiagnosticsMismatch { module_or_fail, expected } => {
-				unused!(expected); //TODO: show a diff
+			TestFailure::DiagnosticsMismatch { module_or_fail, expected: _ } => {
+				//TODO: show a diff
 				s.add("Unexpected diagnostics:\n")?;
 				show_diagnostics(module_or_fail, s)?;
 			}

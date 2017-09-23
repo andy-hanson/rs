@@ -4,15 +4,11 @@ use util::arena::NoDrop;
 use util::late::Late;
 use util::show::{serialize_as_show, Show, Shower};
 use util::sym::Sym;
-use util::sync::UnsafeSync;
 use util::up::{SerializeUp, Up};
 
 use super::class::{ClassDeclaration, InstClass};
 use super::effect::Effect;
 use super::method::MethodWithBody;
-
-// Make a static version of Bogus so it can be used as a ref
-static BOGUS: UnsafeSync<Ty> = UnsafeSync(Ty::Bogus);
 
 #[derive(Hash)]
 pub enum Ty<'a> {
@@ -22,12 +18,6 @@ pub enum Ty<'a> {
 }
 impl<'a> NoDrop for Ty<'a> {}
 impl<'a> Ty<'a> {
-	// Used for getting a *reference* to Ty::Bogus.
-	pub fn bogus_ref() -> &'a Self {
-		unused!(BOGUS);
-		unimplemented!() //&BOGUS.0
-	}
-
 	pub fn pure_ty(inst_class: InstClass<'a>) -> Self {
 		Ty::Plain(PlainTy { effect: Effect::Pure, inst_class })
 	}

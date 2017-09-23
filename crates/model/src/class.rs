@@ -25,11 +25,20 @@ pub struct ClassDeclaration<'a> {
 }
 impl<'a> NoDrop for ClassDeclaration<'a> {}
 impl<'a> ClassDeclaration<'a> {
+	pub fn find_slot(&self, name: Sym) -> Option<Up<'a, SlotDeclaration<'a>>> {
+		match *self.head {
+			ClassHead::Slots(SlotsData { loc: _, ref slots }) =>
+				slots.iter().find(|s| s.name == name).map(Up),
+			_ => None,
+		}
+	}
+
 	//mv
-	pub fn find_static_method(&self, name: Sym) -> Option<&'a MethodWithBody<'a>> {
+	pub fn find_static_method(&self, name: Sym) -> Option<Up<'a, MethodWithBody<'a>>> {
 		self.methods
 			.iter()
 			.find(|m| m.is_static && m.name() == name)
+			.map(Up)
 	}
 
 	pub fn all_impls(&self) -> impl Iterator<Item = &'a Impl<'a>> {
@@ -83,52 +92,27 @@ pub struct Super<'a> {
 }
 impl<'a> NoDrop for Super<'a> {}
 
-#[derive(Copy, Clone)]
-pub enum MemberDeclaration<'a> {
-	Slot(&'a SlotDeclaration<'a>),
-	Method(&'a MethodWithBody<'a>),
-	AbstractMethod(&'a AbstractMethod<'a>),
-}
-impl<'a> NoDrop for MemberDeclaration<'a> {}
-impl<'a> MemberDeclaration<'a> {
-	pub fn name(&self) -> Sym {
-		match *self {
-			MemberDeclaration::Slot(s) => s.name,
-			MemberDeclaration::Method(m) => m.name(),
-			MemberDeclaration::AbstractMethod(a) => a.name(),
-		}
-	}
-}
-impl<'a> Serialize for MemberDeclaration<'a> {
-	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-		let name = match *self {
-			MemberDeclaration::Slot(s) => s.name,
-			MemberDeclaration::Method(m) => m.name(),
-			MemberDeclaration::AbstractMethod(a) => a.name(),
-		};
-		name.serialize(serializer)
-	}
-}
-
 #[derive(Clone, Hash, Serialize)]
 pub struct InstClass<'a> {
 	pub class: Up<'a, ClassDeclaration<'a>>,
-	pub ty_args: &'a [Ty<'a>],
+	pub ty_args: &'a [Late<Ty<'a>>],
 }
 impl<'a> InstClass<'a> {
 	pub fn generic_self_reference(class: Up<'a, ClassDeclaration<'a>>, arena: &'a Arena) -> Self {
-		let ty_args = arena.map(class.type_parameters, |tp| Ty::Param(Up(tp)));
+		let ty_args = arena.map(class.type_parameters, |tp| Late::full(Ty::Param(Up(tp))));
 		InstClass { class, ty_args }
 	}
 
 	pub fn fast_equals(&self, other: &Self) -> bool {
-		self.class.ptr_eq(other.class) && self.ty_args.each_equals(other.ty_args, Ty::fast_equals)
+		self.class.ptr_eq(other.class)
+			&& self.ty_args
+				.each_equals(other.ty_args, |a, b| a.fast_equals(&*b))
 	}
 }
 impl<'a> Eq for InstClass<'a> {}
 impl<'a> PartialEq for InstClass<'a> {
 	fn eq(&self, other: &InstClass<'a>) -> bool {
-		self.class.ptr_eq(other.class) && self.ty_args.each_equals(other.ty_args, Ty::fast_equals)
+		self.fast_equals(other)
 	}
 }
 impl<'a> NoDrop for InstClass<'a> {}

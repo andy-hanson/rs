@@ -63,7 +63,6 @@ impl<'a> NoDrop for Expr<'a> {}
 #[derive(Serialize)]
 // All variants should be 1 word in size (excluding the tag).
 pub enum ExprData<'a> {
-	BogusCast(&'a Expr<'a>),
 	Bogus,
 	AccessParameter(Up<'a, Parameter<'a>>),
 	AccessLocal(Up<'a, Local<'a>>),
@@ -130,7 +129,6 @@ impl<'a> ExprData<'a> {
 			ExprData::GetSlot(ref e, _, _)
 				| ExprData::SetSlot(_, ref e)
 				| ExprData::Assert(ref e)
-				| ExprData::BogusCast(_, ref e)
 				=> Arr::_1(e),
 			ExprData::ArrayLiteral { elements: ref args, .. }
 				| ExprData::New(_, ref args)

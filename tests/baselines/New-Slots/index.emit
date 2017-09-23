@@ -1,20 +1,72 @@
 ---
 main: 
   - 
-    LiteralNat: 42
+    - "46-48"
+    - 
+      LiteralNat: 42
   - 
-    NewSlots: 
-      - "io New-Slots"
-      - 1
+    - "42-50"
+    - 
+      NewSlots: 
+        - "io New-Slots"
+        - 1
   - 
-    Fetch: 1
+    - "57-61"
+    - 
+      Fetch: 1
   - 
-    GetSlot: 0
+    - "57-63"
+    - 
+      GetSlot: 0
   - 
-    LiteralNat: 42
+    - "67-69"
+    - 
+      LiteralNat: 42
   - 
-    CallBuiltin: "=="
-  - Assert
+    - "57-71"
+    - 
+      CallBuiltin: "=="
   - 
-    UnLet: 1
-  - Return
+    - "50-71"
+    - Assert
+  - 
+    - "50-99"
+    - PopVoid
+  - 
+    - "78-82"
+    - 
+      Fetch: 1
+  - 
+    - "78-91"
+    - 
+      CallInstructions: method
+  - 
+    - "95-97"
+    - 
+      LiteralNat: 42
+  - 
+    - "78-99"
+    - 
+      CallBuiltin: "=="
+  - 
+    - "71-99"
+    - Assert
+  - 
+    - "35-99"
+    - 
+      UnLet: 1
+  - 
+    - "35-99"
+    - Return
+method: 
+  - 
+    - "117-118"
+    - 
+      Fetch: 1
+  - 
+    - "117-118"
+    - 
+      GetSlot: 0
+  - 
+    - "117-118"
+    - Return

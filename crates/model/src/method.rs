@@ -26,30 +26,33 @@ pub struct MethodSignature<'a> {
 impl<'a> NoDrop for MethodSignature<'a> {}
 
 #[derive(Serialize)]
-pub struct AbstractMethod<'a>(MethodSignature<'a>);
+pub struct AbstractMethod<'a> {
+	pub containing_class: Up<'a, ClassDeclaration<'a>>,
+	pub signature: MethodSignature<'a>,
+}
 impl<'a> AbstractMethod<'a> {
 	pub fn loc(&self) -> Loc {
-		self.0.loc
+		self.signature.loc
 	}
 
 	pub fn name(&self) -> Sym {
-		self.0.name
+		self.signature.name
 	}
 
 	pub fn type_parameters(&self) -> &'a [TypeParameter<'a>] {
-		self.0.type_parameters
+		self.signature.type_parameters
 	}
 
 	pub fn return_ty(&self) -> &Ty<'a> {
-		&self.0.return_ty
+		&self.signature.return_ty
 	}
 
 	pub fn self_effect(&self) -> Effect {
-		self.0.self_effect
+		self.signature.self_effect
 	}
 
 	pub fn parameters(&self) -> &'a [Parameter<'a>] {
-		self.0.parameters
+		self.signature.parameters
 	}
 
 	pub fn arity(&self) -> u8 {
@@ -124,7 +127,15 @@ impl<'a> SerializeUp for Parameter<'a> {
 
 pub struct InstMethod<'a> {
 	pub method_decl: MethodOrImplOrAbstract<'a>,
-	pub ty_args: &'a [Ty<'a>],
+	// Note: this fills in method_decl.containing_class.type_parameters, *and* method_decl.type_parameters.
+	pub ty_args: &'a [Late<Ty<'a>>],
+	_private: (),
+}
+impl<'a> InstMethod<'a> {
+	pub fn new(method_decl: MethodOrImplOrAbstract<'a>, ty_args: &'a [Late<Ty<'a>>]) -> Self {
+		assert!(method_decl.total_type_parameters() == ty_args.len());
+		InstMethod { method_decl, ty_args, _private: () }
+	}
 }
 impl<'a> NoDrop for InstMethod<'a> {}
 impl<'i, 'a> Show for &'i InstMethod<'a> {
@@ -209,7 +220,7 @@ impl<'a> MethodOrImpl<'a> {
 				let x: &'a MethodWithBody<'a> = m.0;
 				&x.signature
 			}
-			MethodOrImpl::Impl(ref i) => &(i.implemented.0).0,
+			MethodOrImpl::Impl(ref i) => &i.implemented.up_ref().signature,
 		}
 	}
 
@@ -245,58 +256,86 @@ pub enum MethodOrImplOrAbstract<'a> {
 }
 impl<'a> NoDrop for MethodOrImplOrAbstract<'a> {}
 impl<'a> MethodOrImplOrAbstract<'a> {
-	pub fn name(&self) -> Sym {
-		match *self {
+	pub fn containing_class(self) -> Up<'a, ClassDeclaration<'a>> {
+		match self {
+			MethodOrImplOrAbstract::Method(m) => m.containing_class,
+			MethodOrImplOrAbstract::Impl(i) => i.containing_class,
+			MethodOrImplOrAbstract::Abstract(a) => a.containing_class,
+		}
+	}
+
+	pub fn total_type_parameters(self) -> usize {
+		match self {
+			MethodOrImplOrAbstract::Method(m) => {
+				let own = m.type_parameters().len();
+				if m.is_static {
+					m.containing_class.type_parameters.len() + own
+				} else {
+					own
+				}
+			}
+			MethodOrImplOrAbstract::Impl(_) => {
+				// The Impl itself comes with type parameters -- we just store the instantiations
+				unimplemented!()
+			}
+			MethodOrImplOrAbstract::Abstract(a) =>
+				a.containing_class.type_parameters.len() + a.type_parameters().len(),
+		}
+	}
+
+	/** Includes 1 for "self". */
+	pub fn full_arity(self) -> u8 {
+		match self {
+			MethodOrImplOrAbstract::Method(m) => m.arity(),
+			MethodOrImplOrAbstract::Impl(i) => i.implemented.arity(),
+			MethodOrImplOrAbstract::Abstract(a) => a.arity(),
+		}
+	}
+
+	pub fn name(self) -> Sym {
+		match self {
 			MethodOrImplOrAbstract::Method(m) => m.name(),
 			MethodOrImplOrAbstract::Impl(i) => i.implemented.name(),
 			MethodOrImplOrAbstract::Abstract(a) => a.name(),
 		}
 	}
 
-	pub fn is_static(&self) -> bool {
-		match *self {
+	pub fn is_static(self) -> bool {
+		match self {
 			MethodOrImplOrAbstract::Method(m) => m.is_static,
 			MethodOrImplOrAbstract::Impl(_) | MethodOrImplOrAbstract::Abstract(_) => false,
 		}
 	}
 
-	pub fn type_parameters(&self) -> &'a [TypeParameter<'a>] {
-		match *self {
+	pub fn type_parameters(self) -> &'a [TypeParameter<'a>] {
+		match self {
 			MethodOrImplOrAbstract::Method(m) => m.0.type_parameters(),
 			MethodOrImplOrAbstract::Impl(i) => i.implemented.type_parameters(),
 			MethodOrImplOrAbstract::Abstract(a) => a.type_parameters(),
 		}
 	}
 
-	pub fn return_ty(&self) -> &Ty<'a> {
-		match *self {
+	pub fn return_ty(self) -> &'a Ty<'a> {
+		match self {
 			MethodOrImplOrAbstract::Method(m) => m.0.return_ty(),
 			MethodOrImplOrAbstract::Impl(i) => i.0.implemented.return_ty(),
 			MethodOrImplOrAbstract::Abstract(a) => a.0.return_ty(),
 		}
 	}
 
-	pub fn self_effect(&self) -> Effect {
-		match *self {
+	pub fn self_effect(self) -> Effect {
+		match self {
 			MethodOrImplOrAbstract::Method(m) => m.self_effect(),
 			MethodOrImplOrAbstract::Impl(i) => i.implemented.self_effect(),
 			MethodOrImplOrAbstract::Abstract(a) => a.self_effect(),
 		}
 	}
 
-	pub fn parameters(&self) -> &'a [Parameter<'a>] {
-		match *self {
+	pub fn parameters(self) -> &'a [Parameter<'a>] {
+		match self {
 			MethodOrImplOrAbstract::Method(m) => m.0.parameters(),
 			MethodOrImplOrAbstract::Impl(i) => i.implemented.parameters(),
 			MethodOrImplOrAbstract::Abstract(a) => a.parameters(),
-		}
-	}
-
-	pub fn arity(&self) -> u8 {
-		match *self {
-			MethodOrImplOrAbstract::Method(m) => m.arity(),
-			MethodOrImplOrAbstract::Impl(i) => i.implemented.arity(),
-			MethodOrImplOrAbstract::Abstract(a) => a.arity(),
 		}
 	}
 }

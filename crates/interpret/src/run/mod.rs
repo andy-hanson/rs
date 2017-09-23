@@ -5,7 +5,7 @@ use model::method::{MethodOrImpl, MethodWithBody};
 use value::ValueCtx;
 
 use super::emitted_model::{BuiltinCode, CalledBuiltin, CalledInstructions, Code, EmittedProgram, Fn1Args,
-                           Fn2Args, Instruction, Instructions};
+                           Fn2Args, Instruction, Instructions, LocAndInstruction};
 
 pub fn run_method<'model, 'value, 'emit>(
 	value_ctx: &'value mut ValueCtx<'model, 'value>,
@@ -31,7 +31,7 @@ fn exec<'model: 'value, 'emit, 'value>(
 	let mut instruction_index = 0;
 
 	loop {
-		let instruction = &cur_instructions.0[instruction_index];
+		let LocAndInstruction(_, ref instruction) = cur_instructions.0[instruction_index];
 		instruction_index += 1;
 		match *instruction {
 			Instruction::LiteralNat(n) => {
@@ -46,10 +46,7 @@ fn exec<'model: 'value, 'emit, 'value>(
 				let float = ctx.float(f);
 				ctx.push(float);
 			}
-			Instruction::LiteralString(s) => {
-				unused!(s);
-				unimplemented!()
-			}
+			Instruction::LiteralString(_) => unimplemented!(),
 			Instruction::Fetch(n) => ctx.fetch(n),
 			Instruction::UnLet(n) => ctx.un_let(n),
 			Instruction::PopVoid => ctx.pop().assert_void(ctx),
@@ -61,8 +58,8 @@ fn exec<'model: 'value, 'emit, 'value>(
 				cur_instructions = called_method_instructions;
 				instruction_index = 0;
 			}
-			Instruction::CallBuiltin(CalledBuiltin(ref called_method, ref builtin)) => {
-				unused!(called_method); //TODO: use this for error reporting
+			Instruction::CallBuiltin(CalledBuiltin(ref _called_method, ref builtin)) => {
+				//TODO: use called_method for error reporting
 				match *builtin {
 					BuiltinCode::Fn0(f) => {
 						let res = f(ctx);

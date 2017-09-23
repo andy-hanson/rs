@@ -93,6 +93,10 @@ impl Arena {
 		(start, end, slice)
 	}
 
+	pub fn write<T: NoDrop, I: KnownLen<Item = T>>(&self, inputs: I) -> &mut [T] {
+		self.map_with_place(inputs, |x, place| place <- x)
+	}
+
 	#[allow(mut_from_ref)]
 	pub fn map<T, U: NoDrop, I: KnownLen<Item = T>, F: FnMut(T) -> U>(
 		&self,
@@ -149,6 +153,14 @@ impl Arena {
 			assert!(next <= end);
 			slice
 		}
+	}
+
+	pub fn fill<T: NoDrop, F: Fn() -> T>(&self, len: usize, f: F) -> &[T] {
+		let mut b = self.exact_len_builder(len);
+		for _ in 0..len {
+			&mut b <- f();
+		}
+		b.finish()
 	}
 
 	pub fn exact_len_builder<T: NoDrop>(&self, len: usize) -> ExactLenBuilder<T> {

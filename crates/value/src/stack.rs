@@ -41,10 +41,10 @@ impl<'model, 'value> ValueStack<'model, 'value> {
 	}
 
 	pub fn un_let(&mut self, n: u8) {
-		let x = self.pop();
+		let returned = self.pop();
 		for _ in 0..n {
 			self.pop();
 		}
-		self.push(x);
+		self.push(returned);
 	}
 }

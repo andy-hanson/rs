@@ -6,7 +6,6 @@ extern crate serde;
 extern crate serde_derive;
 
 extern crate parse_diag;
-#[macro_use]
 extern crate util;
 
 pub mod builtins;

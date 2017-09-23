@@ -1,0 +1,32 @@
+---
+imports: []
+class: 
+  loc: "3-31"
+  head: ~
+  methods: 
+    - 
+      loc: "3-31"
+      is_static: true
+      return_ty: 
+        loc: "4-8"
+        effect: Pure
+        name: Void
+        ty_args: []
+      name: main
+      self_effect: Pure
+      parameters: []
+      body: 
+        loc: "17-31"
+        data: 
+          Call: 
+            target: 
+              loc: "17-28"
+              data: 
+                StaticAccess: 
+                  class_name: Void
+                  static_method_name: ignore
+            args: 
+              - 
+                loc: "29-30"
+                data: 
+                  LiteralNat: 0

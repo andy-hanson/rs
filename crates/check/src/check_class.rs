@@ -60,7 +60,7 @@ fn do_check<'ast, 'builtins_ctx, 'model>(ctx: &mut Ctx<'builtins_ctx, 'model>, a
 	&ctx.current_class.supers <- supers;
 
 	// We delayed checking impl bodies until now
-	// because we need all supers present for method resolution.
+ // because we need all supers present for method resolution.
 	fill_impl_bodies(ctx, super_asts);
 	fill_method_bodies(ctx, method_asts);
 }
@@ -71,7 +71,7 @@ fn fill_impl_bodies<'ast, 'builtins_ctx, 'model>(
 	super_asts: List<'ast, ast::Super<'ast>>,
 ) {
 	// There may be fewer supers than super_asts.
-	// TODO: but we can check that they correspond using the `loc`.
+ // TODO: but we can check that they correspond using the `loc`.
 
 	let supers = *ctx.current_class.supers;
 	if super_asts.len() != supers.len() {
@@ -121,8 +121,11 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 	ctx: &mut Ctx<'builtins_ctx, 'model>,
 	&ast::Super { loc, name, ty_args, impls: impl_asts }: &'ast ast::Super<'ast>,
 ) -> Option<Super<'model>> {
-	let super_class_declaration =
-		unwrap_or_return!(ctx.access_class_declaration_or_add_diagnostic(loc, name), None);
+	//TODO: use `?` operator when that works with Option
+	let super_class_declaration = match ctx.access_class_declaration_or_add_diagnostic(loc, name) {
+		Some(x) => x,
+		None => return None,
+	};
 	if super_class_declaration.supers.len() != 0 {
 		// We should have a check that there is a separate implementation of the super-super.
 		unimplemented!()
@@ -165,8 +168,11 @@ fn check_super_initial<'ast, 'builtins_ctx, 'model>(
 		)
 	};
 
-	let super_inst_class = unwrap_or_return!(ctx.instantiate_class(super_class_declaration, ty_args), None);
-	Some(Super { loc, super_class: super_inst_class, impls })
+	//TODO: Use `?` operator when that works on Option
+	match ctx.instantiate_class(super_class_declaration, ty_args) {
+		Some(super_inst_class) => Some(Super { loc, super_class: super_inst_class, impls }),
+		None => None,
+	}
 }
 
 fn check_method_initial<'ast, 'builtins_ctx, 'model>(
@@ -230,30 +236,30 @@ fn check_parameters<'builtins_ctx, 'ast, 'model>(
 }
 
 fn check_head<'builtins_ctx, 'model>(ctx: &mut Ctx<'builtins_ctx, 'model>, ast: Option<&ast::ClassHead>) {
-	let &ast::ClassHead(loc, ref head_data) = unwrap_or_return!(ast, {
-		if !ctx.current_class.type_parameters.is_empty() {
-			unimplemented!() // Error: static class can't have type parameters
-		}
-		&ctx.current_class.head <- ClassHead::Static;
-	});
-	match *head_data {
-		ast::ClassHeadData::Abstract(_) => {
-			unused!(loc);
-			unimplemented!()
-		}
-		ast::ClassHeadData::Slots(slot_asts) => {
-			let head = &ctx.current_class.up_ref().head <- ClassHead::Slots(SlotsData { loc, slots: Late::new() });
-			let data = match *head {
-				ClassHead::Slots(ref data) => data,
-				_ => unreachable!(),
-			};
-			&data.slots <- ctx.arena.map(slot_asts, |&ast::Slot { loc, mutable, ty: ref ty_ast, name }| {
-				let ty = ctx.get_ty(ty_ast);
-				SlotDeclaration { slots: Up(data), loc, mutable, ty, name }
-			});
-		}
-		ast::ClassHeadData::Builtin => {
-			&ctx.current_class.head <- ClassHead::Builtin;
+	match ast {
+		Some(&ast::ClassHead(loc, ref head_data)) =>
+			match *head_data {
+				ast::ClassHeadData::Abstract(_) => unimplemented!(),
+				ast::ClassHeadData::Slots(slot_asts) => {
+					let head = &ctx.current_class.up_ref().head <- ClassHead::Slots(SlotsData { loc, slots: Late::new() });
+					let data = match *head {
+						ClassHead::Slots(ref data) => data,
+						_ => unreachable!(),
+					};
+					&data.slots <- ctx.arena.map(slot_asts, |&ast::Slot { loc, mutable, ty: ref ty_ast, name }| {
+						let ty = ctx.get_ty(ty_ast);
+						SlotDeclaration { slots: Up(data), loc, mutable, ty, name }
+					});
+				}
+				ast::ClassHeadData::Builtin => {
+					&ctx.current_class.head <- ClassHead::Builtin;
+				}
+			},
+		None => {
+			if !ctx.current_class.type_parameters.is_empty() {
+				unimplemented!() // Error: static class can't have type parameters
+			}
+			&ctx.current_class.head <- ClassHead::Static;
 		}
 	}
 }

@@ -14,9 +14,6 @@ extern crate serde;
 extern crate serde_derive;
 extern crate termcolor;
 
-#[macro_use]
-pub mod macros;
-
 pub mod arena;
 pub mod arith;
 pub mod dict;
@@ -33,3 +30,4 @@ pub mod sync;
 pub mod sym;
 pub mod up;
 pub mod u8_slice_ops;
+pub mod void;

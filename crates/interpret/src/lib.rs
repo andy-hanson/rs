@@ -12,7 +12,6 @@ extern crate serde;
 extern crate serde_derive;
 
 extern crate model;
-#[macro_use]
 extern crate util;
 extern crate value;
 

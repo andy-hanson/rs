@@ -53,8 +53,7 @@ fn parse_imports<'a, 't>(l: &mut Lexer<'a, 't>) -> Result<List<'a, Import<'a>>> 
 	}
 }
 
-fn parse_path<'a, 't>(l: &mut Lexer<'a, 't>) -> Path<'a> {
-	unused!(l);
+fn parse_path<'a, 't>(_l: &mut Lexer<'a, 't>) -> Path<'a> {
 	/*let mut path_parts: ListBuilder<'a, &'a [u8]> = l.list_builder::<&'a [u8]>();
 	path_parts.add() <- l.take_ty_name_slice()?;
 	//TODO: really want to allow delving into grandchildren?

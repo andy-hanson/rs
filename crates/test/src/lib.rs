@@ -9,7 +9,6 @@ extern crate host;
 extern crate interpret;
 extern crate model;
 extern crate parse;
-#[macro_use]
 extern crate util;
 extern crate value;
 
@@ -178,7 +177,7 @@ fn test_interpret<'model, 'expected>(
 		.class
 		.find_static_method(Sym::of(b"main"))
 		.unwrap(); //TODO: diagnostic if "main" not found
-	run_method(&mut value_ctx, Up(main), &emitted_program);
+	run_method(&mut value_ctx, main, &emitted_program);
 	Ok(())
 }
 

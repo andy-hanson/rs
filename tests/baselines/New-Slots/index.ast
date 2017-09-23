@@ -1,7 +1,7 @@
 ---
 imports: []
 class: 
-  loc: "5-70"
+  loc: "5-119"
   head: 
     - "5-18"
     - 
@@ -17,7 +17,7 @@ class:
           name: x
   methods: 
     - 
-      loc: "18-70"
+      loc: "18-99"
       is_static: true
       return_ty: 
         loc: "22-26"
@@ -28,7 +28,7 @@ class:
       self_effect: Pure
       parameters: []
       body: 
-        loc: "35-70"
+        loc: "35-99"
         data: 
           Let: 
             - 
@@ -46,23 +46,68 @@ class:
                       data: 
                         LiteralNat: 42
             - 
-              loc: "50-70"
+              loc: "50-99"
               data: 
-                Assert: 
-                  loc: "57-70"
-                  data: 
-                    OperatorCall: 
-                      left: 
-                        loc: "57-63"
+                Seq: 
+                  - 
+                    loc: "50-71"
+                    data: 
+                      Assert: 
+                        loc: "57-71"
                         data: 
-                          GetProperty: 
-                            - 
-                              loc: "57-61"
+                          OperatorCall: 
+                            left: 
+                              loc: "57-63"
                               data: 
-                                Access: inst
-                            - x
-                      operator: "=="
-                      right: 
-                        loc: "67-69"
+                                GetProperty: 
+                                  - 
+                                    loc: "57-61"
+                                    data: 
+                                      Access: inst
+                                  - x
+                            operator: "=="
+                            right: 
+                              loc: "67-69"
+                              data: 
+                                LiteralNat: 42
+                  - 
+                    loc: "71-99"
+                    data: 
+                      Assert: 
+                        loc: "78-99"
                         data: 
-                          LiteralNat: 42
+                          OperatorCall: 
+                            left: 
+                              loc: "78-91"
+                              data: 
+                                Call: 
+                                  target: 
+                                    loc: "78-89"
+                                    data: 
+                                      GetProperty: 
+                                        - 
+                                          loc: "78-82"
+                                          data: 
+                                            Access: inst
+                                        - method
+                                  args: []
+                            operator: "=="
+                            right: 
+                              loc: "95-97"
+                              data: 
+                                LiteralNat: 42
+    - 
+      loc: "99-119"
+      is_static: false
+      return_ty: 
+        loc: "103-106"
+        effect: Pure
+        name: Nat
+        ty_args: []
+      name: method
+      self_effect: Pure
+      parameters: []
+      body: 
+        loc: "117-118"
+        data: 
+          Access: x

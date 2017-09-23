@@ -1,0 +1,27 @@
+---
+name: "Test-Void"
+head: Static
+methods: 
+  - 
+    containing_class: "Test-Void"
+    is_static: true
+    signature: 
+      class: "Test-Void"
+      loc: "3-31"
+      name: main
+      type_parameters: []
+      return_ty: pure Void
+      self_effect: Pure
+      parameters: []
+    body: 
+      loc: "17-31"
+      ty: pure Void
+      data: 
+        StaticMethodCall: 
+          method: "ignore[pure Nat]"
+          args: 
+            - 
+              loc: "29-30"
+              ty: pure Nat
+              data: 
+                LiteralNat: 0

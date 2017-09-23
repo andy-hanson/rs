@@ -12,15 +12,7 @@ pub use std::collections::hash_map::Entry;
 // TODO:PERF don't use HashMap
 // Immutable hash map
 pub struct Dict<K: Hash + Eq, V>(HashMap<K, V>);
-impl<K: Hash + Eq, V> Dict<K, V> {
-	pub fn of(keysvals: Vec<(K, V)>) -> Self {
-		let mut b = MutDict::new();
-		for (k, v) in keysvals {
-			b.add(k) <- v
-		}
-		b.freeze()
-	}
-
+impl<K: Hash + Eq + Copy, V> Dict<K, V> {
 	pub fn iter(&self) -> Iter<K, V> {
 		self.0.iter()
 	}
@@ -74,6 +66,11 @@ impl<K: Hash + Eq, V> MutDict<K, V> {
 			unreachable!()
 		}
 		entry
+	}
+
+	pub fn with_add(mut self, key: K, value: V) -> Self {
+		self.add(key) <- value;
+		self
 	}
 
 	pub fn try_extract<Q: Hash + Eq>(&mut self, key: Q) -> Option<V>

@@ -3,6 +3,7 @@ use serde::{Serialize, Serializer};
 use util::arena::NoDrop;
 use util::dict::MutDict;
 use util::late::Late;
+use util::loc::Loc;
 use util::up::Up;
 
 use model::method::{Impl, MethodOrImpl, MethodWithBody};
@@ -77,8 +78,12 @@ impl BuiltinCode {
 }
 
 #[derive(Serialize)]
-pub struct Instructions<'model: 'emit, 'emit>(pub &'emit [Instruction<'model, 'emit>]);
+pub struct Instructions<'model: 'emit, 'emit>(pub &'emit [LocAndInstruction<'model, 'emit>]);
 impl<'model, 'emit> NoDrop for Instructions<'model, 'emit> {}
+
+#[derive(Copy, Clone, Serialize)]
+pub struct LocAndInstruction<'model: 'emit, 'emit>(pub Loc, pub Instruction<'model, 'emit>);
+impl<'model, 'emit> NoDrop for LocAndInstruction<'model, 'emit> {}
 
 #[derive(Copy, Clone, Serialize)]
 pub enum Instruction<'model: 'emit, 'emit> {
@@ -91,12 +96,15 @@ pub enum Instruction<'model: 'emit, 'emit> {
 	/**
 	Pop N values out from the top value on the stack.
 	Leaves the top value alone.
+	Don't need to explicitly use this at the end of a method since "Return" handles that.
 	*/
 	UnLet(u8),
 	/** Pops the `Void` value pushed by the last expression. */
 	PopVoid,
 	CallInstructions(CalledInstructions<'model, 'emit>),
 	CallBuiltin(CalledBuiltin<'model>),
+	// Pops all parameters (incl. "self") out from under the return value.
+	// Then goes back to the instruction after the one that called this method.
 	Return,
 	// Pops N values off the stack and pushes them into slots on the heap,
 	// then stores the result back on the stack.
@@ -111,7 +119,8 @@ impl<'model, 'emit> NoDrop for Instruction<'model, 'emit> {}
 #[derive(Copy, Clone)]
 pub struct CalledInstructions<'model: 'emit, 'emit>(
 	pub MethodOrImpl<'model>,
-	pub Up<'emit, Instructions<'model, 'emit>>,
+	// Must point to the Late instead of to the Instructions to avoid dereferencing a Late too early.
+	pub Up<'emit, Late<Instructions<'model, 'emit>>>,
 );
 impl<'model, 'emit> Serialize for CalledInstructions<'model, 'emit> {
 	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

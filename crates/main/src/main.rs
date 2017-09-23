@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
+#![feature(try_trait)]
 
 extern crate serde_yaml;
 
@@ -7,6 +8,7 @@ extern crate parse;
 extern crate test;
 extern crate util;
 
+use std::ops::Try;
 use std::process::exit;
 
 use serde_yaml::to_string as to_yaml_string;
@@ -28,10 +30,9 @@ fn main() {
 }
 
 fn run_test() {
-	let exit_code = do_test_single(Path::of(b"New-Slots"), BaselinesUpdate::Change);
+	let exit_code = do_test_single(Path::of(b"Builtins/Test-Void"), BaselinesUpdate::Change);
 	exit(exit_code)
 }
-
 
 fn test_parse() -> ::std::io::Result<()> {
 	let parse_arena = Arena::new();

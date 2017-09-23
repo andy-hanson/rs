@@ -1,5 +1,6 @@
 use util::arena::Arena;
 use util::iter::KnownLen;
+use util::late::Late;
 use util::list::ListBuilder;
 use util::loc::Loc;
 
@@ -8,63 +9,88 @@ use model::diag::Diagnostic;
 use model::effect::Effect;
 use model::ty::{PlainTy, Ty};
 
-use super::instantiator::Instantiator;
+use super::inferrer::{InferResult, InferrerLike};
+use super::instantiator::{Instantiator, InstantiatorLike};
 
-pub fn common_ty<'a>(a: &Ty<'a>, b: &Ty<'a>) -> Option<Ty<'a>> {
-	match *a {
-		Ty::Bogus => Some(b.clone()),
-		Ty::Plain(PlainTy { effect: effect_a, inst_class: ref inst_class_a }) =>
-			match *b {
-				Ty::Bogus => Some(a.clone()),
-				Ty::Plain(PlainTy { effect: effect_b, inst_class: ref inst_class_b }) =>
-					if inst_class_a.fast_equals(inst_class_b) {
-						Some(Ty::Plain(PlainTy {
-							effect: effect_a.min_common_effect(effect_b),
-							inst_class: inst_class_a.clone(),
-						}))
-					} else {
-						None
-					},
-				Ty::Param(_) => unimplemented!(),
-			},
-		Ty::Param(_) => unimplemented!(),
-	}
-}
-
-pub fn is_assignable<'a>(expected: &Ty<'a>, actual: &Ty<'a>, arena: &'a Arena) -> bool {
+pub fn check_assignable<'model, I: InferrerLike<'model>>(
+	expected: &Ty<'model>,
+	actual: &Ty<'model>,
+	inferrer: &I,
+	arena: &'model Arena,
+) -> bool {
 	match *expected {
-		Ty::Bogus => true,
-		Ty::Param(tpe) =>
-			match *actual {
-				Ty::Param(tpa) => tpe.ptr_eq(tpa),
-				_ => false,
-			},
-		Ty::Plain(PlainTy { effect: effect_expected, inst_class: ref inst_class_expected }) =>
-			match *actual {
-				Ty::Bogus => true,
-				Ty::Plain(PlainTy { effect: effect_actual, inst_class: ref inst_class_actual }) =>
-					effect_actual.contains(effect_expected)
-						&& is_subclass(inst_class_expected, inst_class_actual, arena),
-				Ty::Param(_) => unimplemented!(),
-			},
+		Ty::Bogus =>
+			// We already made a diagnostic.
+			true,
+		Ty::Param(param_expected) =>
+			match inferrer.figure(param_expected, actual) {
+				InferResult::JustFilledIn =>
+					// Great, we inferred a type.
+					true,
+				InferResult::AlreadyHave(t) => {
+					match *t {
+						Ty::Bogus => true,
+						Ty::Param(_) => unimplemented!(), //I think just return false?
+						Ty::Plain(ref p) => check_plain_ty_assignable(p, actual, inferrer, arena),
+					}
+				}
+				InferResult::NotInInferrer => {
+					match *actual {
+						Ty::Bogus => true,
+						Ty::Param(param_actual) => param_expected.ptr_eq(param_actual),
+						Ty::Plain(_) => false,
+					}
+				}
+			}
+		Ty::Plain(ref p) =>
+			check_plain_ty_assignable(p, actual, inferrer, arena)
 	}
 }
 
-fn is_subclass<'a>(expected: &InstClass<'a>, actual: &InstClass<'a>, arena: &'a Arena) -> bool {
+fn check_plain_ty_assignable<'model, I: InferrerLike<'model>>(
+	&PlainTy { effect: effect_expected, inst_class: ref inst_class_expected }: &PlainTy<'model>,
+	actual: &Ty<'model>,
+	inferrer: &I,
+	arena: &'model Arena,
+) -> bool {
+	match *actual {
+		Ty::Bogus => true,
+		Ty::Param(_) =>
+			//TODO: diagnostic
+			unimplemented!(),
+		Ty::Plain(PlainTy { effect: effect_actual, inst_class: ref inst_class_actual }) =>
+			effect_actual.contains(effect_expected)
+				&& check_class_assignable(inst_class_expected, inst_class_actual, inferrer, arena),
+	}
+}
+
+fn check_class_assignable<'infer, 'model, I: InferrerLike<'model>>(
+	expected: &InstClass<'model>,
+	actual: &InstClass<'model>,
+	inferrer: &I,
+	arena: &'model Arena,
+) -> bool {
 	// TODO: generics variance.
  // Until then, only a subtype if every generic parameter is *exactly* equal.
 	let &InstClass { class: expected_class, ty_args: expected_ty_args } = expected;
 	let &InstClass { class: actual_class, ty_args: actual_ty_args } = actual;
-	if expected_class.ptr_eq(actual_class) && expected_ty_args.each_equals(actual_ty_args, Ty::fast_equals) {
-		return true
+
+	if expected_class.ptr_eq(actual_class) {
+		//TODO: generics variance. Currently we are always invariant.
+		return expected_ty_args.each_corresponds(actual_ty_args, |_expected_ty_arg, _actual_ty_arg| {
+			let _ = inferrer; //TODO: use this
+			unimplemented!()
+		})
 	}
 
-	for zuper in *actual_class.supers {
-		let instantiated_super_class =
-			instantiate_inst_class(&zuper.super_class, &Instantiator::of_inst_class(actual), arena);
-		if is_subclass(expected, &instantiated_super_class, arena) {
-			return true
-		}
+	for _zuper in *actual_class.supers {
+		let _ = arena;
+		unimplemented!()
+		//let instantiated_super_class =
+  //	instantiate_inst_class(&zuper.super_class, &Instantiator::of_inst_class(actual), arena);
+  //if check_class_assignable(expected, &instantiated_super_class, arena) {
+  //	return true
+  //}
 	}
 
 	false
@@ -95,14 +121,14 @@ Say we have:
 
 	The rule is, we always *either* instantiate a type parameter *xor* narrow an effect.
 	*/
-pub fn instantiate_and_narrow_effects<'a>(
+pub fn instantiate_and_narrow_effects<'model>(
 	narrowed_effect: Effect,
-	ty: &Ty<'a>,
-	instantiator: &Instantiator<'a>,
+	ty: &Ty<'model>,
+	instantiator: &Instantiator<'model>,
 	loc: Loc,
-	diags: &mut ListBuilder<Diagnostic<'a>>,
-	arena: &'a Arena,
-) -> Ty<'a> {
+	diags: &mut ListBuilder<Diagnostic<'model>>,
+	arena: &'model Arena,
+) -> Ty<'model> {
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
 		Ty::Plain(PlainTy { effect: original_effect, ref inst_class }) =>
@@ -121,24 +147,24 @@ pub fn instantiate_and_narrow_effects<'a>(
 	}
 }
 
-pub fn narrow_effects<'a>(
+pub fn narrow_effects<'model>(
 	narrowed_effect: Effect,
-	ty: &Ty<'a>,
+	ty: &Ty<'model>,
 	loc: Loc,
-	diags: &mut ListBuilder<'a, Diagnostic<'a>>,
-	arena: &'a Arena,
-) -> Ty<'a> {
+	diags: &mut ListBuilder<'model, Diagnostic<'model>>,
+	arena: &'model Arena,
+) -> Ty<'model> {
 	instantiate_and_narrow_effects(narrowed_effect, ty, &Instantiator::NIL, loc, diags, arena)
 }
 
-fn instantiate_ty_and_forbid_effects<'a>(
+fn instantiate_ty_and_forbid_effects<'model>(
 	narrowed_effect: Effect,
-	ty: &Ty<'a>,
-	instantiator: &Instantiator<'a>,
+	ty: &Ty<'model>,
+	instantiator: &Instantiator<'model>,
 	loc: Loc,
-	diags: &mut ListBuilder<Diagnostic<'a>>,
-	arena: &'a Arena,
-) -> Ty<'a> {
+	diags: &mut ListBuilder<Diagnostic<'model>>,
+	arena: &'model Arena,
+) -> Ty<'model> {
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
 		Ty::Plain(PlainTy { effect, ref inst_class }) =>
@@ -175,23 +201,27 @@ fn instantiate_inst_class_and_forbid_effects<'a>(
 	})
 }
 
-fn instantiate_inst_class<'a>(
-	inst_class: &InstClass<'a>,
-	instantiator: &Instantiator<'a>,
-	arena: &'a Arena,
-) -> InstClass<'a> {
+fn instantiate_inst_class<'model, I: InstantiatorLike<'model>>(
+	inst_class: &InstClass<'model>,
+	instantiator: &I,
+	arena: &'model Arena,
+) -> InstClass<'model> {
 	map_inst_class(inst_class, arena, |arg| instantiate_ty(arg, instantiator, arena))
 }
 
 fn map_inst_class<'a, F: FnMut(&Ty<'a>) -> Ty<'a>>(
 	&InstClass { class, ty_args }: &InstClass<'a>,
 	arena: &'a Arena,
-	replace_ty_arg: F,
+	mut replace_ty_arg: F,
 ) -> InstClass<'a> {
-	InstClass { class, ty_args: arena.map(ty_args, replace_ty_arg) }
+	InstClass { class, ty_args: arena.map(ty_args, |t| Late::full(replace_ty_arg(t))) }
 }
 
-pub fn instantiate_ty<'a>(ty: &Ty<'a>, instantiator: &Instantiator<'a>, arena: &'a Arena) -> Ty<'a> {
+pub fn instantiate_ty<'model, I: InstantiatorLike<'model>>(
+	ty: &Ty<'model>,
+	instantiator: &I,
+	arena: &'model Arena,
+) -> Ty<'model> {
 	match *ty {
 		Ty::Bogus => Ty::Bogus,
 		Ty::Param(p) => instantiator.replace_or_same(p),

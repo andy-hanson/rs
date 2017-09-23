@@ -6,7 +6,7 @@ use util::show::{Show, Shower};
 use util::sym::Sym;
 use util::up::Up;
 
-use super::class::{ClassDeclaration, MemberDeclaration, SlotDeclaration};
+use super::class::{ClassDeclaration, SlotDeclaration};
 use super::effect::Effect;
 use super::expr::Local;
 use super::method::{AbstractMethod, MethodOrImplOrAbstract, MethodWithBody, Parameter};
@@ -21,7 +21,6 @@ pub struct Diagnostic<'a> {
 }
 impl<'a> NoDrop for Diagnostic<'a> {}
 
-
 pub enum Diag<'a> {
 	// Compile errors
 	CircularDependency { from: Path<'a>, to: RelPath<'a> },
@@ -29,9 +28,8 @@ pub enum Diag<'a> {
 	ParseError(ParseDiag),
 
 	// Checker errors
-	CantCombineTypes(Ty<'a>, Ty<'a>),
 	NotAssignable { expected: Ty<'a>, actual: Ty<'a> },
-	MemberNotFound(Up<'a, ClassDeclaration<'a>>, Sym),
+	//MemberNotFound(Up<'a, ClassDeclaration<'a>>, Sym),
 	CantAccessSlotFromStaticMethod(Up<'a, SlotDeclaration<'a>>),
 	MissingEffectToGetSlot(Up<'a, SlotDeclaration<'a>>),
 	MissingEffectToSetSlot { allowed_effect: Effect, slot: Up<'a, SlotDeclaration<'a>> },
@@ -39,6 +37,7 @@ pub enum Diag<'a> {
 	CallsNonMethod,
 	CantAccessStaticMethodThroughInstance(Up<'a, MethodWithBody<'a>>),
 	IllegalSelfEffect { target_effect: Effect, method: MethodOrImplOrAbstract<'a> },
+	TypeArgumentCountMismatch { method: MethodOrImplOrAbstract<'a>, n_arguments_provided: usize },
 	ArgumentCountMismatch(MethodOrImplOrAbstract<'a>, usize),
 	ClassNotFound(Sym),
 	StaticMethodNotFound(Up<'a, ClassDeclaration<'a>>, Sym),
@@ -46,7 +45,9 @@ pub enum Diag<'a> {
 	NotATailCall,
 	NewInvalid(Up<'a, ClassDeclaration<'a>>),
 	NewArgumentCountMismatch { class: Up<'a, ClassDeclaration<'a>>, n_slots: usize, n_arguments: usize },
-	CantSetNonSlot(MemberDeclaration<'a>),
+	MethodNotFound(Up<'a, ClassDeclaration<'a>>, Sym),
+	SlotNotFound(Up<'a, ClassDeclaration<'a>>, Sym),
+	//CantSetNonSlot(MemberDeclaration<'a>),
 	SlotNotMutable(Up<'a, SlotDeclaration<'a>>),
 	CantReassignParameter(Up<'a, Parameter<'a>>),
 	CantReassignLocal(Up<'a, Local<'a>>),
@@ -77,13 +78,6 @@ impl<'d, 'a> Show for &'d Diag<'a> {
 			Diag::ParseError(ref p) => {
 				s.add(p)?;
 			}
-			Diag::CantCombineTypes(ref a, ref b) => {
-				s.add("Unable to find a common type between ")?
-					.add(a)?
-					.add(" and ")?
-					.add(b)?
-					.add(".")?;
-			}
 			Diag::NotAssignable { ref expected, ref actual } => {
 				s.add("Expecting a ")?
 					.add(expected)?
@@ -91,10 +85,24 @@ impl<'d, 'a> Show for &'d Diag<'a> {
 					.add(actual)?
 					.add(".")?;
 			}
-			Diag::MemberNotFound(class, name) => {
+			/*Diag::MemberNotFound(class, name) => {
 				s.add("Class ")?
 					.add(class.name)?
 					.add(" does not have a member named ")?
+					.add(name)?
+					.add(".")?;
+			}*/
+			Diag::MethodNotFound(class, name) => {
+				s.add("Class ")?
+					.add(class.name)?
+					.add(" does not have a method named ")?
+					.add(name)?
+					.add(".")?;
+			}
+			Diag::SlotNotFound(class, name) => {
+				s.add("Class ")?
+					.add(class.name)?
+					.add(" does not have a slot named ")?
 					.add(name)?
 					.add(".")?;
 			}
@@ -141,12 +149,21 @@ impl<'d, 'a> Show for &'d Diag<'a> {
 					.add(method.self_effect())?
 					.add("' effect.")?;
 			}
+			Diag::TypeArgumentCountMismatch { method, n_arguments_provided } => {
+				s.add("Method ")?
+					.add(method.name())?
+					.add(" takes ")?
+					.add(method.type_parameters().len())?
+					.add(" type arguments; ")? //TODO:pluralize
+					.add(n_arguments_provided)?
+					.add(" provided.")?;
+			}
 			Diag::ArgumentCountMismatch(method, actual) => {
 				s.add("Method ")?
 					.add(method.name())?
 					.add(" takes ")?
-					.add(method.arity())?
-					.add(" arguments; ")?
+					.add(method.full_arity())?
+					.add(" arguments; ")? //TODO:pluralize
 					.add(actual)?
 					.add(" provided.")?;
 			}
@@ -182,10 +199,10 @@ impl<'d, 'a> Show for &'d Diag<'a> {
 					.add(n_arguments)?
 					.add(" arguments to 'new'.")?;
 			}
-			Diag::CantSetNonSlot(member) => {
+			/*Diag::CantSetNonSlot(member) => {
 				s.add(member.name())?
 					.add(" is not a slot; can't write to it.")?;
-			}
+			}*/
 			Diag::SlotNotMutable(slot) => {
 				s.add(slot.name)?.add(" is not mutable; can't write to it.")?;
 			}
@@ -203,12 +220,12 @@ impl<'d, 'a> Show for &'d Diag<'a> {
 			}
 			Diag::ImplsMismatch { expected } => {
 				s.add("Must implement abstract methods in their declaration order. Expected: ")?
-					.join_map(expected, |a| a.name())?
+					.join(expected.iter().map(|a| a.name()))?
 					.add(".")?;
 			}
 			Diag::WrongImplParameters(abs) => {
 				s.add("Parameter names must be exactly: ")?
-					.join_map(abs.parameters(), |p| p.name)?;
+					.join(abs.parameters().iter().map(|p| p.name))?;
 			}
 		}
 		Ok(())

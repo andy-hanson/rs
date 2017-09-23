@@ -8,7 +8,6 @@ extern crate check;
 extern crate host;
 extern crate model;
 extern crate parse;
-#[macro_use]
 extern crate util;
 
 mod builtins;
@@ -40,7 +39,7 @@ pub fn compile_file<'a>(path: Path<'a>, arena: &'a Arena) -> Result<CompileResul
 	let file_name = path.file_name()
 		.unwrap()
 		.without_end_if_ends_with(EXTENSION);
-	let file_path = if file_name.equals_str("index") {
+	let file_path = if file_name == b"index" {
 		Path::EMPTY
 	} else {
 		Path::of(file_name)

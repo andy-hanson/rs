@@ -15,14 +15,14 @@ methods:
     is_static: true
     signature: 
       class: "New-Slots"
-      loc: "18-70"
+      loc: "18-99"
       name: main
       type_parameters: []
       return_ty: pure Void
       self_effect: Pure
       parameters: []
     body: 
-      loc: "35-70"
+      loc: "35-99"
       ty: pure Void
       data: 
         Let: 
@@ -42,29 +42,78 @@ methods:
                   data: 
                     LiteralNat: 42
           then: 
-            loc: "50-70"
+            loc: "50-99"
             ty: pure Void
             data: 
-              Assert: 
-                loc: "57-70"
-                ty: pure Bool
-                data: 
-                  InstanceMethodCall: 
-                    target: 
-                      loc: "57-63"
-                      ty: io Nat
+              Seq: 
+                - 
+                  loc: "50-71"
+                  ty: pure Void
+                  data: 
+                    Assert: 
+                      loc: "57-71"
+                      ty: pure Bool
                       data: 
-                        GetSlot: 
+                        InstanceMethodCall: 
                           target: 
-                            loc: "57-61"
-                            ty: "io New-Slots"
+                            loc: "57-63"
+                            ty: io Nat
                             data: 
-                              AccessLocal: inst
-                          slot: x
-                    method: "=="
-                    args: 
-                      - 
-                        loc: "67-69"
-                        ty: pure Nat
-                        data: 
-                          LiteralNat: 42
+                              GetSlot: 
+                                target: 
+                                  loc: "57-61"
+                                  ty: "io New-Slots"
+                                  data: 
+                                    AccessLocal: inst
+                                slot: x
+                          method: "=="
+                          args: 
+                            - 
+                              loc: "67-69"
+                              ty: pure Nat
+                              data: 
+                                LiteralNat: 42
+                - 
+                  loc: "71-99"
+                  ty: pure Void
+                  data: 
+                    Assert: 
+                      loc: "78-99"
+                      ty: pure Bool
+                      data: 
+                        InstanceMethodCall: 
+                          target: 
+                            loc: "78-91"
+                            ty: pure Nat
+                            data: 
+                              InstanceMethodCall: 
+                                target: 
+                                  loc: "78-82"
+                                  ty: "io New-Slots"
+                                  data: 
+                                    AccessLocal: inst
+                                method: method
+                                args: []
+                          method: "=="
+                          args: 
+                            - 
+                              loc: "95-97"
+                              ty: pure Nat
+                              data: 
+                                LiteralNat: 42
+  - 
+    containing_class: "New-Slots"
+    is_static: false
+    signature: 
+      class: "New-Slots"
+      loc: "99-119"
+      name: method
+      type_parameters: []
+      return_ty: pure Nat
+      self_effect: Pure
+      parameters: []
+    body: 
+      loc: "117-118"
+      ty: pure Nat
+      data: 
+        GetMySlot: x

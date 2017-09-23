@@ -9,13 +9,6 @@ pub trait U8SliceOps {
 		String::from_str(x).unwrap()
 	}
 
-	fn equals_str(&self, s: &str) -> bool {
-		unused!(s);
-		//TODO:PERF
-  //self.each_equals(&Arr::copy_from_str(s), |a, b| a == b)
-		unimplemented!()
-	}
-
 	fn without_end_if_ends_with(&self, end: &[u8]) -> &[u8] {
 		let slice = self.__self();
 		let (offset, overflow) = slice.len().overflowing_sub(end.len());

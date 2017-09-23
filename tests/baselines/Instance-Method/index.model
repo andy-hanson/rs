@@ -1,0 +1,72 @@
+---
+name: "Instance-Method"
+head: 
+  Slots: 
+    loc: "5-18"
+    slots: 
+      - 
+        loc: "7-16"
+        mutable: false
+        ty: pure Nat
+        name: x
+methods: 
+  - 
+    containing_class: "Instance-Method"
+    is_static: true
+    signature: 
+      class: "Instance-Method"
+      loc: "18-56"
+      name: main
+      type_parameters: []
+      return_ty: pure Void
+      self_effect: Pure
+      parameters: []
+    body: 
+      loc: "35-56"
+      ty: pure Void
+      data: 
+        Assert: 
+          loc: "42-56"
+          ty: pure Bool
+          data: 
+            InstanceMethodCall: 
+              target: 
+                loc: "43-48"
+                ty: pure Nat
+                data: 
+                  StaticMethodCall: 
+                    method: f
+                    args: 
+                      - 
+                        loc: "45-47"
+                        ty: pure Nat
+                        data: 
+                          LiteralNat: 42
+              method: "=="
+              args: 
+                - 
+                  loc: "52-54"
+                  ty: pure Nat
+                  data: 
+                    LiteralNat: 42
+  - 
+    containing_class: "Instance-Method"
+    is_static: true
+    signature: 
+      class: "Instance-Method"
+      loc: "56-76"
+      name: f
+      type_parameters: []
+      return_ty: pure Nat
+      self_effect: Pure
+      parameters: 
+        - 
+          loc: "66-71"
+          ty: pure Nat
+          name: x
+          index: 0
+    body: 
+      loc: "74-75"
+      ty: pure Nat
+      data: 
+        AccessParameter: x

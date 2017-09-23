@@ -4,3 +4,7 @@ slots
 fun Void main()
 	inst = new 42
 	assert inst.x == 42
+	assert inst.method() == 42
+
+def Nat method()
+	x

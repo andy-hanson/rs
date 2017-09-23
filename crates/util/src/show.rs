@@ -55,7 +55,6 @@ impl Show for f64 {
 	}
 }
 
-
 pub trait Shower
 where
 	Self: Sized,
@@ -83,33 +82,14 @@ where
 		Ok(self)
 	}
 
-	fn join<'a, T>(&mut self, arr: &'a [T]) -> Result<&mut Self, Self::Error>
-	where
-		&'a T: Show,
-	{
-		if !arr.is_empty() {
-			arr[0].show(self)?;
-			for x in arr.iter().skip(1) {
+	fn join<'a, T: Show, I: IntoIterator<Item = T>>(&mut self, i: I) -> Result<&mut Self, Self::Error> {
+		let mut iter = i.into_iter();
+		if let Some(x) = iter.next() {
+			x.show(self)?;
+			while let Some(x) = iter.next() {
 				self.add(',')?;
 				self.add(' ')?;
 				x.show(self)?;
-			}
-		}
-		Ok(self)
-	}
-
-	//TODO:duplicate code (write join_iter)
-	fn join_map<'a, T, U: Show, F: FnMut(&T) -> U>(
-		&mut self,
-		arr: &'a [T],
-		mut f: F,
-	) -> Result<&mut Self, Self::Error> {
-		if !arr.is_empty() {
-			f(&arr[0]).show(self)?;
-			for x in arr.iter().skip(1) {
-				self.add(',')?;
-				self.add(' ')?;
-				f(x).show(self)?;
 			}
 		}
 		Ok(self)

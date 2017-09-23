@@ -31,16 +31,14 @@ pub fn get_builtin<'model>(module: &Module, method: MethodOrImpl<'model>) -> Emi
 
 lazy_static! {
 	//TODO:PERF load each class lazily?
-	static ref PATH_TO_IMPLS: Dict<Sym, Dict<Sym, BuiltinCode>> = {
-		dict![
-			Sym::of(b"Void") => get_void_impls(),
-			Sym::of(b"Bool") => get_bool_impls(),
-			Sym::of(b"Nat") => get_nat_impls(),
-			Sym::of(b"Int") => get_int_impls(),
-			Sym::of(b"Float") => get_float_impls(),
-			Sym::of(b"String") => get_string_impls(),
-		]
-	};
+	static ref PATH_TO_IMPLS: Dict<Sym, Dict<Sym, BuiltinCode>> = MutDict::new()
+		.with_add(Sym::of(b"Void"), get_void_impls())
+		.with_add(Sym::of(b"Bool"), get_bool_impls())
+		.with_add(Sym::of(b"Nat"), get_nat_impls())
+		.with_add(Sym::of(b"Int"), get_int_impls())
+		.with_add(Sym::of(b"Float"), get_float_impls())
+		.with_add(Sym::of(b"String"), get_string_impls())
+		.freeze();
 }
 
 struct BuiltinsBuilder(MutDict<Sym, BuiltinCode>);
@@ -86,6 +84,7 @@ impl BuiltinsBuilder {
 fn get_void_impls() -> Dict<Sym, BuiltinCode> {
 	BuiltinsBuilder::new()
 		.fn0("value", |ctx| ctx.void())
+		.fn1("ignore", |args| args.0.void())
 		.finish()
 }
 
